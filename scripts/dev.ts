@@ -27,7 +27,7 @@ async function main(): Promise<void> {
   })
   console.log(`[dev] 正在监听 ${BOOK_DIR}`)
 
-  const child = spawn('npx', ['vitepress', 'dev', 'site'], { cwd: ROOT, stdio: 'inherit', shell: true })
+  const child = spawn('npx vitepress dev site', { cwd: ROOT, stdio: 'inherit', shell: true })
   child.on('exit', (code) => process.exit(code ?? 0))
 }
 

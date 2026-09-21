@@ -5,6 +5,7 @@ import subsetFont from 'subset-font'
 import { CHAPTERS_DIR, FONTS_OUT_DIR, FONT_SRC, GENERATED_DIR } from './lib/paths'
 import { collectCodeChars, withAscii, type CharHit } from './lib/charset'
 import { checkFont, expectedAdvance, formatProblems, openFont } from './lib/font-check'
+import { writeIfChanged } from './lib/fs-utils'
 
 export const FONT_FAMILY = 'BookMono'
 
@@ -55,13 +56,14 @@ export async function runBuildFont(): Promise<void> {
     throw new Error(`子集化后丢失了字符：${lost.map((c) => JSON.stringify(c)).join(' ')}`)
   }
 
-  // 4. 写产物
-  fs.rmSync(FONTS_OUT_DIR, { recursive: true, force: true })
+  // 4. 写产物（内容没变就不动，避免 dev 模式下 VitePress 无谓重启）
   fs.mkdirSync(FONTS_OUT_DIR, { recursive: true })
-  fs.writeFileSync(path.join(FONTS_OUT_DIR, fileName), woff2)
+  for (const f of fs.readdirSync(FONTS_OUT_DIR)) {
+    if (f !== fileName) fs.rmSync(path.join(FONTS_OUT_DIR, f), { force: true })
+  }
+  writeIfChanged(path.join(FONTS_OUT_DIR, fileName), Buffer.from(woff2))
 
-  fs.mkdirSync(GENERATED_DIR, { recursive: true })
-  fs.writeFileSync(
+  writeIfChanged(
     path.join(GENERATED_DIR, 'font.css'),
     [
       `/* 由 scripts/build-font.ts 生成，勿手改 */`,
@@ -77,7 +79,7 @@ export async function runBuildFont(): Promise<void> {
   )
   // 供浏览器验收用：子集里第一个全宽字符（书稿里未必出现「中」字）
   const sampleCjk = [...chars.keys()].find((ch) => expectedAdvance(ch.codePointAt(0)!) === 1000) ?? null
-  fs.writeFileSync(
+  writeIfChanged(
     path.join(GENERATED_DIR, 'font.json'),
     JSON.stringify({ family: FONT_FAMILY, file: fileName, chars: chars.size, bytes: woff2.length, sampleCjk }, null, 2) + '\n',
   )
