@@ -44,8 +44,8 @@ describe('buildSidebar', () => {
     })
   })
 
-  test('draft 章显示为即将发布，无链接', () => {
-    expect(sidebar[1]).toEqual({ text: '第3章 栈（即将发布）' })
+  test('draft 章完全不出现在侧栏', () => {
+    expect(sidebar).toHaveLength(1)
   })
 })
 

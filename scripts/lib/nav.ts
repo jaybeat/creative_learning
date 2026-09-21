@@ -79,22 +79,20 @@ export function linkPrevNext(pages: PageInfo[]): LinkedPage[] {
 
 /**
  * 侧栏：章 → 节两级。全部 `collapsed: true`，VitePress 会自动展开包含当前页的分组，
- * 因此「当前章默认展开」无需额外处理。draft 章无链接、文字带「（即将发布）」。
+ * 因此「当前章默认展开」无需额外处理。draft 章完全隐藏（作者要求）。
  */
 export function buildSidebar(entries: ChapterEntry[]): SidebarItem[] {
-  return entries.map(({ chapter, draft }) =>
-    draft
-      ? { text: `${chapterText(chapter)}（即将发布）` }
-      : {
-          text: chapterText(chapter),
-          link: `/${chapter.slug}/`,
-          collapsed: true,
-          items: chapter.sections.map((s) => ({
-            text: sectionText(s),
-            link: `/${chapter.slug}/${s.slug}`,
-          })),
-        },
-  )
+  return entries
+    .filter((e) => !e.draft)
+    .map(({ chapter }) => ({
+      text: chapterText(chapter),
+      link: `/${chapter.slug}/`,
+      collapsed: true,
+      items: chapter.sections.map((s) => ({
+        text: sectionText(s),
+        link: `/${chapter.slug}/${s.slug}`,
+      })),
+    }))
 }
 
 /**

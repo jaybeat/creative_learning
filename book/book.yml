@@ -1,9 +1,9 @@
 # 书的元数据与章节清单。作者只需要维护这个文件和 chapters/ 目录。
 title: 数据结构
-subtitle: （作者稍后补）
+subtitle: 理解型学习法
 author: （作者稍后补）
-description: 用 C 语言从零实现每一种数据结构（作者稍后补一句话简介）
-# GitHub 仓库地址，例如 https://github.com/<user>/<repo>；留空则页脚不显示「本页有错？反馈」链接
+description: 数据结构：理解型学习法
+# 仓库地址，例如 https://github.com/<user>/<repo>；留空则页脚不显示「本页有错？反馈」链接
 repo:
 chapters:
   # 章号、章标题从文件里的「# 第N章 标题」解析，不在这里重复写。
@@ -11,4 +11,4 @@ chapters:
   - file: ch02.md
     draft: false
   # - file: ch03.md
-  #   draft: true        # draft 的章：不生成页面，目录里灰显为「即将发布」
+  #   draft: true        # draft 的章：完全隐藏（不生成页面、不进目录和首页），但仍参与字体字符校验

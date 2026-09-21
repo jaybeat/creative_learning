@@ -11,7 +11,7 @@
 
    ```yaml
    - file: ch03.md
-     draft: false      # 还没写完想先占个位，就写 true：不生成页面，目录里灰显「即将发布」
+     draft: false      # 还没写完想先占个位，就写 true：完全隐藏，不生成页面、不进目录，但会提前校验图示字符
    ```
 
 3. `git push`。GitHub Actions 会自动测试、构建、发布，几分钟后网站更新。

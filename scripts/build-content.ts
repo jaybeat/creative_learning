@@ -52,20 +52,22 @@ export function runBuildContent(): void {
     author: book.author,
     description: book.description,
     repo: book.repo,
-    chapters: entries.map(({ chapter, draft }) => ({
-      number: chapter.number,
-      title: chapter.title,
-      slug: chapter.slug,
-      draft,
-      firstSection: chapter.sections[0] ? `/${chapter.slug}/${chapter.sections[0].slug}` : null,
-      sections: chapter.sections.map((s) => ({ number: s.number, title: s.title, link: `/${chapter.slug}/${s.slug}` })),
-    })),
+    // draft 章完全隐藏：不进首页章节列表
+    chapters: entries
+      .filter((e) => !e.draft)
+      .map(({ chapter }) => ({
+        number: chapter.number,
+        title: chapter.title,
+        slug: chapter.slug,
+        firstSection: chapter.sections[0] ? `/${chapter.slug}/${chapter.sections[0].slug}` : null,
+        sections: chapter.sections.map((s) => ({ number: s.number, title: s.title, link: `/${chapter.slug}/${s.slug}` })),
+      })),
   })
 
   for (const { chapter, draft } of entries) {
     console.log(
       draft
-        ? `[build-content] 第${chapter.number}章 ${chapter.title}：draft，不生成页面`
+        ? `[build-content] 第${chapter.number}章 ${chapter.title}：draft，已隐藏（不生成页面、不进目录）`
         : `[build-content] 第${chapter.number}章 ${chapter.title}：1 个章首页 + ${chapter.sections.length} 个节页面`,
     )
   }

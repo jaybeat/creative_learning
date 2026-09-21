@@ -6,9 +6,13 @@ prev: false
 next: false
 ---
 
-# 数据结构
+<script setup>
+import book from './.vitepress/generated/book.json'
+</script>
 
-用 C 语言从零实现每一种数据结构。（作者稍后补一句话简介）
+# {{ book.title }} {#top}
+
+<p class="book-subtitle">{{ book.subtitle }}</p>
 
 ## 章节
 

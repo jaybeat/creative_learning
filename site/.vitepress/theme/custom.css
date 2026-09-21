@@ -99,7 +99,12 @@
   text-underline-offset: 3px;
 }
 
-/* ===== 首页章节列表 ===== */
+/* ===== 首页 ===== */
+.vp-doc .book-subtitle {
+  margin-top: -8px;
+  font-size: 18px;
+  color: var(--vp-c-text-2);
+}
 .book-chapters {
   list-style: none;
   padding: 0;
@@ -108,10 +113,4 @@
 .book-chapters > li {
   padding: 10px 0;
   border-bottom: 1px solid var(--vp-c-divider);
-}
-.book-chapters .draft {
-  color: var(--vp-c-text-3);
-}
-.book-chapters .draft small {
-  margin-left: 8px;
 }
