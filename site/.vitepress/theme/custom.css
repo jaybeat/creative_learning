@@ -1,0 +1,117 @@
+/* ===== 等宽字体：代码块、行内代码、图示统一用 BookMono（Sarasa Fixed SC 子集） ===== */
+:root {
+  --book-mono: BookMono, "Sarasa Fixed SC", "Sarasa Term SC", Consolas, Menlo, monospace;
+  --vp-font-family-mono: var(--book-mono);
+}
+
+.vp-doc pre,
+.vp-doc code,
+.vp-doc kbd,
+.vp-doc [class*='language-'] code {
+  font-family: var(--book-mono);
+  font-variant-ligatures: none;   /* p->next 不能变成连字箭头 */
+  font-synthesis: none;           /* 只下发了 Regular，禁止合成粗体/斜体 */
+  tab-size: 4;
+  letter-spacing: 0;
+}
+
+/* 压掉 Shiki 主题给注释加的斜体、给关键字加的粗体：合成粗体会改变字宽 */
+.vp-doc [class*='language-'] code,
+.vp-doc [class*='language-'] code span {
+  font-weight: 400 !important;
+  font-style: normal !important;
+}
+
+/* 代码绝不折行，超宽时块内横向滚动 */
+.vp-doc [class*='language-'] pre,
+.vp-doc [class*='language-'] code {
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+.vp-doc [class*='language-'] pre {
+  overflow-x: auto;
+}
+
+/* ===== 图示块（字符画） ===== */
+.vp-doc .diagram {
+  background-color: var(--vp-c-bg-soft);
+}
+.vp-doc .diagram pre,
+.vp-doc .diagram code {
+  line-height: 1.25;               /* 竖线 │ 上下要能接上 */
+}
+.vp-doc .diagram button.copy,
+.vp-doc .diagram span.lang {
+  display: none;
+}
+@media (max-width: 640px) {
+  .vp-doc .diagram code {
+    font-size: 13px;
+  }
+}
+
+/* ===== 终端会话块 ===== */
+.vp-doc .session span.lang {
+  display: none;
+}
+
+/* ===== 正文排版：像一本书 ===== */
+.vp-doc .content-container {
+  max-width: 720px;
+}
+.vp-doc p,
+.vp-doc li {
+  line-height: 1.8;
+}
+.vp-doc p {
+  margin: 14px 0;
+}
+.vp-doc h2 {
+  margin-top: 40px;
+}
+/* 作者用独占一行的粗体当四级小标题 */
+.vp-doc p > strong:only-child {
+  display: inline-block;
+  margin-top: 4px;
+}
+
+/* ===== 表格 ===== */
+.vp-doc table {
+  display: block;
+  overflow-x: auto;
+}
+.vp-doc table.wide-table th,
+.vp-doc table.wide-table td {
+  white-space: nowrap;
+  padding: 4px 8px;
+}
+
+/* ===== 页脚反馈链接 ===== */
+.book-feedback {
+  margin-top: 32px;
+  font-size: 13px;
+  color: var(--vp-c-text-3);
+}
+.book-feedback a {
+  color: var(--vp-c-text-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ===== 首页章节列表 ===== */
+.book-chapters {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0;
+}
+.book-chapters > li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+.book-chapters .draft {
+  color: var(--vp-c-text-3);
+}
+.book-chapters .draft small {
+  margin-left: 8px;
+}

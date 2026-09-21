@@ -1,0 +1,14 @@
+# 书的元数据与章节清单。作者只需要维护这个文件和 chapters/ 目录。
+title: 数据结构
+subtitle: （作者稍后补）
+author: （作者稍后补）
+description: 用 C 语言从零实现每一种数据结构（作者稍后补一句话简介）
+# GitHub 仓库地址，例如 https://github.com/<user>/<repo>；留空则页脚不显示「本页有错？反馈」链接
+repo:
+chapters:
+  # 章号、章标题从文件里的「# 第N章 标题」解析，不在这里重复写。
+  # 文件名必须是 chNN.md，且 NN 与文件内的章号一致，否则构建报错。
+  - file: ch02.md
+    draft: false
+  # - file: ch03.md
+  #   draft: true        # draft 的章：不生成页面，目录里灰显为「即将发布」
