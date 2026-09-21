@@ -1,0 +1,50 @@
+name: 测试与构建
+
+# 部署由 Vercel 负责（见 vercel.json）。这里只做质量门禁：
+# 单元测试 → 完整构建 → 浏览器验收（字宽对齐、无横向滚动）。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: 单元测试
+        run: npm test
+
+      - name: 构建（字体 → 切页 → VitePress）
+        run: npm run build
+
+      - name: 安装浏览器
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: 浏览器验收
+        run: npm run test:e2e
+
+      - name: 保存失败现场
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7

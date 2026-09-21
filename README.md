@@ -14,7 +14,7 @@
      draft: false      # 还没写完想先占个位，就写 true：完全隐藏，不生成页面、不进目录，但会提前校验图示字符
    ```
 
-3. `git push`。GitHub Actions 会自动测试、构建、发布，几分钟后网站更新。
+3. `git push`。Vercel 会自动构建并发布，几分钟后网站更新；GitHub Actions 同时跑一遍测试与浏览器验收作为质量门禁。
 
 ## 本地预览
 
@@ -71,4 +71,6 @@ tests/unit、tests/e2e  vitest 单元测试、Playwright 浏览器验收
 
 ## 部署
 
-push 到 `main` 触发 `.github/workflows/deploy.yml`。GitHub Pages 项目站的路径前缀 `/<repo>/` 自动推断；如果绑定了自定义域名，在仓库 Settings → Secrets and variables → Actions → Variables 里新建 `SITE_BASE`，值为 `/`。
+- **托管：Vercel。** 配置在 `vercel.json`（构建命令 `npm run build`，输出目录 `site/.vitepress/dist`，`cleanUrls` 与 VitePress 保持一致）。首次接入：在 Vercel 里 Import 这个仓库，其余设置会自动从 `vercel.json` 读取，不需要手填。自定义域名在 Vercel 项目的 Domains 里添加，然后按提示在域名 DNS 加一条 CNAME 记录。
+- **路径前缀。** 站点默认部署在域名根（`SITE_BASE` 为 `/`）。如果将来要放到某个子路径下，在 Vercel 项目的 Environment Variables 里设置 `SITE_BASE`，值形如 `/ds/`。
+- **质量门禁：GitHub Actions。** push 到 `main` 或提 PR 会触发 `.github/workflows/ci.yml`：单元测试 → 构建 → Playwright 浏览器验收。它不负责发布，失败了也不会阻止 Vercel 部署，但会在 GitHub 上标红提醒。
