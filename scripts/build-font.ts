@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import subsetFont from 'subset-font'
 import { CHAPTERS_DIR, FONTS_OUT_DIR, FONT_SRC, GENERATED_DIR } from './lib/paths'
 import { collectCodeChars, withAscii, type CharHit } from './lib/charset'
-import { checkFont, formatProblems, openFont } from './lib/font-check'
+import { checkFont, expectedAdvance, formatProblems, openFont } from './lib/font-check'
 
 export const FONT_FAMILY = 'BookMono'
 
@@ -75,9 +75,11 @@ export async function runBuildFont(): Promise<void> {
       '',
     ].join('\n'),
   )
+  // 供浏览器验收用：子集里第一个全宽字符（书稿里未必出现「中」字）
+  const sampleCjk = [...chars.keys()].find((ch) => expectedAdvance(ch.codePointAt(0)!) === 1000) ?? null
   fs.writeFileSync(
     path.join(GENERATED_DIR, 'font.json'),
-    JSON.stringify({ family: FONT_FAMILY, file: fileName, chars: chars.size, bytes: woff2.length }, null, 2) + '\n',
+    JSON.stringify({ family: FONT_FAMILY, file: fileName, chars: chars.size, bytes: woff2.length, sampleCjk }, null, 2) + '\n',
   )
 
   console.log(`[build-font] ${chars.size} 个字符，${fileName}（${(woff2.length / 1024).toFixed(1)} KB），字宽校验通过`)

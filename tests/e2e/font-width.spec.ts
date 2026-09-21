@@ -1,8 +1,19 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { expect, test } from '@playwright/test'
 
-/** HANDOFF M1 验收：在 diagram 块的字体环境下，这些字符各重复 20 次的渲染宽度两两相等；`中` 恰为 2 倍。 */
+/**
+ * HANDOFF M1 验收：在 diagram 块的字体环境下，这些字符各重复 20 次的渲染宽度两两相等；中文恰为 2 倍。
+ * 中文样本取子集里实际存在的第一个全宽字符（书稿代码块里未必出现「中」字；不在子集里的字会回退到系统字体）。
+ */
 const NARROW = ['a', '─', '│', '┼', '╱', '►', '▼', '▲', '◄', '●']
 const TOLERANCE = 0.5
+const ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)))
+const fontMeta = JSON.parse(fs.readFileSync(path.join(ROOT, 'site/.vitepress/generated/font.json'), 'utf8')) as {
+  sampleCjk: string | null
+}
+const WIDE = fontMeta.sampleCjk ?? '中'
 
 test('图示块里的字符宽度严格对齐', async ({ page }) => {
   await page.goto('ch02/2-8')
@@ -14,7 +25,7 @@ test('图示块里的字符宽度严格对齐', async ({ page }) => {
   expect(faces, 'BookMono webfont 应已下发并加载').toBeGreaterThan(0)
 
   const widths = await page.evaluate(
-    ({ narrow }) => {
+    ({ narrow, wide }) => {
       const code = document.querySelector('.diagram code') as HTMLElement
       const measure = (ch: string) => {
         const span = document.createElement('span')
@@ -26,9 +37,9 @@ test('图示块里的字符宽度严格对齐', async ({ page }) => {
         return w
       }
       const font = getComputedStyle(code).fontFamily
-      return { font, narrow: narrow.map(measure), wide: measure('中') }
+      return { font, narrow: narrow.map(measure), wide: measure(wide) }
     },
-    { narrow: NARROW },
+    { narrow: NARROW, wide: WIDE },
   )
 
   expect(widths.font.startsWith('BookMono')).toBe(true)
@@ -37,7 +48,7 @@ test('图示块里的字符宽度严格对齐', async ({ page }) => {
   for (let i = 0; i < NARROW.length; i++) {
     expect(Math.abs(widths.narrow[i] - ref), `「${NARROW[i]}」宽度 ${widths.narrow[i]} 应等于「a」宽度 ${ref}`).toBeLessThanOrEqual(TOLERANCE)
   }
-  expect(Math.abs(widths.wide - ref * 2), `「中」宽度 ${widths.wide} 应为 ${ref * 2}`).toBeLessThanOrEqual(TOLERANCE)
+  expect(Math.abs(widths.wide - ref * 2), `「${WIDE}」宽度 ${widths.wide} 应为 ${ref * 2}`).toBeLessThanOrEqual(TOLERANCE)
 })
 
 test('代码块内没有粗体、斜体和连字', async ({ page }) => {

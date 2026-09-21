@@ -49,7 +49,11 @@ export function fenceKindPlugin(md: MarkdownIt): void {
   }
 }
 
-/** 表头列数 > WIDE_TABLE_COLS 的表格加 `wide-table` class。 */
+/**
+ * 表头列数 > WIDE_TABLE_COLS 的表格加 `wide-table` class。
+ * VitePress 自己把 table_open 写死成 `<table tabindex="0">`（忽略 token 属性），
+ * 所以这里同时覆盖渲染规则：保留 tabindex，并输出 token 上的属性。
+ */
 export function wideTablePlugin(md: MarkdownIt): void {
   md.core.ruler.push('wide_table', (state) => {
     const tokens = state.tokens
@@ -62,4 +66,9 @@ export function wideTablePlugin(md: MarkdownIt): void {
       if (cols > WIDE_TABLE_COLS) tokens[i].attrJoin('class', 'wide-table')
     }
   })
+  md.renderer.rules.table_open = (tokens, idx, _opts, _env, self) => {
+    const t = tokens[idx]
+    if (t.attrGet('tabindex') === null) t.attrSet('tabindex', '0')
+    return `<table${self.renderAttrs(t)}>\n`
+  }
 }

@@ -47,12 +47,12 @@ describe('fenceKindPlugin', () => {
 describe('wideTablePlugin', () => {
   test('17 列表格加 wide-table', () => {
     const html = md.render(fixture('ch02-mini.md'), env())
-    expect(html).toContain('<table class="wide-table">')
+    expect(html).toContain('<table class="wide-table" tabindex="0">')
   })
 
-  test('3 列表格不加', () => {
+  test('3 列表格不加（但保留 VitePress 的 tabindex）', () => {
     const html = md.render('| a | b | c |\n|---|---|---|\n| 1 | 2 | 3 |\n', env())
-    expect(html).toContain('<table>')
+    expect(html).toContain('<table tabindex="0">')
     expect(html).not.toContain('wide-table')
   })
 })
