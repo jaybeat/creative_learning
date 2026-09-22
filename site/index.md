@@ -14,6 +14,8 @@ import book from './.vitepress/generated/book.json'
 
 <p class="book-subtitle">{{ book.subtitle }}</p>
 
+<ContinueReading />
+
 ## 章节
 
 <ChapterList />

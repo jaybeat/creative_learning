@@ -9,7 +9,10 @@ export default defineConfig({
   testDir: '.',
   testMatch: /.*\.spec\.ts/,
   fullyParallel: true,
+  // 4 个浏览器配置 × 本地 preview 服务：并发太高时会因机器负载超时误报
+  workers: process.env.CI ? 2 : 3,
   retries: process.env.CI ? 1 : 0,
+  expect: { timeout: 10_000 },
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: {
     baseURL: `http://localhost:${PORT}${process.env.SITE_BASE ?? '/'}`,
