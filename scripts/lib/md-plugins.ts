@@ -28,7 +28,10 @@ export function fenceKindPlugin(md: MarkdownIt): void {
   md.renderer.rules.fence = (tokens, idx, opts, env, self) => {
     const t = tokens[idx]
     const kind = classifyFence(t.info, t.content)
-    if (kind) t.info = 'text' // 让 Shiki 按纯文本处理，避免「未知语言」告警
+    if (kind) {
+      t.info = 'text' // 让 Shiki 按纯文本处理，避免「未知语言」告警
+      t.meta = { ...(t.meta ?? {}), kind }
+    }
 
     const html = orig(tokens, idx, opts, env, self)
     if (!kind) return html
@@ -46,6 +49,34 @@ export function fenceKindPlugin(md: MarkdownIt): void {
     // VitePress 输出 <div class="language-text ...">…；裸 markdown-it 输出 <pre><code class="language-text">。
     // 两种情况下第一个 language- class 都是要加类的元素。
     return html.replace(/class="(language-[^"]*)"/, (_m, cls: string) => `class="${cls} ${kind}"${attrs}`)
+  }
+}
+
+/** 超过这个行数的有语言标记代码块默认折叠（作者已确认 40）。 */
+export const FOLD_THRESHOLD = 40
+/** 折叠时露出的行数 */
+export const FOLD_PREVIEW_LINES = 20
+
+export function countLines(content: string): number {
+  return content.replace(/\n$/, '').split('\n').length
+}
+
+/**
+ * 给超长的、有语言标记的代码块加 `data-fold="<总行数>"`。图示 / 会话块不折叠。
+ * 折叠本身由客户端脚本（theme/fold.ts）加 class 实现，无 JS 时默认全部展开。
+ * 与 fenceKindPlugin 的注册顺序无关：无论先后，都能通过 meta.kind 或原始 info 判断出图示块。
+ */
+export function foldPlugin(md: MarkdownIt): void {
+  const orig = md.renderer.rules.fence
+  if (!orig) throw new Error('foldPlugin: 需要已有 fence 渲染规则')
+  md.renderer.rules.fence = (tokens, idx, opts, env, self) => {
+    const t = tokens[idx]
+    const isPlain = Boolean((t.meta as { kind?: string } | null)?.kind) || classifyFence(t.info, t.content) !== null
+    const html = orig(tokens, idx, opts, env, self)
+    if (isPlain) return html
+    const n = countLines(t.content)
+    if (n <= FOLD_THRESHOLD) return html
+    return html.replace(/class="(language-[^"]*)"/, (m) => `${m} data-fold="${n}"`)
   }
 }
 

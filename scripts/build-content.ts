@@ -18,10 +18,16 @@ export function runBuildContent(): void {
   const expected = new Set<string>()
   for (const p of pages) {
     const fm: Record<string, FrontmatterValue> = { title: p.text, chapter: p.chapter.number }
-    if (p.section) fm.section = p.section.number
-    else {
+    // srcFile / srcLine：让渲染期插件能把警告定位回作者的源文件。
+    // 节页正文第 0 行就是 `## ` 标题行；章首页正文第 2 行起是引言（第 0 行是 `# ` 标题，第 1 行空）。
+    fm.srcFile = p.chapter.file
+    if (p.section) {
+      fm.section = p.section.number
+      fm.srcLine = p.section.startLine + 1
+    } else {
       fm.chapterIndex = true
       fm.outline = false // 章首页只有一个「本章目录」标题，右栏大纲没有意义
+      fm.srcLine = p.chapter.introStartLine - 1
     }
     fm.prev = p.prev
     fm.next = p.next

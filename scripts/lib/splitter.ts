@@ -30,6 +30,8 @@ export interface Chapter {
   slug: string
   /** `#` 与第一个 `##` 之间的原文，可能为空 */
   intro: string
+  /** intro 在章文件里的 0 基起始行（即 h1 的下一行） */
+  introStartLine: number
   sections: Section[]
 }
 
@@ -96,7 +98,7 @@ export function parseChapter(src: string, fileName: string): Chapter {
     }
   })
 
-  return { file: fileName, number, title: cm[2].trim(), slug, intro, sections }
+  return { file: fileName, number, title: cm[2].trim(), slug, intro, introStartLine: h1.end, sections }
 }
 
 export type FrontmatterValue = string | number | boolean | { text: string; link: string }
@@ -132,18 +134,12 @@ export function renderSectionPage(section: Section, fm: Record<string, Frontmatt
 }
 
 /**
- * 章首页：章标题 + 引言（若有）+ 各节链接列表 + 开始阅读。
- * 「继续阅读」与已读标记属于 M2，届时用组件替换列表。
+ * 章首页：章标题 + 引言（若有）+ <ChapterIndex> 组件（本章目录、已读标记、开始/继续阅读）。
+ * 组件在 SSR 时就渲染出完整目录；已读标记与「继续阅读」挂载后才出现。
  */
 export function renderChapterIndex(chapter: Chapter, fm: Record<string, FrontmatterValue>): string {
   const parts: string[] = [renderFrontmatter(fm), `# 第${chapter.number}章 ${chapter.title}`, '']
   if (chapter.intro.trim()) parts.push(chapter.intro.trim(), '')
-  parts.push('## 本章目录', '')
-  for (const s of chapter.sections) {
-    parts.push(`- [${s.number} ${s.title}](/${chapter.slug}/${s.slug})`)
-  }
-  if (chapter.sections.length) {
-    parts.push('', `[开始阅读 →](/${chapter.slug}/${chapter.sections[0].slug})`)
-  }
+  parts.push(`<ChapterIndex chapter="${chapter.slug}" />`)
   return parts.join('\n') + '\n'
 }

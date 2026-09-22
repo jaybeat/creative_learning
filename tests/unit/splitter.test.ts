@@ -66,12 +66,16 @@ describe('renderSectionPage', () => {
 })
 
 describe('renderChapterIndex', () => {
-  test('无引言时自动生成目录列表与开始阅读', () => {
+  test('无引言时只有章标题与目录组件', () => {
     const html = renderChapterIndex(ch02, { title: '第2章 线性表', chapter: 2, chapterIndex: true, prev: false, next: { text: '2.1 问题', link: '/ch02/2-1' } })
     expect(html).toContain('# 第2章 线性表')
-    expect(html).toContain('- [2.1 问题](/ch02/2-1)')
-    expect(html).toContain('- [2.2 结构](/ch02/2-2)')
-    expect(html).toContain('[开始阅读 →](/ch02/2-1)')
+    expect(html).toContain('<ChapterIndex chapter="ch02" />')
+    expect(html).not.toContain('- [')
+  })
+
+  test('introStartLine 指向 h1 的下一行', () => {
+    expect(ch02.introStartLine).toBe(1)
+    expect(ch03.introStartLine).toBe(1)
   })
 
   test('有引言时保留引言', () => {
