@@ -200,12 +200,13 @@ html {
 }
 
 /* ===== 字号三档 =====
-   正文按比例缩放；代码块用离散的偶数像素值（12 / 14 / 16px），保证窄字符步进是整像素
-   （0.5em），在没有亚像素定位的环境（低 DPR 的 Linux Chromium 等）里图示也不会因取整而歪。 */
+   正文按比例缩放；代码与图示只用偶数像素字号（12 / 14 / 16px），保证窄字符步进（0.5em）是整像素。
+   实测 Linux 上的 Chromium 会把 13px 字号下 6.5px 的步进取整成 7px、而全宽字符仍是 13px，图示就歪了；
+   偶数字号在任何环境都不会有这个问题。 */
 :root {
   --book-scale: 1;
   --book-code-size: 14px;
-  --book-diagram-size-mobile: 13px;
+  --book-diagram-size-mobile: 12px;
 }
 html[data-font-size='s'] {
   --book-scale: 0.9;
