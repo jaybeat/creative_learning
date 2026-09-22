@@ -33,8 +33,10 @@ test('图示块里的字符宽度严格对齐', async ({ page }) => {
         span.style.whiteSpace = 'pre'
         code.appendChild(span)
         const w = span.getBoundingClientRect().width
+        const cs = getComputedStyle(span)
+        const info = { w, size: cs.fontSize, family: cs.fontFamily }
         span.remove()
-        return w
+        return info
       }
       const font = getComputedStyle(code).fontFamily
       return { font, narrow: narrow.map(measure), wide: measure(wide) }
@@ -43,12 +45,16 @@ test('图示块里的字符宽度严格对齐', async ({ page }) => {
   )
 
   expect(widths.font.startsWith('BookMono')).toBe(true)
-  const ref = widths.narrow[0]
+  // 所有测量 span 的计算字号必须一致，否则说明浏览器做了局部文字放大（font boosting）
+  const sizes = new Set([...widths.narrow, widths.wide].map((m) => m.size))
+  expect([...sizes], '测量 span 的字号不一致').toHaveLength(1)
+
+  const ref = widths.narrow[0].w
   expect(ref).toBeGreaterThan(0)
   for (let i = 0; i < NARROW.length; i++) {
-    expect(Math.abs(widths.narrow[i] - ref), `「${NARROW[i]}」宽度 ${widths.narrow[i]} 应等于「a」宽度 ${ref}`).toBeLessThanOrEqual(TOLERANCE)
+    expect(Math.abs(widths.narrow[i].w - ref), `「${NARROW[i]}」宽度 ${widths.narrow[i].w} 应等于「a」宽度 ${ref}（字号 ${widths.narrow[i].size}）`).toBeLessThanOrEqual(TOLERANCE)
   }
-  expect(Math.abs(widths.wide - ref * 2), `「${WIDE}」宽度 ${widths.wide} 应为 ${ref * 2}`).toBeLessThanOrEqual(TOLERANCE)
+  expect(Math.abs(widths.wide.w - ref * 2), `「${WIDE}」宽度 ${widths.wide.w} 应为 ${ref * 2}（字号 ${widths.wide.size}，字体 ${widths.wide.family}）`).toBeLessThanOrEqual(TOLERANCE)
 })
 
 test('代码块内没有粗体、斜体和连字', async ({ page }) => {

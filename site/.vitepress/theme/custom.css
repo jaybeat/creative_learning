@@ -8,6 +8,18 @@
   --vp-font-family-mono: var(--book-mono);
 }
 
+/* 关闭移动端浏览器的「文字自动放大」（Android Chrome 的 font boosting、iOS 横屏放大）：
+   它会按文本块局部放大字号，等宽对齐的图示一旦被局部放大就会歪。 */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+.vp-doc pre,
+.vp-doc code {
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
 /* Shiki github-light 的关键字红 #D73A49（对比度 4.23）与注释灰 #6A737D（4.45）不到 WCAG AA 的 4.5，
    换成 GitHub 后来采用的更深色值；暗色注释灰同样偏暗，一并提亮。 */
 .vp-doc [class*='language-'] span[style*='--shiki-light:#D73A49'] { color: #b31d28 !important; }
@@ -56,12 +68,6 @@
 .vp-doc .diagram span.lang {
   display: none;
 }
-@media (max-width: 640px) {
-  .vp-doc .diagram code {
-    font-size: 13px;
-  }
-}
-
 /* ===== 长代码折叠（is-folded 由 JS 加上，无 JS 时全部展开） ===== */
 .vp-doc [data-fold].is-folded pre {
   /* 20 行预览：行高 1.7 × 20 + 上下内边距 */
@@ -193,19 +199,34 @@
   text-underline-offset: 3px;
 }
 
-/* ===== 字号三档：作用于正文与代码，等比缩放不影响图示对齐 ===== */
-html[data-font-size='s'] { --book-scale: 0.9; }
-html[data-font-size='l'] { --book-scale: 1.15; }
+/* ===== 字号三档 =====
+   正文按比例缩放；代码块用离散的偶数像素值（12 / 14 / 16px），保证窄字符步进是整像素
+   （0.5em），在没有亚像素定位的环境（低 DPR 的 Linux Chromium 等）里图示也不会因取整而歪。 */
+:root {
+  --book-scale: 1;
+  --book-code-size: 14px;
+  --book-diagram-size-mobile: 13px;
+}
+html[data-font-size='s'] {
+  --book-scale: 0.9;
+  --book-code-size: 12px;
+  --book-diagram-size-mobile: 12px;
+}
+html[data-font-size='l'] {
+  --book-scale: 1.15;
+  --book-code-size: 16px;
+  --book-diagram-size-mobile: 14px;
+}
 .vp-doc {
-  font-size: calc(16px * var(--book-scale, 1));
+  font-size: calc(16px * var(--book-scale));
 }
 .vp-doc [class*='language-'] pre,
 .vp-doc [class*='language-'] code {
-  font-size: calc(var(--vp-code-font-size) * var(--book-scale, 1));
+  font-size: var(--book-code-size);
 }
 @media (max-width: 640px) {
   .vp-doc .diagram code {
-    font-size: calc(13px * var(--book-scale, 1));
+    font-size: var(--book-diagram-size-mobile);
   }
 }
 .font-size-switch {

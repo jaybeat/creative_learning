@@ -27,8 +27,9 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } } },
-    { name: 'chromium-mobile', use: { ...devices['Desktop Chrome'], viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true } },
+    // 手机项目用 DPR 2：真机都是高 DPR；DPR 1 的 Linux 无头 Chromium 会把 6.5px 的字形步进取整成 7px，不代表真实设备
+    { name: 'chromium-mobile', use: { ...devices['Desktop Chrome'], viewport: { width: 375, height: 812 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
     { name: 'webkit-desktop', use: { ...devices['Desktop Safari'], viewport: { width: 1280, height: 800 } } },
-    { name: 'webkit-mobile', use: { ...devices['Desktop Safari'], viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true } },
+    { name: 'webkit-mobile', use: { ...devices['Desktop Safari'], viewport: { width: 375, height: 812 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
   ],
 })
