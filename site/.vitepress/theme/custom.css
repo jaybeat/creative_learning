@@ -1,8 +1,19 @@
-/* ===== 等宽字体：代码块、行内代码、图示统一用 BookMono（Sarasa Fixed SC 子集） ===== */
+/* ===== 字体 ===== */
 :root {
+  /* 正文：系统中文字体栈，不下发 webfont */
+  --vp-font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+  /* 代码块、行内代码、图示统一用 BookMono（Sarasa Fixed SC 子集） */
   --book-mono: BookMono, "Sarasa Fixed SC", "Sarasa Term SC", Consolas, Menlo, monospace;
   --vp-font-family-mono: var(--book-mono);
 }
+
+/* Shiki github-light 的关键字红 #D73A49（对比度 4.23）与注释灰 #6A737D（4.45）不到 WCAG AA 的 4.5，
+   换成 GitHub 后来采用的更深色值；暗色注释灰同样偏暗，一并提亮。 */
+.vp-doc [class*='language-'] span[style*='--shiki-light:#D73A49'] { color: #b31d28 !important; }
+.vp-doc [class*='language-'] span[style*='--shiki-light:#6A737D'] { color: #57606a !important; }
+.dark .vp-doc [class*='language-'] span[style*='--shiki-dark:#F97583'] { color: #ff7b72 !important; }
+.dark .vp-doc [class*='language-'] span[style*='--shiki-dark:#6A737D'] { color: #8b949e !important; }
 
 .vp-doc pre,
 .vp-doc code,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import DefaultTheme from 'vitepress/theme'
+import DefaultTheme from 'vitepress/theme-without-fonts'
 import { onContentUpdated } from 'vitepress'
 import Feedback from './components/Feedback.vue'
 import ReadTracker from './components/ReadTracker.vue'
