@@ -60,8 +60,35 @@ describe('renderSectionPage', () => {
     expect(slugify('2.2.1 定义')).toBe('2-2-1')
   })
 
+  test('代码块里的 **x** 原样', () => {
+    expect(page).toContain('/* **也不是标题** */')
+  })
+
+  test('小节里的加粗标题也提升，编号按节内顺序', () => {
+    expect(page).toContain('### 第二节里的加粗标题 {#2-2-p1 .para-title}')
+  })
+})
+
+describe('加粗段落标题', () => {
+  const page = renderSectionPage(ch02.sections[0], { title: '2.1 问题', chapter: 2, section: '2.1', prev: false, next: false })
+
+  test('独占一行的粗体段落提升为带锚点的三级标题', () => {
+    expect(ch02.sections[0].paraTitles).toEqual([{ line: 4, text: '只有一行的加粗' }])
+    expect(page).toContain('### 只有一行的加粗 {#2-1-p1 .para-title}')
+    expect(page).not.toContain('**只有一行的加粗**')
+  })
+
+  test('粗体后面还有内容的段落不动', () => {
+    expect(page).toContain('**注意**：这不是标题')
+    expect(page).toContain('**加粗** 后面还有字')
+  })
+
+  test('引用块里的粗体行不动', () => {
+    expect(page).toContain('> **只在引用块里**')
+  })
+
   test('frontmatter 正确', () => {
-    expect(page.startsWith('---\ntitle: "2.2 结构"\nchapter: 2\nsection: "2.2"\nprev: false\nnext:\n  text: "x"\n  link: "/x"\n---\n')).toBe(true)
+    expect(page.startsWith('---\ntitle: "2.1 问题"\nchapter: 2\nsection: "2.1"\nprev: false\nnext: false\n---\n')).toBe(true)
   })
 })
 

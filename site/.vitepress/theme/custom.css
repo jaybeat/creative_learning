@@ -135,6 +135,24 @@ html {
 .vp-doc .ms-done .ms-icon::before { content: '✓'; color: var(--vp-c-brand-1); }
 .vp-doc .ms-next .ms-icon::before { content: '→'; color: var(--vp-c-text-2); }
 .vp-doc .ms-open .ms-icon::before { content: '!'; color: var(--vp-c-warning-1); }
+.vp-doc .ms-question .ms-icon::before { content: '?'; color: var(--vp-c-warning-1); }
+.vp-doc .ms-practice .ms-icon::before { content: '✎'; color: var(--vp-c-brand-1); }
+
+/* 节首「本节问题」：换一种颜色，与节尾卡片区分 */
+.vp-doc blockquote.milestone.milestone-question {
+  border-left-color: var(--vp-c-warning-1);
+  background: var(--vp-c-warning-soft);
+}
+
+/* 独占一行的加粗段落提升成的小标题：比默认 h3 收敛，接近「加粗段落」的观感 */
+.vp-doc h3.para-title {
+  margin: 28px 0 8px;
+  padding-top: 0;
+  border-top: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
 .vp-doc .ms-note .ms-icon::before,
 .vp-doc .ms-plain .ms-icon::before { content: '•'; color: var(--vp-c-text-3); }
 .vp-doc .ms-label {

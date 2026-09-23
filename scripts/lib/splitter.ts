@@ -8,6 +8,13 @@ export interface Heading {
   text: string
 }
 
+export interface ParaTitle {
+  /** 相对于所在节 body 的 0 基行号 */
+  line: number
+  /** 去掉 ** 后的标题文字 */
+  text: string
+}
+
 export interface Section {
   /** 「2.8」 */
   number: string
@@ -20,6 +27,8 @@ export interface Section {
   /** 在章文件里的 0 基起始行 */
   startLine: number
   headings: Heading[]
+  /** 独占一行的 `**加粗**` 段落：作者当小标题用，切页时提升为带锚点的三级标题 */
+  paraTitles: ParaTitle[]
 }
 
 export interface Chapter {
@@ -61,6 +70,18 @@ export function parseChapter(src: string, fileName: string): Chapter {
     heads.push({ level: Number(t.tag.slice(1)), line: startLine, end: t.map[1], text })
   })
 
+  // 独占一行、只含一个粗体的顶层段落（不在引用块 / 列表里）
+  const paraTitles: { line: number; text: string }[] = []
+  tokens.forEach((t, i) => {
+    if (t.type !== 'paragraph_open' || t.level !== 0 || !t.map || t.map[1] - t.map[0] !== 1) return
+    const inline = tokens[i + 1]
+    if (inline?.type !== 'inline' || tokens[i + 2]?.type !== 'paragraph_close') return
+    const c = (inline.children ?? []).filter((x) => !(x.type === 'text' && x.content === ''))
+    if (c.length === 3 && c[0].type === 'strong_open' && c[1].type === 'text' && c[2].type === 'strong_close') {
+      paraTitles.push({ line: t.map[0], text: c[1].content.trim() })
+    }
+  })
+
   const h1s = heads.filter((h) => h.level === 1)
   if (h1s.length !== 1) {
     throw new Error(`${fileName}: 一章需要且只能有一个一级标题「# 第N章 标题」，找到 ${h1s.length} 个`)
@@ -95,6 +116,9 @@ export function parseChapter(src: string, fileName: string): Chapter {
       headings: heads
         .filter((x) => x.line >= h.line && x.line < endLine)
         .map((x) => ({ level: x.level, line: x.line - h.line, text: x.text })),
+      paraTitles: paraTitles
+        .filter((p) => p.line > h.line && p.line < endLine)
+        .map((p) => ({ line: p.line - h.line, text: p.text })),
     }
   })
 
@@ -123,13 +147,17 @@ export function renderFrontmatter(fm: Record<string, FrontmatterValue>): string 
 
 /**
  * 节页面：`## 2.8 …` 提升为 `# 2.8 …`，`###` 提升为 `##`，其余原样。
- * 只改标题所在的行（由 token.map 定位），代码块里的 `#` 不受影响。
+ * 独占一行的 `**加粗**` 段落改写为 `### 文字 {#2-8-p1 .para-title}`：进右侧大纲、有稳定的纯 ASCII 锚点。
+ * 只改由 token.map 定位到的行，代码块里的 `#`、`**` 不受影响。
  */
 export function renderSectionPage(section: Section, fm: Record<string, FrontmatterValue>): string {
   const lines = section.body.split('\n')
   for (const h of section.headings) {
     lines[h.line] = lines[h.line].replace(/^(\s*)#/, '$1')
   }
+  section.paraTitles.forEach((p, i) => {
+    lines[p.line] = `### ${p.text} {#${section.slug}-p${i + 1} .para-title}`
+  })
   return renderFrontmatter(fm) + lines.join('\n').replace(/\s*$/, '') + '\n'
 }
 

@@ -46,6 +46,36 @@ describe('里程碑卡片', () => {
   })
 })
 
+describe('节首问题卡片与练一练', () => {
+  const question = '> **本节问题**：删掉中间一个元素，它留下的空格子怎么办？\n'
+  const ending = [
+    '> **到这里你有了**：五个操作全部实现。',
+    '> **练一练**：（1）实现Delete，用2.4.2的程序运行，确认输出`cat`。（2）把`Delete(2)`改成`Delete(0)`，输出是什么？',
+    '> **下一步**：把全局变量L变成参数。',
+    '',
+  ].join('\n')
+
+  test('本节问题 → 问题卡片', () => {
+    const html = md.render(question)
+    expect(html).toMatch(/^<blockquote class="milestone milestone-question">/)
+    expect(html).toContain('<div class="ms-row ms-question"><span class="ms-icon" aria-hidden="true"></span><span class="ms-label">本节问题</span><div class="ms-body">删掉中间一个元素')
+  })
+
+  test('练一练行带 practice 类别与固定 id，行内代码保留', () => {
+    const html = md.render(ending)
+    expect(html).toContain('<div class="ms-row ms-practice" id="practice"><span class="ms-icon" aria-hidden="true"></span><span class="ms-label">练一练</span><div class="ms-body">（1）实现Delete')
+    expect(html).toContain('<code>Delete(0)</code>')
+    expect(html.match(/<div class="ms-row/g)).toHaveLength(3)
+  })
+
+  test('同一页两种卡片互不影响', () => {
+    const html = md.render(question + '\n正文。\n\n' + ending)
+    expect(html.match(/<blockquote class="milestone milestone-question">/g)).toHaveLength(1)
+    expect(html.match(/<blockquote class="milestone">/g)).toHaveLength(1)
+    expect(html).toContain('<p>正文。</p>')
+  })
+})
+
 describe('不受影响的引用块', () => {
   test('普通引用块原样', () => {
     expect(md.render('> 只是引用\n')).toBe('<blockquote>\n<p>只是引用</p>\n</blockquote>\n')

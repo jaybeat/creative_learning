@@ -1,19 +1,25 @@
 import type MarkdownIt from 'markdown-it'
 import type { MdToken } from './md'
 
-/** 触发识别的首行标签 */
+/** 触发识别的首行标签：节尾里程碑卡片 / 节首问题卡片 */
 export const MILESTONE_START = '到这里你有了'
+export const QUESTION_START = '本节问题'
 
 /** 标签 → 视觉类别。未知标签一律 note，不报错（作者以后会发明新标签）。 */
 export const LABEL_KIND: Record<string, string> = {
   到这里你有了: 'done',
   下一步: 'next',
   还没解决的: 'open',
+  本节问题: 'question',
+  练一练: 'practice',
   学到的: 'note',
   验证了: 'note',
   用到的操作: 'note',
   接口: 'note',
 }
+
+/** 练一练每节只有一处，给它一个固定 id，交叉引用「2.9练一练」可以直接定位 */
+export const PRACTICE_ID = 'practice'
 
 export function kindOf(label: string): string {
   return LABEL_KIND[label] ?? 'note'
@@ -33,9 +39,15 @@ function isLabelStart(group: MdToken[]): boolean {
   return group.length >= 3 && group[0].type === 'strong_open' && group[1].type === 'text' && group[2].type === 'strong_close'
 }
 
-function isMilestoneStart(inline: MdToken): boolean {
+type CardKind = 'milestone' | 'question'
+
+function cardKindOf(inline: MdToken): CardKind | null {
   const c = compact(inline.children ?? [])
-  return isLabelStart(c) && c[1].content.trim() === MILESTONE_START
+  if (!isLabelStart(c)) return null
+  const label = c[1].content.trim()
+  if (label === MILESTONE_START) return 'milestone'
+  if (label === QUESTION_START) return 'question'
+  return null
 }
 
 /** 按 softbreak / hardbreak 把 inline children 切成行 */
@@ -77,7 +89,7 @@ function rowsFromInline(Token: TokenCtor, inline: MdToken): MdToken[] {
 }
 
 /**
- * 里程碑卡片：blockquote 第一段以 `**到这里你有了**` 开头时，
+ * 卡片：blockquote 第一段以 `**到这里你有了**`（节尾里程碑）或 `**本节问题**`（节首问题）开头时，
  * 把「**标签**：内容」的每一行渲染成卡片的一行（图标 + 标签 + 内容）。
  * 其他引用块原样不动。作者的 Markdown 写法不变，在普通预览器里仍是正常引用块。
  */
@@ -100,9 +112,10 @@ export function milestonePlugin(md: MarkdownIt): void {
       if (close < 0) continue
 
       const firstInline = tokens.slice(i + 1, close).find((t) => t.type === 'inline')
-      if (!firstInline || !isMilestoneStart(firstInline)) continue
+      const card = firstInline ? cardKindOf(firstInline) : null
+      if (!card) continue
 
-      tokens[i].attrJoin('class', 'milestone')
+      tokens[i].attrJoin('class', card === 'question' ? 'milestone milestone-question' : 'milestone')
       const inner = tokens.slice(i + 1, close)
       const rebuilt: MdToken[] = []
       for (let k = 0; k < inner.length; k++) {
@@ -122,7 +135,8 @@ export function milestonePlugin(md: MarkdownIt): void {
   md.renderer.rules.milestone_row_open = (tokens, idx) => {
     const { label, kind } = tokens[idx].meta as { label: string; kind: string }
     const labelHtml = label ? `<span class="ms-label">${md.utils.escapeHtml(label)}</span>` : ''
-    return `<div class="ms-row ms-${kind}"><span class="ms-icon" aria-hidden="true"></span>${labelHtml}<div class="ms-body">`
+    const id = kind === 'practice' ? ` id="${PRACTICE_ID}"` : ''
+    return `<div class="ms-row ms-${kind}"${id}><span class="ms-icon" aria-hidden="true"></span>${labelHtml}<div class="ms-body">`
   }
   md.renderer.rules.milestone_row_close = () => '</div></div>\n'
 }
