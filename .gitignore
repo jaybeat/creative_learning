@@ -8,3 +8,4 @@ test-results/
 playwright-report/
 .tmp/
 SarasaFixedSC-TTF-Unhinted-*/
+/第*.md
