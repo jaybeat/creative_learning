@@ -14,6 +14,7 @@ export interface BookConfig {
   author: string
   description: string
   repo: string
+  xref: { versionNumbers: string[] }
   chapters: ChapterConfig[]
 }
 
@@ -39,12 +40,18 @@ export function parseBookConfig(yamlText: string, chaptersDir: string = CHAPTERS
   })
 
   const str = (k: string) => (typeof raw[k] === 'string' ? (raw[k] as string).trim() : '')
+  const xrefRaw = (raw.xref ?? {}) as { versionNumbers?: unknown }
+  const versionNumbers = Array.isArray(xrefRaw.versionNumbers) ? xrefRaw.versionNumbers.map(String) : []
+  for (const v of versionNumbers) {
+    if (!/^\d+\.\d+$/.test(v)) throw new Error(`book.yml: xref.versionNumbers 里的 ${JSON.stringify(v)} 须形如 "2.1"（用引号，避免被当成小数）`)
+  }
   return {
     title: raw.title.trim(),
     subtitle: str('subtitle'),
     author: str('author'),
     description: str('description'),
     repo: str('repo').replace(/\/+$/, ''),
+    xref: { versionNumbers },
     chapters,
   }
 }

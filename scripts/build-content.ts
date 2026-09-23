@@ -58,6 +58,7 @@ export function runBuildContent(): void {
     author: book.author,
     description: book.description,
     repo: book.repo,
+    xref: book.xref,
     // draft 章完全隐藏：不进首页章节列表
     chapters: entries
       .filter((e) => !e.draft)

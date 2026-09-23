@@ -2,7 +2,7 @@ import type MarkdownIt from 'markdown-it'
 import type { MdToken } from './md'
 
 export interface Unresolved {
-  /** 原文写法，如「第1章」「2.13节」 */
+  /** 原文写法，如「第1章」「2.13节」「2.16」 */
   ref: string
   /** 作者的源文件名，如 ch02.md */
   file: string
@@ -15,27 +15,74 @@ export interface Unresolved {
 export interface XrefOptions {
   /** `"2.8" → "/ch02/2-8"`、`"2.8.1" → "/ch02/2-8#2-8-1"`、`"ch2" → "/ch02/"` */
   xref: Record<string, string>
+  /**
+   * 书里作为「版本号」出现、可能与节号撞车的两段号（如编辑器 1.0 / 1.1 / 2.0 / 2.1 / 2.2）。
+   * 它们只在写作「N.M节」「N.M的」「N.M练一练」时才链接；「（N.M）」「N.M + 汉字」这类模糊写法一律不动。
+   */
+  versionNumbers?: string[]
   onUnresolved?: (u: Unresolved) => void
 }
 
-/**
- * 只匹配带「节」后缀的写法（`2.6节`、`2.4.3节`）和「第N章」。
- * 前置断言 (?<![\d.]) 保证「编辑器2.2」这类版本号后面即使跟着别的数字也不会被截出一段来匹配，
- * 而裸的「2.2」「1.1」因为没有「节」字根本不进入匹配（HANDOFF 陷阱 B）。
- */
-const REF_RE = /(?<![\d.])(\d+\.\d+(?:\.\d+)?)节|第(\d+)章/g
+/** 练一练行的锚点（与 milestone-plugin 的 PRACTICE_ID 一致） */
+export const PRACTICE_ANCHOR = '#practice'
+
+const CANDIDATE = /(\d+\.\d+(?:\.\d+)?)|第(\d+)章/g
+const HAN = /\p{Script=Han}/u
+const isDigitOrDot = (ch: string | undefined) => ch !== undefined && /[\d.]/.test(ch)
 
 interface Ctx {
   xref: Record<string, string>
+  versionNumbers: Set<string>
   currentChapter: number | undefined
   report: (ref: string) => void
 }
 
-function resolve(m: RegExpExecArray, ctx: Ctx): { target: string | null; skip: boolean } {
-  if (m[1]) return { target: ctx.xref[m[1]] ?? null, skip: false }
-  const n = Number(m[2])
-  if (n === ctx.currentChapter) return { target: null, skip: true }
-  return { target: ctx.xref[`ch${n}`] ?? null, skip: false }
+interface Hit {
+  /** 匹配起止（含被并入链接文字的「节」「练一练」后缀） */
+  start: number
+  end: number
+  text: string
+  target: string | null
+  /** 无目标时上报用的写法；null 表示静默跳过 */
+  report: string | null
+}
+
+/**
+ * 判定一个候选：返回 null 表示这不是引用（版本号、表格里的裸数字等），静默跳过。
+ * 规则见 README「交叉引用」。
+ */
+function judge(src: string, m: RegExpExecArray, ctx: Ctx): Hit | null {
+  const start = m.index
+  let end = start + m[0].length
+
+  if (m[2] !== undefined) {
+    const n = Number(m[2])
+    if (n === ctx.currentChapter) return null
+    return { start, end, text: m[0], target: ctx.xref[`ch${n}`] ?? null, report: m[0] }
+  }
+
+  const num = m[1]
+  const prev = src[start - 1]
+  const next = src[end]
+  if (isDigitOrDot(prev) || isDigitOrDot(next)) return null
+  const before = src.slice(0, start)
+  if (before.endsWith('编辑器') || before.endsWith('版本')) return null
+  if (next === '版') return null
+
+  const target = ctx.xref[num] ?? null
+  const parts = num.split('.').length
+  if (next === '节') return { start, end: end + 1, text: `${num}节`, target, report: `${num}节` }
+  if (parts >= 3) return { start, end, text: num, target, report: num }
+
+  const isVersion = ctx.versionNumbers.has(num)
+  if (src.startsWith('练一练', end)) {
+    return { start, end: end + 3, text: `${num}练一练`, target: target ? target + PRACTICE_ANCHOR : null, report: `${num}练一练` }
+  }
+  if (next === '的') return { start, end, text: num, target, report: num }
+  if (isVersion) return null
+  if (prev === '（' && next === '）') return { start, end, text: num, target, report: num }
+  if (next !== undefined && HAN.test(next)) return { start, end, text: num, target, report: num }
+  return null
 }
 
 function splitText(state: { Token: new (type: string, tag: string, nesting: 0 | 1 | -1) => MdToken }, t: MdToken, ctx: Ctx): MdToken[] {
@@ -43,26 +90,28 @@ function splitText(state: { Token: new (type: string, tag: string, nesting: 0 | 
   const out: MdToken[] = []
   let last = 0
   let m: RegExpExecArray | null
-  REF_RE.lastIndex = 0
+  CANDIDATE.lastIndex = 0
   const text = (s: string) => {
     if (!s) return
     const tk = new state.Token('text', '', 0)
     tk.content = s
     out.push(tk)
   }
-  while ((m = REF_RE.exec(src))) {
-    const { target, skip } = resolve(m, ctx)
-    if (!target) {
-      if (!skip) ctx.report(m[0])
+  while ((m = CANDIDATE.exec(src))) {
+    const hit = judge(src, m, ctx)
+    if (!hit) continue
+    if (!hit.target) {
+      if (hit.report) ctx.report(hit.report)
       continue
     }
-    text(src.slice(last, m.index))
+    text(src.slice(last, hit.start))
     const open = new state.Token('link_open', 'a', 1)
-    open.attrs = [['href', target]]
+    open.attrs = [['href', hit.target]]
     out.push(open)
-    text(m[0])
+    text(hit.text)
     out.push(new state.Token('link_close', 'a', -1))
-    last = m.index + m[0].length
+    last = hit.end
+    CANDIDATE.lastIndex = hit.end
   }
   if (last === 0) return [t]
   text(src.slice(last))
@@ -74,6 +123,7 @@ function splitText(state: { Token: new (type: string, tag: string, nesting: 0 | 
  * 目标不存在时保持纯文本并通过 onUnresolved 上报（带源文件与行号），绝不让构建失败。
  */
 export function xrefPlugin(md: MarkdownIt, opts: XrefOptions): void {
+  const versionNumbers = new Set(opts.versionNumbers ?? [])
   md.core.ruler.after('inline', 'xref', (state) => {
     const env = (state.env ?? {}) as { relativePath?: string; frontmatter?: Record<string, unknown> }
     const fm = env.frontmatter ?? {}
@@ -91,6 +141,7 @@ export function xrefPlugin(md: MarkdownIt, opts: XrefOptions): void {
       const line = srcLine !== undefined && block.map ? srcLine + block.map[0] : 0
       const ctx: Ctx = {
         xref: opts.xref,
+        versionNumbers,
         currentChapter,
         report: (ref) => opts.onUnresolved?.({ ref, file, line, page }),
       }

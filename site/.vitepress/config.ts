@@ -37,6 +37,7 @@ export default defineConfig({
       md.use(fenceKindPlugin).use(foldPlugin).use(wideTablePlugin).use(milestonePlugin)
       md.use(xrefPlugin, {
         xref,
+        versionNumbers: book.xref.versionNumbers,
         onUnresolved(u: Unresolved) {
           unresolved.push(u)
           const key = `${u.page}|${u.line}|${u.ref}`
