@@ -31,7 +31,8 @@ function observe(): void {
   if (!isSection() || !el.value || typeof IntersectionObserver === 'undefined') return
   io = new IntersectionObserver((entries) => {
     if (entries.some((e) => e.isIntersecting)) {
-      markRead(current().path)
+      const c = current()
+      markRead(c.path, c.title)
       io?.disconnect()
     }
   })

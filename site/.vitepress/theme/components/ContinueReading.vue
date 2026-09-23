@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter, withBase } from 'vitepress'
-import book from '../../generated/book.json'
-import { RESTORE_KEY, useProgress } from '../progress'
+import { firstSectionLink, titleOf } from '../book-data'
+import { RESTORE_KEY, useProgress, validLast } from '../progress'
 
 /** 首页：继续阅读 / 开始阅读 + 清除阅读记录。挂载前渲染「开始阅读」，与 SSR 一致。 */
 const { state, ready, clear } = useProgress()
 const router = useRouter()
-const first: string | null = book.chapters[0]?.firstSection ?? null
-const last = computed(() => (ready.value ? state.value.last : null))
+const first = firstSectionLink
+// 只有路径对应的节标题没变时才显示「继续阅读」；章节重排后旧记录自动失效
+const last = computed(() => (ready.value ? validLast(state.value, titleOf) : null))
 
 function go(path: string): void {
   try {

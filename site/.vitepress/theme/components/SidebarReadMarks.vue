@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { nextTick, onMounted, watch } from 'vue'
 import { useData, useRoute } from 'vitepress'
-import { useProgress } from '../progress'
+import { isRead, useProgress } from '../progress'
+import { titleOf } from '../book-data'
 
 /**
  * 给侧栏里已读的节链接加 is-read class（CSS 显示 ✓）。
@@ -26,9 +27,9 @@ function toSitePath(href: string): string {
 
 function apply(): void {
   if (!ready.value) return
-  const read = new Set(state.value.read)
   for (const a of document.querySelectorAll<HTMLAnchorElement>('.VPSidebar a.link[href]')) {
-    a.classList.toggle('is-read', read.has(toSitePath(a.getAttribute('href') ?? '')))
+    const path = toSitePath(a.getAttribute('href') ?? '')
+    a.classList.toggle('is-read', isRead(state.value, path, titleOf(path)))
   }
 }
 

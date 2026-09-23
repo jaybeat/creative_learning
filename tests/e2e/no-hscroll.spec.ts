@@ -42,8 +42,12 @@ test.describe('375px 视口无页面级横向滚动', () => {
 test.describe('宽内容在各自容器内滚动', () => {
   test.skip(({ viewport }) => (viewport?.width ?? 1280) > 500, '只在手机视口检查')
 
-  test('17 列宽表保持网格形态，在表格容器内横向滚动', async ({ page }) => {
-    await page.goto('ch02/2-3')
+  test('超过 8 列的宽表保持网格形态，在表格容器内横向滚动', async ({ page }) => {
+    // 哪一节有宽表随书稿变化：从构建产物里找；一个都没有就跳过
+    const dir = path.join(ROOT, 'site/.vitepress/dist/ch02')
+    const file = fs.readdirSync(dir).sort().find((f) => f.endsWith('.html') && fs.readFileSync(path.join(dir, f), 'utf8').includes('wide-table'))
+    test.skip(!file, '当前书稿没有超过 8 列的表格')
+    await page.goto(`ch02/${file!.replace(/\.html$/, '')}`)
     const table = page.locator('table.wide-table').first()
     await expect(table).toBeVisible()
     const r = await table.evaluate((el) => ({
