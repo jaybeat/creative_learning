@@ -18,10 +18,12 @@ const xref = {
   ch2: '/ch02/',
   ch3: '/ch03/',
 }
-const versionNumbers = ['1.0', '1.1', '2.0', '2.1', '2.2']
+// 第 2 章里 1.0 / 1.1 / 2.0 / 2.1 / 2.2 是编辑器版本号（构建时按章扫描得到）；第 1 章没有
+const versionsByChapter = { '2': ['1.0', '1.1', '2.0', '2.1', '2.2'] }
 const unresolved: Unresolved[] = []
-const md = createMd().use(xrefPlugin, { xref, versionNumbers, onUnresolved: (u: Unresolved) => unresolved.push(u) })
+const md = createMd().use(xrefPlugin, { xref, versionsByChapter, onUnresolved: (u: Unresolved) => unresolved.push(u) })
 const env = () => ({ relativePath: 'ch02/2-5.md', frontmatter: { chapter: 2, srcFile: 'ch02.md', srcLine: 374 } })
+const envCh1 = () => ({ relativePath: 'ch01/1-6.md', frontmatter: { chapter: 1, srcFile: 'ch01.md', srcLine: 164 } })
 const links = (html: string) => [...html.matchAll(/<a href="([^"]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])
 
 beforeEach(() => {
@@ -112,7 +114,18 @@ describe('不链接的写法（陷阱 B 与版本号）', () => {
     expect(unresolved).toEqual([])
   })
 
-  test('版本号表为空时「（2.1）」会链接（配置生效的反向验证）', () => {
+  test('版本号按章生效：同一句话在第 1 章里 1.1 是节号，在第 2 章里是版本号', () => {
+    const xref1 = { ...xref, '1.1': '/ch01/1-1', '1.5': '/ch01/1-5' }
+    const md1 = createMd().use(xrefPlugin, { xref: xref1, versionsByChapter })
+    expect(links(md1.render('1.1到1.5说的四步，回头看1.1提出的问题。', envCh1()))).toEqual([
+      ['/ch01/1-1', '1.1'],
+      ['/ch01/1-5', '1.5'],
+      ['/ch01/1-1', '1.1'],
+    ])
+    expect(links(md1.render('1.1到1.5说的四步', env()))).toEqual([['/ch01/1-5', '1.5']])
+  })
+
+  test('没有提供版本号表时「（2.1）」会链接', () => {
     const md2 = createMd().use(xrefPlugin, { xref })
     expect(links(md2.render('接口（2.1）', env()))).toEqual([['/ch02/2-1', '2.1']])
   })

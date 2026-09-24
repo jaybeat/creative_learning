@@ -78,6 +78,11 @@ describe('加粗段落标题', () => {
     expect(page).not.toContain('**只有一行的加粗**')
   })
 
+  test('收尾标点去掉', () => {
+    const ch = parseChapter('# 第9章 x\n\n## 9.1 y\n\n**本书的组织。**\n\n正文\n', 'ch09.md')
+    expect(ch.sections[0].paraTitles).toEqual([{ line: 2, text: '本书的组织' }])
+  })
+
   test('粗体后面还有内容的段落不动', () => {
     expect(page).toContain('**注意**：这不是标题')
     expect(page).toContain('**加粗** 后面还有字')

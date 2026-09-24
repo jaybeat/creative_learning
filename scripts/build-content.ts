@@ -5,14 +5,45 @@ import { loadBookConfig } from './lib/book-config'
 import { parseChapter, renderChapterIndex, renderSectionPage, type FrontmatterValue } from './lib/splitter'
 import { buildSidebar, buildXref, linkPrevNext, listPages, type ChapterEntry } from './lib/nav'
 import { writeIfChanged } from './lib/fs-utils'
+import { detectVersionNumbers } from './lib/versions'
+import { checkDiagram } from './lib/diagram-check'
+import { classifyFence } from './lib/md-plugins'
+import { createMd } from './lib/md'
+
+/** 图示对齐提示：只打印，不影响构建结果。返回提示条数。 */
+export function warnDiagrams(src: string, file: string): number {
+  let count = 0
+  for (const t of createMd().parse(src, {})) {
+    if (t.type !== 'fence' || !t.map || classifyFence(t.info, t.content) !== 'diagram') continue
+    for (const issue of checkDiagram(t.content)) {
+      const line = t.map[0] + 2 + issue.line // 围栏起始行的下一行是内容第 0 行
+      console.warn(`[diagram] ${file}:${line}:${issue.col + 1} ${issue.hint}（中文按 2 列算）`)
+      count++
+    }
+  }
+  return count
+}
 
 export function runBuildContent(): void {
   const book = loadBookConfig()
 
-  const entries: ChapterEntry[] = book.chapters.map((c) => ({
-    chapter: parseChapter(fs.readFileSync(path.join(CHAPTERS_DIR, c.file), 'utf8'), c.file),
-    draft: c.draft,
+  const sources = book.chapters.map((c) => ({ config: c, src: fs.readFileSync(path.join(CHAPTERS_DIR, c.file), 'utf8') }))
+  const entries: ChapterEntry[] = sources.map(({ config, src }) => ({
+    chapter: parseChapter(src, config.file),
+    draft: config.draft,
   }))
+
+  // 各章的「版本号」（编辑器1.1 之类），交叉引用插件在该章里不把它们当节号
+  const versionsByChapter: Record<string, string[]> = {}
+  sources.forEach(({ src }, i) => {
+    const v = detectVersionNumbers(src)
+    if (v.length) versionsByChapter[String(entries[i].chapter.number)] = v
+  })
+
+  // 图示对齐提示（只警告）
+  let diagramIssues = 0
+  for (const { config, src } of sources) diagramIssues += warnDiagrams(src, config.file)
+  if (diagramIssues) console.warn(`[diagram] 共 ${diagramIssues} 处图示可能没对齐，请按上面的行列检查（不影响构建）`)
 
   const pages = linkPrevNext(listPages(entries))
   const expected = new Set<string>()
@@ -52,13 +83,13 @@ export function runBuildContent(): void {
     writeIfChanged(path.join(GENERATED_DIR, name), JSON.stringify(data, null, 2) + '\n')
   write('sidebar.json', buildSidebar(entries))
   write('xref.json', buildXref(entries))
+  write('xref-options.json', { versionsByChapter })
   write('book.json', {
     title: book.title,
     subtitle: book.subtitle,
     author: book.author,
     description: book.description,
     repo: book.repo,
-    xref: book.xref,
     // draft 章完全隐藏：不进首页章节列表
     chapters: entries
       .filter((e) => !e.draft)

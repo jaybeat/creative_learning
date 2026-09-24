@@ -78,7 +78,8 @@ export function parseChapter(src: string, fileName: string): Chapter {
     if (inline?.type !== 'inline' || tokens[i + 2]?.type !== 'paragraph_close') return
     const c = (inline.children ?? []).filter((x) => !(x.type === 'text' && x.content === ''))
     if (c.length === 3 && c[0].type === 'strong_open' && c[1].type === 'text' && c[2].type === 'strong_close') {
-      paraTitles.push({ line: t.map[0], text: c[1].content.trim() })
+      // 「**本书的组织。**」→ 标题「本书的组织」：去掉收尾标点
+      paraTitles.push({ line: t.map[0], text: c[1].content.trim().replace(/[。：:]+$/, '') })
     }
   })
 

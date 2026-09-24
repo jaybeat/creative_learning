@@ -16,10 +16,12 @@ export interface XrefOptions {
   /** `"2.8" → "/ch02/2-8"`、`"2.8.1" → "/ch02/2-8#2-8-1"`、`"ch2" → "/ch02/"` */
   xref: Record<string, string>
   /**
-   * 书里作为「版本号」出现、可能与节号撞车的两段号（如编辑器 1.0 / 1.1 / 2.0 / 2.1 / 2.2）。
-   * 它们只在写作「N.M节」「N.M的」「N.M练一练」时才链接；「（N.M）」「N.M + 汉字」这类模糊写法一律不动。
+   * 各章里作为「版本号」出现、可能与节号撞车的两段号（构建时按章扫描「编辑器N.M」「N.M版」得到，
+   * 如第 2 章的 1.0 / 1.1 / 2.0 / 2.1 / 2.2）。键是章号字符串。
+   * 在该章里它们只在写作「N.M节」「N.M的」「N.M练一练」时才链接；「（N.M）」「N.M + 汉字」这类模糊写法一律不动。
+   * 其他章不受影响：「1.1」在第 1 章是节号，照常链接。
    */
-  versionNumbers?: string[]
+  versionsByChapter?: Record<string, string[]>
   onUnresolved?: (u: Unresolved) => void
 }
 
@@ -123,11 +125,11 @@ function splitText(state: { Token: new (type: string, tag: string, nesting: 0 | 
  * 目标不存在时保持纯文本并通过 onUnresolved 上报（带源文件与行号），绝不让构建失败。
  */
 export function xrefPlugin(md: MarkdownIt, opts: XrefOptions): void {
-  const versionNumbers = new Set(opts.versionNumbers ?? [])
   md.core.ruler.after('inline', 'xref', (state) => {
     const env = (state.env ?? {}) as { relativePath?: string; frontmatter?: Record<string, unknown> }
     const fm = env.frontmatter ?? {}
     const currentChapter = typeof fm.chapter === 'number' ? fm.chapter : undefined
+    const versionNumbers = new Set(currentChapter !== undefined ? (opts.versionsByChapter?.[String(currentChapter)] ?? []) : [])
     const srcLine = typeof fm.srcLine === 'number' ? fm.srcLine : undefined
     const file = typeof fm.srcFile === 'string' ? fm.srcFile : (env.relativePath ?? '?')
     const page = env.relativePath ?? '?'

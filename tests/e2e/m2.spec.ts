@@ -196,12 +196,13 @@ test.describe('键盘翻节', () => {
   })
 
   test('全书第一页按 ← 不动，最后一页按 → 不动', async ({ page }) => {
-    await page.goto('ch02/')
+    // 全书第一页 / 最后一页从侧栏数据取，随书稿变化
+    const sidebar = JSON.parse(fs.readFileSync(path.join(ROOT, 'site/.vitepress/generated/sidebar.json'), 'utf8')) as Array<{ link: string; items: Array<{ link: string }> }>
+    const firstLink = sidebar[0].link
+    await page.goto(firstLink.replace(/^\//, ''))
     await page.keyboard.press('ArrowLeft')
     await page.waitForTimeout(300)
-    await expect(page).toHaveURL(/\/ch02\/$/)
-    // 全书最后一页从侧栏数据取，随书稿变化
-    const sidebar = JSON.parse(fs.readFileSync(path.join(ROOT, 'site/.vitepress/generated/sidebar.json'), 'utf8')) as Array<{ items: Array<{ link: string }> }>
+    await expect(page).toHaveURL(new RegExp(firstLink.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
     const lastLink = sidebar.at(-1)!.items.at(-1)!.link
     await page.goto(lastLink.replace(/^\//, ''))
     await page.keyboard.press('ArrowRight')

@@ -3,6 +3,7 @@ import sidebar from './generated/sidebar.json'
 import book from './generated/book.json'
 import font from './generated/font.json'
 import xref from './generated/xref.json'
+import xrefOptions from './generated/xref-options.json'
 import { fenceKindPlugin, foldPlugin, wideTablePlugin } from '../../scripts/lib/md-plugins'
 import { milestonePlugin } from '../../scripts/lib/milestone-plugin'
 import { formatUnresolved, xrefPlugin, type Unresolved } from '../../scripts/lib/xref-plugin'
@@ -37,7 +38,7 @@ export default defineConfig({
       md.use(fenceKindPlugin).use(foldPlugin).use(wideTablePlugin).use(milestonePlugin)
       md.use(xrefPlugin, {
         xref,
-        versionNumbers: book.xref.versionNumbers,
+        versionsByChapter: xrefOptions.versionsByChapter,
         onUnresolved(u: Unresolved) {
           unresolved.push(u)
           const key = `${u.page}|${u.line}|${u.ref}`
