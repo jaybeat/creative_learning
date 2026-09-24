@@ -78,12 +78,13 @@ test.describe('阅读进度', () => {
     await page.goto('')
     const cont = page.locator('.continue-reading .cr-button')
     await expect(cont).toHaveText(/继续阅读：2\.8/)
-    await expect(page.locator('.VPSidebar a.link.is-read[href*="2-8"]')).toHaveCount(1)
+    await expect(page.locator('.book-chapters .cl-meta').filter({ hasText: '已读 1/15 节' })).toHaveCount(1)
 
     await page.reload()
     await expect(page.locator('.continue-reading .cr-button')).toHaveText(/继续阅读：2\.8/)
 
     await page.goto('ch02/')
+    await expect(page.locator('.VPSidebar a.link.is-read[href*="2-8"]')).toHaveCount(1)
     await expect(page.locator('.ci-list li.is-read')).toHaveCount(1)
     await expect(page.locator('.chapter-index .cr-button')).toHaveText(/继续阅读：2\.8/)
 
@@ -94,7 +95,17 @@ test.describe('阅读进度', () => {
     await page.goto('')
     await page.locator('.cr-clear').click()
     await expect(page.locator('.continue-reading .cr-button')).toHaveText('开始阅读')
-    await expect(page.locator('.VPSidebar a.link.is-read')).toHaveCount(0)
+    await expect(page.locator('.book-chapters .cl-meta').filter({ hasText: '已读' })).toHaveCount(0)
+  })
+
+  test('首页：首屏、两张理念卡片、章节列表', async ({ page }) => {
+    await page.goto('')
+    await expect(page.locator('.home-hero h1')).toHaveText('数据结构')
+    await expect(page.locator('.home-tagline')).not.toBeEmpty()
+    await expect(page.locator('.home-idea')).toHaveCount(2)
+    await expect(page.locator('.home-idea h2').first()).toHaveText('什么值得学')
+    await expect(page.locator('.home-chapters a[href*="/ch01/"]')).toHaveCount(1)
+    await expect(page.locator('.VPSidebar')).toHaveCount(0)
   })
 
   test('章节重排后，标题不再匹配的旧记录不显示', async ({ page }) => {
@@ -110,8 +121,8 @@ test.describe('阅读进度', () => {
     })
     await page.reload()
     await expect(page.locator('.continue-reading .cr-button')).toHaveText('开始阅读')
-    await expect(page.locator('.VPSidebar a.link.is-read')).toHaveCount(0)
     await page.goto('ch02/')
+    await expect(page.locator('.VPSidebar a.link.is-read')).toHaveCount(0)
     await expect(page.locator('.ci-list li.is-read')).toHaveCount(0)
     await page.evaluate(() => localStorage.removeItem('ds-book:progress'))
   })

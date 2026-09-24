@@ -9,3 +9,4 @@ playwright-report/
 .tmp/
 SarasaFixedSC-TTF-Unhinted-*/
 /第*.md
+site/index.md

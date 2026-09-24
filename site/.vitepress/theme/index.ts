@@ -4,7 +4,7 @@ import DefaultTheme from 'vitepress/theme-without-fonts'
 import Layout from './Layout.vue'
 import ChapterList from './components/ChapterList.vue'
 import ChapterIndex from './components/ChapterIndex.vue'
-import ContinueReading from './components/ContinueReading.vue'
+import HomeHero from './components/HomeHero.vue'
 import '../generated/font.css'
 import './custom.css'
 
@@ -14,6 +14,6 @@ export default {
   enhanceApp({ app }) {
     app.component('ChapterList', ChapterList)
     app.component('ChapterIndex', ChapterIndex)
-    app.component('ContinueReading', ContinueReading)
+    app.component('HomeHero', HomeHero)
   },
 } satisfies Theme

@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { CHAPTERS_DIR, GENERATED_DIR, SITE_DIR } from './lib/paths'
+import { CHAPTERS_DIR, GENERATED_DIR, HOME_MD, SITE_DIR } from './lib/paths'
+import { parseHome, renderHome } from './lib/home'
 import { loadBookConfig } from './lib/book-config'
 import { parseChapter, renderChapterIndex, renderSectionPage, type FrontmatterValue } from './lib/splitter'
 import { buildSidebar, buildXref, linkPrevNext, listPages, type ChapterEntry } from './lib/nav'
@@ -84,6 +85,11 @@ export function runBuildContent(): void {
   write('sidebar.json', buildSidebar(entries))
   write('xref.json', buildXref(entries))
   write('xref-options.json', { versionsByChapter })
+
+  // 首页：book/home.md 可选；没有就退回只有书名与目录的简单首页
+  const home = fs.existsSync(HOME_MD) ? parseHome(fs.readFileSync(HOME_MD, 'utf8')) : null
+  writeIfChanged(path.join(SITE_DIR, 'index.md'), renderHome(home))
+  write('home.json', { tagline: home?.tagline ?? '' })
   write('book.json', {
     title: book.title,
     subtitle: book.subtitle,
