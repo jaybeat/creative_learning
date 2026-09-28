@@ -31,6 +31,19 @@ export default defineConfig({
     ['script', {}, "try{var s=localStorage.getItem('ds-book:font-size');if(s)document.documentElement.setAttribute('data-font-size',s)}catch(e){}"],
   ],
 
+  // 本地开发：评论与登录接口由 scripts/lib/api-server.ts 提供（npm run dev 会一起启动）
+  vite: {
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8787',
+          // 把浏览器看到的 host 转给 API，写请求的同源校验（Origin 与 host 比较）才能通过
+          configure: (proxy) => proxy.on('proxyReq', (req, orig) => req.setHeader('x-forwarded-host', orig.headers.host ?? '')),
+        },
+      },
+    },
+  },
+
   markdown: {
     theme: { light: 'github-light', dark: 'github-dark' },
     anchor: { slugify },

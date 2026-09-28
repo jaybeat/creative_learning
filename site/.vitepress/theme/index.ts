@@ -5,8 +5,10 @@ import Layout from './Layout.vue'
 import ChapterList from './components/ChapterList.vue'
 import ChapterIndex from './components/ChapterIndex.vue'
 import HomeHero from './components/HomeHero.vue'
+import AdminComments from './comments/AdminComments.vue'
 import '../generated/font.css'
 import './custom.css'
+import './comments/comments.css'
 
 export default {
   extends: DefaultTheme,
@@ -15,5 +17,6 @@ export default {
     app.component('ChapterList', ChapterList)
     app.component('ChapterIndex', ChapterIndex)
     app.component('HomeHero', HomeHero)
+    app.component('AdminComments', AdminComments)
   },
 } satisfies Theme

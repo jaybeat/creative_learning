@@ -32,6 +32,8 @@ npm run dev
 
 然后打开终端里打印的地址。改动 `book/` 下的文件会自动重新切页并热更新。
 
+`npm run dev` 会同时启动一个本地评论接口：数据存在 `.tmp/pglite-dev/`（本机临时库，不连线上数据库），不真发邮件，登录验证码直接打印在终端里。用 `author@localhost.test` 登录就是作者（管理员）身份。
+
 其他命令：
 
 | 命令 | 作用 |
@@ -40,6 +42,7 @@ npm run dev
 | `npm run preview` | 本地预览构建产物（`http://localhost:4173`） |
 | `npm test` | 单元测试（切页、导航、字宽校验等） |
 | `npm run test:e2e` | 浏览器验收（需先 `npm run build`，首次先 `npx playwright install chromium webkit`） |
+| `npm run db:migrate` | 执行数据库迁移（有 `DATABASE_URL` 才执行；Vercel 构建时自动运行） |
 
 ## 读者能用到的功能
 
@@ -48,6 +51,8 @@ npm run dev
 - **字号**：导航栏右侧「小 / 中 / 大」，正文与代码一起缩放，记住选择。
 - **键盘**：`←` `→` 翻到上一节 / 下一节（焦点在输入框或搜索框时不触发）。
 - **长代码折叠**：超过 40 行的代码块默认只露出前 20 行，点「展开全部」看完整。阈值在 `scripts/lib/md-plugins.ts` 的 `FOLD_THRESHOLD` 里改。
+- **评论**：选中正文任意文字，点「💬 评论」即可针对这段话发表意见；有评论的原文会淡黄色高亮，点一下打开讨论。页底「本页评论」列出本页全部评论。不登录只能看，登录才能发表和回复。
+- **登录**：邮箱 + 验证码，第一次登录即注册，没有密码。右上角账号菜单里可以改昵称、关闭回复邮件通知、退出、注销账号。
 - **分享具体小节**：鼠标移到标题上出现 `#`，点击即得到带锚点的链接，如 `/ch02/2-8#2-8-1`。
 
 ## 书稿写作约定与网站的自动处理
@@ -108,12 +113,23 @@ npm run dev
 
 书里的字符画要求「中文占 2 列、其他一切字符占 1 列」，网站为此下发了一个等宽字体子集。如果在代码块或图示里用了这个字体没有的符号，或者它在字体里是全宽的，构建会当场报出来，并指出源文件与行号。换一个等价的符号即可（常用的 `─│┌┐└┘├┤┬┴┼╱► ▼ ▲ ◄ ●→←↑↓…` 都是支持的）。
 
+## 评论管理（作者）
+
+- 用 `ADMIN_EMAILS` 里的邮箱登录，就是作者身份：回复带「作者」标记，可以隐藏或删除任何评论。作者不受「昵称不能含作者、林小川」等保留词的限制。
+- **处理评论的方式就是回复它。** 右上角账号菜单 →「评论管理」（`/admin`）默认只列出**作者还没回复过**的评论，点标题直接跳到原文位置；回复之后它就从「未回复」里消失。
+- 每天北京时间 9 点左右，会把过去 24 小时读者的新评论汇总成一封邮件发到 `ADMIN_EMAILS`（没有新评论就不发）。
+- 读者的评论被回复时，会收到邮件通知（同一条讨论 1 小时内最多一封，可一键退订）。
+- **原文已修改**：评论是按「选中的那段原文 + 前后各 32 个字」定位的。你改了被评论的那句话（哪怕一个字），这条评论就不再高亮，在列表里标为「原文已修改」并显示当初的引文——这正好说明那里已经改过了。节重新编号导致网址变化时，旧评论留在旧网址下，只能在「评论管理」里看到。
+
 ## 目录结构
 
 ```
 book/                 作者维护：book.yml + chapters/chNN.md
 scripts/              构建脚本：build-font（字体）、build-content（切页）、dev（监听）
 scripts/lib/          可单测的纯函数
+api/                  Vercel 函数入口（所有 /api/* 请求）
+server/               评论与登录后端：Hono 路由、鉴权、限流、发信
+db/migrations/        数据库迁移 SQL（只做加法）
 site/                 VitePress 站点（.vitepress/generated、public/fonts、chNN/ 为构建产物）
 tools/fonts/          Sarasa Fixed SC Regular 源文件（SIL OFL 1.1）
 tests/unit、tests/e2e  vitest 单元测试、Playwright 浏览器验收
@@ -123,4 +139,25 @@ tests/unit、tests/e2e  vitest 单元测试、Playwright 浏览器验收
 
 - **托管：Vercel。** 配置在 `vercel.json`（构建命令 `npm run build`，输出目录 `site/.vitepress/dist`，`cleanUrls` 与 VitePress 保持一致）。首次接入：在 Vercel 里 Import 这个仓库，其余设置会自动从 `vercel.json` 读取，不需要手填。自定义域名在 Vercel 项目的 Domains 里添加，然后按提示在域名 DNS 加一条 CNAME 记录。
 - **路径前缀。** 站点默认部署在域名根（`SITE_BASE` 为 `/`）。如果将来要放到某个子路径下，在 Vercel 项目的 Environment Variables 里设置 `SITE_BASE`，值形如 `/ds/`。
+- **评论与登录的后端**（Vercel 函数 + Neon Postgres + 阿里云邮件推送）：
+  - 函数跑在新加坡（`vercel.json` 的 `regions: ["sin1"]`），与 Neon 数据库同区域。
+  - 构建命令先执行 `npm run db:migrate`：正式环境迁移主库；预览环境由 Neon 集成自动建独立分支库，不碰正式数据。迁移文件只做加法（加表、加列、加索引）。
+  - 需要的环境变量（Vercel → Settings → Environment Variables，勾 Production 和 Preview，标为 Sensitive）：
+
+    | 变量 | 说明 |
+    |---|---|
+    | `DATABASE_URL` | Neon 集成自动生成 |
+    | `ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET` | 只有邮件推送权限的 RAM 子账号密钥 |
+    | `MAIL_FROM` | 发信地址 `noreply@mail.riverlin.me` |
+    | `ADMIN_EMAILS` | 作者邮箱，多个用逗号分隔 |
+    | `UNSUBSCRIBE_SECRET` | 退订链接的签名密钥（随机字符串，设好后不要改，否则旧邮件里的退订链接失效） |
+    | `CRON_SECRET` | 每日汇总定时任务的密钥（随机字符串，Vercel Cron 会自动带上） |
+    | `DAILY_MAIL_LIMIT`（可选） | 全站每 24 小时最多发多少封邮件，默认 300，保护邮件额度 |
+
+    随机字符串可以用这条命令生成：
+
+    ```bash
+    node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+    ```
+  - 防滥用：同一邮箱 60 秒内只能获取一次验证码、每天最多 10 次；同一 IP 每小时 10 次、每天 30 次；一小时内输错 10 次锁定一小时；每人每分钟最多发 10 条评论。
 - **质量门禁：GitHub Actions。** push 到 `main` 或提 PR 会触发 `.github/workflows/ci.yml`：单元测试 → 构建 → Playwright 浏览器验收。它不负责发布，失败了也不会阻止 Vercel 部署，但会在 GitHub 上标红提醒。

@@ -3,6 +3,7 @@ import chokidar from 'chokidar'
 import { BOOK_DIR, ROOT } from './lib/paths'
 import { runBuildFont } from './build-font'
 import { runBuildContent } from './build-content'
+import { startApiDev } from './lib/api-server'
 
 async function rebuild(reason: string): Promise<void> {
   const t0 = Date.now()
@@ -26,6 +27,9 @@ async function main(): Promise<void> {
     timer = setTimeout(() => void rebuild(`${event} ${file}`), 300)
   })
   console.log(`[dev] 正在监听 ${BOOK_DIR}`)
+
+  // 评论与登录的本地 API（PGlite + 验证码打印在终端），VitePress 把 /api 代理过去
+  await startApiDev()
 
   const child = spawn('npx vitepress dev site', { cwd: ROOT, stdio: 'inherit', shell: true })
   child.on('exit', (code) => process.exit(code ?? 0))

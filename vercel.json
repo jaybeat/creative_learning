@@ -2,10 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci",
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run db:migrate && npm run build",
   "outputDirectory": "site/.vitepress/dist",
   "cleanUrls": true,
   "trailingSlash": false,
+  "regions": ["sin1"],
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/api" }],
+  "crons": [{ "path": "/api/cron/digest", "schedule": "0 1 * * *" }],
   "headers": [
     {
       "source": "/fonts/(.*)",

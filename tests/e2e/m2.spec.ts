@@ -164,7 +164,8 @@ test.describe('阅读进度', () => {
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
     page.on('console', (m) => {
-      if (m.type() === 'error') errors.push(m.text())
+      // 这里的静态预览服务没有 /api（评论接口），那些 404 与本测试无关
+      if (m.type() === 'error' && !m.location().url.includes('/api/')) errors.push(m.text())
     })
     for (const p of ['', 'ch02/', 'ch02/2-8']) {
       await page.goto(p)

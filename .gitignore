@@ -10,3 +10,5 @@ playwright-report/
 SarasaFixedSC-TTF-Unhinted-*/
 /第*.md
 site/index.md
+
+.env.local
