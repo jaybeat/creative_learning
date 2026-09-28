@@ -93,15 +93,18 @@ export function runBuildContent(): void {
   write('book.json', {
     title: book.title,
     subtitle: book.subtitle,
+    titleEn: book.titleEn,
     author: book.author,
     description: book.description,
     repo: book.repo,
     // draft 章完全隐藏：不进首页章节列表
     chapters: entries
+      .map((e, i) => ({ ...e, question: book.chapters[i].question }))
       .filter((e) => !e.draft)
-      .map(({ chapter }) => ({
+      .map(({ chapter, question }) => ({
         number: chapter.number,
         title: chapter.title,
+        question,
         slug: chapter.slug,
         firstSection: chapter.sections[0] ? `/${chapter.slug}/${chapter.sections[0].slug}` : null,
         sections: chapter.sections.map((s) => ({ number: s.number, title: s.title, link: `/${chapter.slug}/${s.slug}` })),

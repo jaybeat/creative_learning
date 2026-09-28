@@ -93,18 +93,25 @@ test.describe('阅读进度', () => {
     await expect(page).toHaveURL(/\/ch02\/2-8$/)
 
     await page.goto('')
-    await page.locator('.cr-clear').click()
+    await expect(page.locator('.book-chapters .cl-bar')).toHaveCount(1)
+    await page.locator('.home-chapters .cr-clear').click()
     await expect(page.locator('.continue-reading .cr-button')).toHaveText('开始阅读')
     await expect(page.locator('.book-chapters .cl-meta').filter({ hasText: '已读' })).toHaveCount(0)
+    await expect(page.locator('.home-chapters .cr-clear')).toHaveCount(0)
   })
 
-  test('首页：首屏、两张理念卡片、章节列表', async ({ page }) => {
+  test('首页：封面（书名、副标题、图、一个按钮）与目录', async ({ page }) => {
     await page.goto('')
-    await expect(page.locator('.home-hero h1')).toHaveText('数据结构')
-    await expect(page.locator('.home-tagline')).not.toBeEmpty()
-    await expect(page.locator('.home-idea')).toHaveCount(2)
-    await expect(page.locator('.home-idea h2').first()).toHaveText('什么值得学')
+    const hero = page.locator('.home-hero')
+    await expect(hero.locator('h1')).toContainText('数据结构')
+    await expect(hero.locator('h1')).toContainText('从问题到表示')
+    await expect(hero.locator('.home-title-en')).toHaveText(/From Problems to Representations/i)
+    await expect(hero.locator('.home-tagline')).toHaveText('把复杂概念简化为能自己动手解决的问题')
+    await expect(hero.locator('svg.cover-figure')).toHaveCount(1)
+    await expect(hero.locator('a, button')).toHaveCount(1)
+    await expect(page.locator('.home-idea')).toHaveCount(0)
     await expect(page.locator('.home-chapters a[href*="/ch01/"]')).toHaveCount(1)
+    await expect(page.locator('.home-chapters .cl-question').first()).not.toBeEmpty()
     await expect(page.locator('.VPSidebar')).toHaveCount(0)
   })
 

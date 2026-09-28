@@ -6,11 +6,15 @@ import { BOOK_YML, CHAPTERS_DIR } from './paths'
 export interface ChapterConfig {
   file: string
   draft: boolean
+  /** 本章要解决的问题（首页目录显示），可空 */
+  question: string
 }
 
 export interface BookConfig {
   title: string
   subtitle: string
+  /** 英文书名，可空 */
+  titleEn: string
   author: string
   description: string
   repo: string
@@ -35,7 +39,7 @@ export function parseBookConfig(yamlText: string, chaptersDir: string = CHAPTERS
     if (!fs.existsSync(path.join(chaptersDir, file))) {
       throw new Error(`book.yml: chapters[${i}] 指向的 ${file} 不存在（应放在 book/chapters/ 下）`)
     }
-    return { file, draft: item.draft === true }
+    return { file, draft: item.draft === true, question: typeof item.question === 'string' ? item.question.trim() : '' }
   })
 
   const str = (k: string) => (typeof raw[k] === 'string' ? (raw[k] as string).trim() : '')
@@ -45,6 +49,7 @@ export function parseBookConfig(yamlText: string, chaptersDir: string = CHAPTERS
   return {
     title: raw.title.trim(),
     subtitle: str('subtitle'),
+    titleEn: str('titleEn'),
     author: str('author'),
     description: str('description'),
     repo: str('repo').replace(/\/+$/, ''),

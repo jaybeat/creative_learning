@@ -5,12 +5,12 @@ import book from '../../generated/book.json'
 import home from '../../generated/home.json'
 import { firstSectionLink, titleOf } from '../book-data'
 import { RESTORE_KEY, useProgress, validLast } from '../progress'
+import CoverFigure from './CoverFigure.vue'
 
-/** 首页首屏：书名、副标题、一句话定位、开始 / 继续阅读、已发布章数。挂载前渲染「开始阅读」，与 SSR 一致。 */
-const { state, ready, clear } = useProgress()
+/** 首页封面：书名 + 副标题 + 封面图 + 唯一的「开始 / 继续阅读」按钮。挂载前渲染「开始阅读」，与 SSR 一致。 */
+const { state, ready } = useProgress()
 const router = useRouter()
 const last = computed(() => (ready.value ? validLast(state.value, titleOf) : null))
-const published = book.chapters.length
 
 function go(path: string): void {
   try {
@@ -20,25 +20,26 @@ function go(path: string): void {
   }
   void router.go(withBase(path))
 }
-
-function onClear(): void {
-  if (window.confirm('清除已读标记和阅读位置？')) clear()
-}
 </script>
 
 <template>
   <section class="home-hero">
-    <p v-if="book.subtitle" class="home-kicker">{{ book.subtitle }}</p>
-    <h1 id="top">{{ book.title }}</h1>
-    <p v-if="home.tagline" class="home-tagline">{{ home.tagline }}</p>
-    <div class="continue-reading">
-      <template v-if="last">
-        <a class="cr-button" :href="withBase(last.path)" @click.prevent="go(last.path)">继续阅读：{{ last.title }}</a>
-        <button type="button" class="cr-clear" @click="onClear">清除阅读记录</button>
-      </template>
-      <a v-else-if="firstSectionLink" class="cr-button" :href="withBase(firstSectionLink)">开始阅读</a>
-      <a class="cr-link" href="#chapters">看看目录</a>
+    <div class="home-cover">
+      <div class="home-cover-text">
+        <h1 id="top">
+          <span class="home-title">{{ book.title }}</span>
+          <span v-if="book.subtitle" class="home-subtitle">{{ book.subtitle }}</span>
+        </h1>
+        <p v-if="book.titleEn" class="home-title-en" lang="en">{{ book.titleEn }}</p>
+        <p v-if="home.tagline" class="home-tagline">{{ home.tagline }}</p>
+        <div class="continue-reading">
+          <a v-if="last" class="cr-button" :href="withBase(last.path)" @click.prevent="go(last.path)">继续阅读：{{ last.title }}</a>
+          <a v-else-if="firstSectionLink" class="cr-button" :href="withBase(firstSectionLink)">开始阅读</a>
+        </div>
+      </div>
+      <div class="home-cover-figure">
+        <CoverFigure />
+      </div>
     </div>
-    <p class="home-meta">已发布 {{ published }} 章 · 持续更新</p>
   </section>
 </template>

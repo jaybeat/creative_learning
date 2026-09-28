@@ -342,55 +342,180 @@ html[data-font-size='l'] {
 .VPPage .home-hero,
 .VPPage .home-ideas,
 .VPPage .home-chapters {
-  max-width: 1040px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 0 24px;
 }
-.home-hero {
-  padding-top: 64px !important;
-  padding-bottom: 40px !important;
+
+/* --- 封面：书名 + 副标题 + 图 + 一个按钮 --- */
+.VPPage .home-hero {
+  max-width: none;
+  padding: 0;
+  /* 淡点阵：「内存格子」的底纹 */
+  background-image: radial-gradient(circle, var(--vp-c-divider) 1px, transparent 1.2px);
+  background-size: 24px 24px;
+  background-position: center top;
+  border-bottom: 1px solid var(--vp-c-divider);
 }
-.home-kicker {
-  margin: 0 0 6px;
-  font-size: 15px;
-  letter-spacing: 0.08em;
-  color: var(--vp-c-brand-1);
+.home-cover {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 48px;
+  max-width: 1080px;
+  min-height: calc(100vh - var(--vp-nav-height) - 40px);
+  min-height: calc(100svh - var(--vp-nav-height) - 40px);
+  margin: 0 auto;
+  padding: 64px 24px;
 }
 .home-hero h1 {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   margin: 0;
-  font-size: 44px;
-  line-height: 1.2;
-  font-weight: 700;
+  font-weight: 800;
+  line-height: 1.15;
   letter-spacing: -0.01em;
 }
+.home-title {
+  font-size: 60px;
+  color: var(--vp-c-text-1);
+}
+.home-subtitle {
+  font-size: 44px;
+  color: var(--vp-c-brand-1);
+}
+.home-title-en {
+  margin: 20px 0 0;
+  max-width: 420px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.7;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-3);
+}
 .home-tagline {
-  margin: 16px 0 0;
-  max-width: 640px;
+  margin: 36px 0 0;
+  padding-left: 14px;
+  border-left: 3px solid var(--vp-c-brand-1);
+  max-width: 520px;
   font-size: 20px;
   line-height: 1.6;
   color: var(--vp-c-text-2);
 }
 .home-hero .continue-reading {
-  margin: 28px 0 0;
+  margin: 40px 0 0;
 }
-.cr-link {
-  color: var(--vp-c-text-2);
-  font-size: 15px;
-  text-decoration: underline;
-  text-underline-offset: 4px;
+/* 封面上唯一的操作：实心按钮 */
+.home-hero .cr-button {
+  padding: 12px 28px;
+  border-color: var(--vp-button-brand-bg);
+  background-color: var(--vp-button-brand-bg);
+  color: var(--vp-button-brand-text);
+  font-size: 16px;
+  font-weight: 600;
 }
-.cr-link:hover {
-  color: var(--vp-c-brand-1);
+.home-hero .cr-button::after {
+  content: ' →';
 }
-.home-meta {
-  margin: 20px 0 0;
-  font-size: 13px;
-  color: var(--vp-c-text-3);
+.home-hero .cr-button:hover {
+  border-color: var(--vp-button-brand-hover-bg);
+  background-color: var(--vp-button-brand-hover-bg);
+  color: var(--vp-button-brand-hover-text);
 }
+.home-cover-figure {
+  display: flex;
+  justify-content: center;
+}
+
+/* --- 封面图 --- */
+.cover-figure {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  overflow: visible;
+}
+.cover-figure .cf-edge,
+.cover-figure .cf-ring {
+  fill: none;
+  stroke: var(--vp-c-brand-1);
+  stroke-width: 2;
+}
+.cover-figure .cf-ring {
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  opacity: 0.6;
+}
+.cover-figure .cf-node {
+  fill: var(--vp-c-bg);
+  stroke: var(--vp-c-brand-1);
+  stroke-width: 2;
+}
+.cover-figure .cf-structure {
+  transition: opacity 0.6s ease;
+}
+.cover-figure .cf-structure.off {
+  opacity: 0.3;
+}
+.cover-figure .cf-structure.on .cf-node {
+  fill: var(--vp-c-brand-1);
+  transition: fill 0.6s ease;
+}
+.cover-figure .cf-funnels line {
+  stroke: var(--vp-c-text-3);
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+  opacity: 0.6;
+  transition: stroke 0.6s ease, opacity 0.6s ease;
+}
+.cover-figure .cf-funnels line.on {
+  stroke: var(--vp-c-brand-1);
+  opacity: 1;
+}
+.cover-figure .cf-cell {
+  fill: var(--vp-c-bg);
+  stroke: var(--vp-c-text-3);
+  stroke-width: 1.25;
+}
+.cover-figure .cf-fill {
+  fill: var(--vp-c-brand-1);
+}
+.cover-figure .cf-link {
+  fill: var(--vp-c-brand-3);
+}
+.cover-figure .cf-pointer {
+  fill: none;
+  stroke: var(--vp-c-brand-3);
+  stroke-width: 1.75;
+}
+.cover-figure .cf-arrowhead {
+  fill: var(--vp-c-brand-3);
+}
+/* 动效只在挂载后、且用户没要求减少动效时加上；SSR / 无 JS 看到的是完整静态图 */
+.cover-figure.is-animating .cf-fill {
+  animation: cf-drop 0.5s ease-out both;
+}
+.cover-figure.is-animating .cf-pointer {
+  stroke-dasharray: 1;
+  animation: cf-draw 0.6s ease-out both;
+}
+@keyframes cf-drop {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes cf-draw {
+  from { stroke-dashoffset: 1; opacity: 0; }
+  30% { opacity: 1; }
+  to { stroke-dashoffset: 0; opacity: 1; }
+}
+
+/* --- 理念卡片（book/home.md 里写了 ## 小节才会出现） --- */
 .home-ideas {
   display: grid;
   grid-template-columns: 1fr;
   gap: 20px;
+  padding-top: 48px !important;
 }
 @media (min-width: 960px) {
   .home-ideas {
@@ -426,53 +551,144 @@ html[data-font-size='l'] {
 .vp-doc .home-idea blockquote {
   margin: 16px 0 0;
 }
-.vp-doc .home-idea blockquote.milestone {
-  margin: 16px 0 0;
-}
 .vp-doc .home-idea .header-anchor {
   display: none;
 }
+
+/* --- 目录 --- */
 .home-chapters {
-  padding-top: 24px !important;
-  padding-bottom: 64px !important;
+  padding-top: 56px !important;
+  padding-bottom: 72px !important;
 }
-.vp-doc .home-chapters h2 {
+.home-chapters.vp-doc h2 {
+  margin-top: 0;
   border-top: 0;
   padding-top: 0;
 }
-.book-chapters {
+.vp-doc .cl-summary {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--vp-c-text-3);
+}
+.vp-doc .book-chapters {
   list-style: none;
   padding: 0;
-  margin: 24px 0;
+  margin: 24px 0 0;
+  border-top: 1px solid var(--vp-c-divider);
 }
-.book-chapters > li {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+.vp-doc .book-chapters > li {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
   gap: 16px;
-  padding: 12px 0;
+  margin: 0;
+  padding: 18px 0;
   border-bottom: 1px solid var(--vp-c-divider);
 }
-.book-chapters > li a {
-  font-size: 17px;
-  font-weight: 500;
+.cl-no {
+  font-family: var(--book-mono);
+  font-size: 28px;
+  line-height: 1;
+  color: var(--vp-c-brand-1);
+}
+.cl-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  min-width: 0;
+}
+.vp-doc .book-chapters .cl-main a {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  text-decoration: none;
+}
+.vp-doc .book-chapters .cl-main a:hover {
+  color: var(--vp-c-brand-1);
+}
+.cl-question {
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}
+.cl-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
 }
 .cl-meta {
   flex-shrink: 0;
   font-size: 13px;
   color: var(--vp-c-text-3);
+  white-space: nowrap;
 }
-@media (max-width: 640px) {
-  .home-hero {
-    padding-top: 40px !important;
+.cl-bar {
+  display: block;
+  width: 72px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--vp-c-divider);
+  overflow: hidden;
+}
+.cl-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--vp-c-brand-1);
+}
+.vp-doc .cl-actions {
+  margin: 16px 0 0;
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .home-cover {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    min-height: 0;
+    padding: 32px 20px 48px;
   }
-  .home-hero h1 {
-    font-size: 32px;
+  .home-cover-figure {
+    order: -1;
+  }
+  .cover-figure {
+    max-width: 340px;
+  }
+  .home-title {
+    font-size: 40px;
+  }
+  .home-subtitle {
+    font-size: 30px;
+  }
+  .home-title-en {
+    margin-top: 14px;
+    font-size: 12px;
   }
   .home-tagline {
+    margin-top: 24px;
     font-size: 17px;
+  }
+  .home-hero .continue-reading {
+    margin-top: 28px;
   }
   .home-idea {
     padding: 20px 20px 16px;
+  }
+  .vp-doc .book-chapters > li {
+    grid-template-columns: 40px 1fr auto;
+    gap: 12px;
+  }
+  .cl-no {
+    font-size: 22px;
+  }
+  .cl-main {
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cover-figure * {
+    transition: none !important;
+    animation: none !important;
   }
 }

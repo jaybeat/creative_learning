@@ -54,6 +54,6 @@ export function renderHome(home: HomeSpec | null): string {
     })
     parts.push('</div>', '')
   }
-  parts.push('<section class="home-chapters vp-doc">', '', '## 章节 {#chapters}', '', '<ChapterList />', '', '</section>', '')
+  parts.push('<section class="home-chapters vp-doc">', '', '## 目录 {#chapters}', '', '<ChapterList />', '', '</section>', '')
   return parts.join('\n')
 }
