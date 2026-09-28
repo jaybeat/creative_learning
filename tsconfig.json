@@ -12,5 +12,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["scripts", "tests", "site/.vitepress"]
+  "include": ["scripts", "tests", "site/.vitepress", "api", "server"]
 }

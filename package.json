@@ -11,12 +11,16 @@
     "dev": "tsx scripts/dev.ts",
     "preview": "vitepress preview site --port 4173",
     "test": "vitest run",
-    "test:e2e": "playwright test -c tests/e2e/playwright.config.ts"
+    "test:e2e": "playwright test -c tests/e2e/playwright.config.ts",
+    "db:migrate": "tsx scripts/db-migrate.ts",
+    "api:dev": "tsx scripts/api-dev.ts"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@hono/node-server": "^2.1.1",
     "@playwright/test": "^1.63.0",
     "@types/markdown-it": "^14.2.0",
     "@types/node": "^26.6.2",
@@ -30,5 +34,9 @@
     "vitest": "^5.0.1",
     "vue": "^3.5.43",
     "yaml": "^2.9.1"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "hono": "^4.13.10"
   }
 }

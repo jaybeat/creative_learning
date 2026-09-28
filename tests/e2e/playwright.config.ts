@@ -18,13 +18,23 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}${process.env.SITE_BASE ?? '/'}`,
     trace: 'retain-on-failure',
   },
-  webServer: {
-    command: 'npm run preview',
-    cwd: ROOT,
-    port: PORT,
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      command: 'npm run preview',
+      cwd: ROOT,
+      port: PORT,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    // 评论与登录：构建产物 + 本地 API（内存数据库），见 scripts/serve-e2e.ts
+    {
+      command: 'npx tsx scripts/serve-e2e.ts',
+      cwd: ROOT,
+      port: 4174,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+  ],
   projects: [
     { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } } },
     // 手机项目用 DPR 2：真机都是高 DPR；DPR 1 的 Linux 无头 Chromium 会把 6.5px 的字形步进取整成 7px，不代表真实设备
