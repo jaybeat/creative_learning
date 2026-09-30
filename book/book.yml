@@ -17,5 +17,7 @@ chapters:
   - file: ch02.md
     draft: false
     question: 做一个单行编辑器
+    # problems（可选）：本章末尾的练习题，文件在 book/problems/，每个「## 第N问」一页
+    problems: ch02-poly.md
   # - file: ch03.md
   #   draft: true        # draft 的章：完全隐藏（不生成页面、不进目录和首页），但仍参与字体字符校验

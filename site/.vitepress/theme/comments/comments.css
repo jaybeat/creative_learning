@@ -151,6 +151,14 @@
   text-overflow: ellipsis;
   vertical-align: bottom;
 }
+/* 手机导航栏未登录时已接近占满 375px：登录后只显示昵称的第一个字（与「登录」两字同宽），
+   否则导航栏被撑出屏幕，整页出现横向滚动 */
+@media (max-width: 640px) {
+  .cl-nav-name {
+    max-width: 1em;
+    text-overflow: clip;
+  }
+}
 .cl-menu {
   position: absolute;
   top: calc(100% + 8px);

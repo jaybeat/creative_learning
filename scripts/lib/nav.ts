@@ -1,9 +1,12 @@
 import type { Chapter, Section } from './splitter'
+import type { Problem, ProblemSet } from './problems'
 import { SECTION_RE } from './slug'
 
 export interface ChapterEntry {
   chapter: Chapter
   draft: boolean
+  /** 本章末尾的练习题 */
+  problems?: ProblemSet
 }
 
 export interface PageRef {
@@ -12,7 +15,7 @@ export interface PageRef {
 }
 
 export interface PageInfo {
-  kind: 'chapter' | 'section'
+  kind: 'chapter' | 'section' | 'problem'
   /** 站内链接，如 `/ch02/2-8` 或 `/ch02/` */
   link: string
   /** 显示文字，如「2.8 链表：关系存哪里」或「第2章 线性表」 */
@@ -21,6 +24,8 @@ export interface PageInfo {
   file: string
   chapter: Chapter
   section?: Section
+  problemSet?: ProblemSet
+  problem?: Problem
 }
 
 export interface LinkedPage extends PageInfo {
@@ -43,10 +48,19 @@ export function sectionText(s: Section): string {
   return `${s.number} ${s.title}`
 }
 
-/** 全书阅读顺序：章首页 → 各节，跨章连续。draft 章不参与。 */
+/** 题目页的标题：「一元多项式的运算 · 第一问」 */
+export function problemText(set: ProblemSet, p: Problem): string {
+  return `${set.title} · ${p.short}`
+}
+
+export function problemsGroupText(set: ProblemSet): string {
+  return `练习：${set.title}`
+}
+
+/** 全书阅读顺序：章首页 → 各节 → 本章练习，跨章连续。draft 章不参与。 */
 export function listPages(entries: ChapterEntry[]): PageInfo[] {
   const pages: PageInfo[] = []
-  for (const { chapter, draft } of entries) {
+  for (const { chapter, draft, problems } of entries) {
     if (draft) continue
     pages.push({
       kind: 'chapter',
@@ -63,6 +77,17 @@ export function listPages(entries: ChapterEntry[]): PageInfo[] {
         file: `${chapter.slug}/${s.slug}.md`,
         chapter,
         section: s,
+      })
+    }
+    for (const p of problems?.problems ?? []) {
+      pages.push({
+        kind: 'problem',
+        link: `/${chapter.slug}/${p.slug}`,
+        text: problemText(problems!, p),
+        file: `${chapter.slug}/${p.slug}.md`,
+        chapter,
+        problemSet: problems,
+        problem: p,
       })
     }
   }
@@ -84,15 +109,19 @@ export function linkPrevNext(pages: PageInfo[]): LinkedPage[] {
 export function buildSidebar(entries: ChapterEntry[]): SidebarItem[] {
   return entries
     .filter((e) => !e.draft)
-    .map(({ chapter }) => ({
-      text: chapterText(chapter),
-      link: `/${chapter.slug}/`,
-      collapsed: true,
-      items: chapter.sections.map((s) => ({
+    .map(({ chapter, problems }) => {
+      const items: SidebarItem[] = chapter.sections.map((s) => ({
         text: sectionText(s),
         link: `/${chapter.slug}/${s.slug}`,
-      })),
-    }))
+      }))
+      if (problems?.problems.length) {
+        items.push({
+          text: problemsGroupText(problems),
+          items: problems.problems.map((p) => ({ text: p.title, link: `/${chapter.slug}/${p.slug}` })),
+        })
+      }
+      return { text: chapterText(chapter), link: `/${chapter.slug}/`, collapsed: true, items }
+    })
 }
 
 /**

@@ -174,11 +174,12 @@ export function authRoutes(app: Api, { db, mailer, config }: Deps) {
     return c.json({ user: publicMe({ ...u, name, notifyReplies }) })
   })
 
-  /** 注销：删除邮箱与会话、释放昵称；评论标为已删除（讨论串结构保留，别人的回复不丢） */
+  /** 注销：删除邮箱与会话、释放昵称；评论标为已删除（讨论串结构保留，别人的回复不丢）；练习提交直接删除 */
   app.delete('/me', async (c) => {
     const u = c.get('user')
     if (!u) return fail(c, 401, 'login_required')
     await db.query(`UPDATE comments SET body = '', deleted_at = coalesce(deleted_at, now()) WHERE user_id = $1`, [u.id])
+    await db.query('DELETE FROM submissions WHERE user_id = $1', [u.id])
     await db.query('DELETE FROM sessions WHERE user_id = $1', [u.id])
     await db.query('DELETE FROM email_codes WHERE email = $1', [u.email])
     await db.query('UPDATE users SET email = NULL, display_name = NULL, notify_replies = false, deleted_at = now() WHERE id = $1', [u.id])

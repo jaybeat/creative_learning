@@ -63,7 +63,7 @@ const deleteAccount = () =>
     <template v-if="meLoaded">
       <button v-if="!me || !me.name" type="button" class="cl-nav-btn" @click="requireLogin()">登录</button>
       <template v-else>
-        <button type="button" class="cl-nav-btn" :aria-expanded="open" aria-haspopup="menu" @click="open = !open">
+        <button type="button" class="cl-nav-btn" :title="me.name" :aria-expanded="open" aria-haspopup="menu" @click="open = !open">
           <span class="cl-nav-name">{{ me.name }}</span> ▾
         </button>
         <div v-if="open" class="cl-menu" role="menu">

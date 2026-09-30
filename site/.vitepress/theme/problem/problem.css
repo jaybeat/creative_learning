@@ -1,0 +1,376 @@
+/* ===== 题目页（layout: problem） ===== */
+
+/* 编辑器语法配色：与正文代码块的 github-light / github-dark 一致（已按 WCAG AA 调深 / 提亮） */
+:root {
+  --pe-keyword: #b31d28;
+  --pe-type: #b31d28;
+  --pe-string: #032f62;
+  --pe-number: #005cc5;
+  --pe-comment: #57606a;
+  --pe-macro: #b31d28;
+  --pe-function: #6f42c1;
+}
+.dark {
+  --pe-keyword: #ff7b72;
+  --pe-type: #ff7b72;
+  --pe-string: #9ecbff;
+  --pe-number: #79b8ff;
+  --pe-comment: #8b949e;
+  --pe-macro: #ff7b72;
+  --pe-function: #b392f0;
+}
+
+.problem-page {
+  --problem-bar-h: 44px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 顶部条：返回、组名、各问切换 */
+.problem-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--problem-bar-h);
+  padding: 0 16px;
+  border-bottom: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+  font-size: 14px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.problem-back {
+  color: var(--vp-c-text-2);
+  text-decoration: none;
+}
+.problem-back:hover {
+  color: var(--vp-c-brand-1);
+}
+.problem-set {
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+}
+.problem-tabs {
+  display: flex;
+  gap: 4px;
+}
+.problem-tabs a {
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: var(--vp-c-text-2);
+  text-decoration: none;
+}
+.problem-tabs a:hover {
+  color: var(--vp-c-text-1);
+  background: var(--vp-c-default-soft);
+}
+.problem-tabs a.active {
+  color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+  font-weight: 600;
+}
+.problem-tabs .read-mark {
+  margin-left: 4px;
+  color: var(--vp-c-brand-1);
+  font-size: 12px;
+}
+
+/* ---- 分栏 ---- */
+.problem-split {
+  display: flex;
+  flex-direction: column;
+}
+.problem-statement {
+  min-width: 0;
+}
+.problem-doc {
+  padding: 20px 16px 32px;
+}
+.problem-divider {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .problem-split {
+    flex-direction: row;
+    /* 占满导航栏与顶部条下方的视口，两栏各自滚动 */
+    height: calc(100vh - var(--vp-nav-height) - var(--problem-bar-h) - 1px);
+    height: calc(100dvh - var(--vp-nav-height) - var(--problem-bar-h) - 1px);
+  }
+  .problem-statement {
+    flex: 0 0 var(--split, 50%);
+    overflow-y: auto;
+  }
+  .problem-doc {
+    padding: 24px 32px 48px;
+  }
+  .problem-divider {
+    display: block;
+    flex: 0 0 6px;
+    cursor: col-resize;
+    background: var(--vp-c-divider);
+    touch-action: none;
+  }
+  .problem-divider:hover,
+  .problem-divider:focus-visible {
+    background: var(--vp-c-brand-1);
+    outline: none;
+  }
+  .problem-workspace {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .pw-editor {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+  .pw-panel {
+    flex: 0 0 auto;
+    max-height: 40%;
+    overflow-y: auto;
+  }
+}
+
+/* 题面里的一级标题比正文页小一号：页面上方已有顶部条 */
+.problem-doc h1 {
+  font-size: 24px;
+  line-height: 1.4;
+}
+
+/* ---- 样例 ---- */
+.sample-case {
+  margin: 16px 0 8px;
+}
+.sample-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.sample-grid {
+  display: grid;
+  /* minmax(0, …)：长样例在框内横向滚动，不撑宽页面 */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+@media (max-width: 640px) {
+  .sample-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.sample-box {
+  min-width: 0;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--vp-code-block-bg);
+}
+.sample-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--vp-c-text-2);
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+.sample-copy {
+  font-size: 12px;
+  color: var(--vp-c-brand-1);
+}
+.vp-doc .sample-pre {
+  margin: 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  white-space: pre;
+  font-size: 14px;
+  line-height: 1.6;
+  background: transparent;
+}
+.vp-doc .sample-pre code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  color: var(--vp-c-text-1);
+}
+
+/* ---- 代码区 ---- */
+.problem-workspace {
+  border-top: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+}
+@media (min-width: 960px) {
+  .problem-workspace {
+    border-top: none;
+  }
+}
+.pw-toolbar,
+.pw-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 14px;
+}
+.pw-toolbar {
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+.pw-spacer {
+  flex: 1;
+}
+.pw-lang {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--vp-c-default-soft);
+  font-family: var(--book-mono);
+  font-size: 12px;
+}
+.pw-btn,
+.pw-link {
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--vp-c-text-2);
+}
+.pw-btn:hover,
+.pw-link:hover {
+  color: var(--vp-c-brand-1);
+  background: var(--vp-c-default-soft);
+}
+.pw-submit {
+  padding: 4px 18px;
+  border-radius: 6px;
+  background: var(--vp-c-brand-3);
+  color: var(--vp-c-white);
+  font-weight: 600;
+}
+.pw-submit:hover {
+  background: var(--vp-c-brand-2);
+}
+.pw-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.pw-panel {
+  border-top: 1px solid var(--vp-c-divider);
+}
+.pw-tab {
+  font-weight: 600;
+}
+.pw-message,
+.pw-empty {
+  margin: 0;
+  padding: 4px 12px 10px;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}
+.pw-message {
+  color: var(--vp-c-text-1);
+}
+.pw-list {
+  margin: 0;
+  padding: 0 12px 10px;
+  list-style: none;
+  font-size: 14px;
+}
+.pw-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--vp-c-divider);
+}
+.pw-list li:last-child {
+  border-bottom: none;
+}
+.pw-time {
+  flex: 1;
+  color: var(--vp-c-text-2);
+}
+.pw-status {
+  font-weight: 600;
+  color: var(--vp-c-text-2);
+}
+.pw-status.is-accepted {
+  color: var(--vp-c-green-1);
+}
+.pw-status.is-wrong_answer,
+.pw-status.is-compile_error,
+.pw-status.is-runtime_error,
+.pw-status.is-time_limit {
+  color: var(--vp-c-danger-1);
+}
+
+/* ---- 编辑器 ---- */
+.code-editor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 60vh;
+  min-height: 280px;
+  overflow: hidden;
+  background: var(--vp-code-block-bg);
+}
+@media (min-width: 960px) {
+  .code-editor {
+    height: auto;
+  }
+}
+.code-editor-host {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.code-editor-host:not(.is-ready) {
+  display: none;
+}
+.code-editor-fallback,
+.code-editor .cm-editor {
+  font-family: var(--book-mono);
+  font-variant-ligatures: none;
+  font-synthesis: none;
+  font-size: 14px;
+  line-height: 1.6;
+  tab-size: 4;
+}
+.code-editor-fallback {
+  margin: 0;
+  padding: 4px 12px 4px 48px;
+  white-space: pre;
+  overflow: auto;
+  color: var(--vp-c-text-1);
+}
+.code-editor .cm-editor {
+  height: 100%;
+  color: var(--vp-c-text-1);
+  background: transparent;
+}
+.code-editor .cm-editor.cm-focused {
+  outline: none;
+}
+.code-editor .cm-scroller {
+  font-family: inherit;
+  line-height: inherit;
+}
+.code-editor .cm-gutters {
+  background: transparent;
+  border-right: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-3);
+}
+.code-editor .cm-activeLine,
+.code-editor .cm-activeLineGutter {
+  background: var(--vp-c-default-soft);
+}
+.code-editor .cm-content {
+  caret-color: var(--vp-c-text-1);
+}
+.code-editor .cm-cursor {
+  border-left-color: var(--vp-c-text-1);
+}
+.code-editor .cm-selectionBackground,
+.code-editor .cm-focused .cm-selectionBackground {
+  background: var(--vp-c-brand-soft) !important;
+}
+.code-editor .cm-matchingBracket {
+  background: var(--vp-c-default-soft);
+  outline: 1px solid var(--vp-c-divider);
+}
