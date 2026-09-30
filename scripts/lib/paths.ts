@@ -6,6 +6,8 @@ export const ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)
 export const BOOK_DIR = path.join(ROOT, 'book')
 export const BOOK_YML = path.join(BOOK_DIR, 'book.yml')
 export const CHAPTERS_DIR = path.join(BOOK_DIR, 'chapters')
+/** 练习题：chNN-名字.md，在 book.yml 里挂到对应章末尾 */
+export const PROBLEMS_DIR = path.join(BOOK_DIR, 'problems')
 /** 首页文案（可选）：frontmatter 里一句定位，正文每个 ## 是一张理念卡片 */
 export const HOME_MD = path.join(BOOK_DIR, 'home.md')
 export const SITE_DIR = path.join(ROOT, 'site')

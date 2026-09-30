@@ -216,13 +216,17 @@ test.describe('键盘翻节', () => {
 
   test('全书第一页按 ← 不动，最后一页按 → 不动', async ({ page }) => {
     // 全书第一页 / 最后一页从侧栏数据取，随书稿变化
-    const sidebar = JSON.parse(fs.readFileSync(path.join(ROOT, 'site/.vitepress/generated/sidebar.json'), 'utf8')) as Array<{ link: string; items: Array<{ link: string }> }>
-    const firstLink = sidebar[0].link
+    type Item = { link?: string; items?: Item[] }
+    const sidebar = JSON.parse(fs.readFileSync(path.join(ROOT, 'site/.vitepress/generated/sidebar.json'), 'utf8')) as Item[]
+    const firstLink = sidebar[0].link!
+    // 章下可能有「练习」分组（没有 link，只有子项）：取最深的最后一项
+    let last: Item = sidebar.at(-1)!
+    while (last.items?.length) last = last.items.at(-1)!
+    const lastLink = last.link!
     await page.goto(firstLink.replace(/^\//, ''))
     await page.keyboard.press('ArrowLeft')
     await page.waitForTimeout(300)
     await expect(page).toHaveURL(new RegExp(firstLink.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
-    const lastLink = sidebar.at(-1)!.items.at(-1)!.link
     await page.goto(lastLink.replace(/^\//, ''))
     await page.keyboard.press('ArrowRight')
     await page.waitForTimeout(300)

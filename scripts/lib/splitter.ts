@@ -126,13 +126,16 @@ export function parseChapter(src: string, fileName: string): Chapter {
   return { file: fileName, number, title: cm[2].trim(), slug, intro, introStartLine: h1.end, sections }
 }
 
-export type FrontmatterValue = string | number | boolean | { text: string; link: string }
+export type FrontmatterValue = string | number | boolean | { text: string; link: string } | unknown[]
 
 /** 生成 YAML frontmatter；字符串一律 JSON 编码，避免「：」「"」等破坏 YAML。 */
 export function renderFrontmatter(fm: Record<string, FrontmatterValue>): string {
   const out: string[] = ['---']
   for (const [k, v] of Object.entries(fm)) {
-    if (typeof v === 'object') {
+    if (Array.isArray(v)) {
+      // JSON 是合法的 YAML 流式写法
+      out.push(`${k}: ${JSON.stringify(v)}`)
+    } else if (typeof v === 'object') {
       out.push(`${k}:`)
       out.push(`  text: ${JSON.stringify(v.text)}`)
       out.push(`  link: ${JSON.stringify(v.link)}`)

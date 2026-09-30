@@ -2,21 +2,24 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
 import subsetFont from 'subset-font'
-import { CHAPTERS_DIR, FONTS_OUT_DIR, FONT_SRC, GENERATED_DIR } from './lib/paths'
+import { CHAPTERS_DIR, FONTS_OUT_DIR, FONT_SRC, GENERATED_DIR, PROBLEMS_DIR } from './lib/paths'
 import { collectCodeChars, withAscii, type CharHit } from './lib/charset'
 import { checkFont, expectedAdvance, formatProblems, openFont } from './lib/font-check'
 import { writeIfChanged } from './lib/fs-utils'
 
 export const FONT_FAMILY = 'BookMono'
 
-/** 扫描 book/chapters 下所有章节（含 draft），返回字符 → 首次出现位置。 */
-export function scanChapters(dir: string = CHAPTERS_DIR): Map<string, CharHit> {
-  const files = fs
-    .readdirSync(dir)
-    .filter((f) => f.endsWith('.md'))
-    .sort()
+/** 扫描 book/chapters 下所有章节（含 draft）与 book/problems 下的题目，返回字符 → 首次出现位置。 */
+export function scanChapters(dirs: string[] = [CHAPTERS_DIR, PROBLEMS_DIR]): Map<string, CharHit> {
   const hits: CharHit[] = []
-  for (const f of files) hits.push(...collectCodeChars(fs.readFileSync(path.join(dir, f), 'utf8'), f))
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) continue
+    const files = fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith('.md'))
+      .sort()
+    for (const f of files) hits.push(...collectCodeChars(fs.readFileSync(path.join(dir, f), 'utf8'), f))
+  }
   return withAscii(hits)
 }
 

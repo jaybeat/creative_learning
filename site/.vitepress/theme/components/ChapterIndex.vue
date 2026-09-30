@@ -13,7 +13,8 @@ const router = useRouter()
 
 const readLinks = computed(() => {
   if (!ready.value || !ch) return new Set<string>()
-  return new Set(ch.sections.filter((s) => isRead(state.value, s.link, `${s.number} ${s.title}`)).map((s) => s.link))
+  const links = [...ch.sections.map((s) => s.link), ...(ch.problems?.items.map((p) => p.link) ?? [])]
+  return new Set(links.filter((l) => isRead(state.value, l, titleOf(l))))
 })
 const resume = computed(() => {
   if (!ready.value || !ch) return null
@@ -44,5 +45,14 @@ function go(path: string): void {
         <span v-if="readLinks.has(s.link)" class="read-mark" title="已读">✓</span>
       </li>
     </ul>
+    <template v-if="ch.problems">
+      <h2>本章练习：{{ ch.problems.title }}</h2>
+      <ul class="ci-list">
+        <li v-for="p in ch.problems.items" :key="p.link">
+          <a :href="withBase(p.link)">{{ p.title }}</a>
+          <span v-if="readLinks.has(p.link)" class="read-mark" title="已提交">✓</span>
+        </li>
+      </ul>
+    </template>
   </div>
 </template>

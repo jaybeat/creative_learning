@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { CHAPTERS_DIR, GENERATED_DIR, HOME_MD, SITE_DIR } from './lib/paths'
+import { CHAPTERS_DIR, GENERATED_DIR, HOME_MD, PROBLEMS_DIR, SITE_DIR } from './lib/paths'
+import { parseProblemSet, renderProblemPage } from './lib/problems'
 import { parseHome, renderHome } from './lib/home'
 import { loadBookConfig } from './lib/book-config'
 import { parseChapter, renderChapterIndex, renderSectionPage, type FrontmatterValue } from './lib/splitter'
@@ -32,6 +33,9 @@ export function runBuildContent(): void {
   const entries: ChapterEntry[] = sources.map(({ config, src }) => ({
     chapter: parseChapter(src, config.file),
     draft: config.draft,
+    problems: config.problems
+      ? parseProblemSet(fs.readFileSync(path.join(PROBLEMS_DIR, config.problems), 'utf8'), config.problems)
+      : undefined,
   }))
 
   // 各章的「版本号」（编辑器1.1 之类），交叉引用插件在该章里不把它们当节号
@@ -53,7 +57,17 @@ export function runBuildContent(): void {
     // srcFile / srcLine：让渲染期插件能把警告定位回作者的源文件。
     // 节页正文第 0 行就是 `## ` 标题行；章首页正文第 2 行起是引言（第 0 行是 `# ` 标题，第 1 行空）。
     fm.srcFile = p.chapter.file
-    if (p.section) {
+    if (p.problem && p.problemSet) {
+      // 题目页：自定义版式（theme/problem/ProblemLayout.vue），不显示全书目录与右栏大纲
+      fm.layout = 'problem'
+      fm.sidebar = false
+      fm.aside = false
+      fm.srcFile = p.problemSet.file
+      fm.srcLine = p.problem.startLine + 1
+      fm.problemId = p.problem.id
+      fm.problemSet = p.problemSet.title
+      fm.samples = p.problem.samples
+    } else if (p.section) {
       fm.section = p.section.number
       fm.srcLine = p.section.startLine + 1
     } else {
@@ -66,7 +80,14 @@ export function runBuildContent(): void {
 
     const out = path.join(SITE_DIR, p.file)
     expected.add(path.normalize(out))
-    writeIfChanged(out, p.section ? renderSectionPage(p.section, fm) : renderChapterIndex(p.chapter, fm))
+    writeIfChanged(
+      out,
+      p.problem && p.problemSet
+        ? renderProblemPage(p.problemSet, p.problem, fm)
+        : p.section
+          ? renderSectionPage(p.section, fm)
+          : renderChapterIndex(p.chapter, fm),
+    )
   }
 
   // 清理生成的章目录 site/chNN/ 里不再需要的文件（节被删除、章改为 draft 等），其余目录不碰
@@ -101,21 +122,29 @@ export function runBuildContent(): void {
     chapters: entries
       .map((e, i) => ({ ...e, question: book.chapters[i].question }))
       .filter((e) => !e.draft)
-      .map(({ chapter, question }) => ({
+      .map(({ chapter, question, problems }) => ({
         number: chapter.number,
         title: chapter.title,
         question,
         slug: chapter.slug,
         firstSection: chapter.sections[0] ? `/${chapter.slug}/${chapter.sections[0].slug}` : null,
         sections: chapter.sections.map((s) => ({ number: s.number, title: s.title, link: `/${chapter.slug}/${s.slug}` })),
+        // 本章练习：题目页的切换条、章首页目录、已提交 ✓ 都用它
+        problems: problems
+          ? {
+              title: problems.title,
+              items: problems.problems.map((p) => ({ id: p.id, title: p.title, short: p.short, link: `/${chapter.slug}/${p.slug}` })),
+            }
+          : null,
       })),
   })
 
-  for (const { chapter, draft } of entries) {
+  for (const { chapter, draft, problems } of entries) {
     console.log(
       draft
         ? `[build-content] 第${chapter.number}章 ${chapter.title}：draft，已隐藏（不生成页面、不进目录）`
-        : `[build-content] 第${chapter.number}章 ${chapter.title}：1 个章首页 + ${chapter.sections.length} 个节页面`,
+        : `[build-content] 第${chapter.number}章 ${chapter.title}：1 个章首页 + ${chapter.sections.length} 个节页面` +
+          (problems ? ` + ${problems.problems.length} 个题目页` : ''),
     )
   }
 }

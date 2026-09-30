@@ -7,6 +7,7 @@ import { clearSessionCookie, fail, readSessionCookie, sameOrigin, SESSION_DAYS, 
 import { authRoutes } from './auth.js'
 import { commentRoutes } from './comments.js'
 import { adminRoutes } from './admin.js'
+import { submissionRoutes } from './submissions.js'
 
 export interface Deps {
   db: Db
@@ -70,6 +71,7 @@ export function createApp(deps: Deps) {
   authRoutes(app, deps)
   commentRoutes(app, deps)
   adminRoutes(app, deps)
+  submissionRoutes(app, deps)
 
   app.notFound((c) => fail(c, 404, 'not_found'))
   app.onError((err, c) => {

@@ -6,9 +6,12 @@ import ChapterList from './components/ChapterList.vue'
 import ChapterIndex from './components/ChapterIndex.vue'
 import HomeHero from './components/HomeHero.vue'
 import AdminComments from './comments/AdminComments.vue'
+import ProblemLayout from './problem/ProblemLayout.vue'
+import SampleCase from './problem/SampleCase.vue'
 import '../generated/font.css'
 import './custom.css'
 import './comments/comments.css'
+import './problem/problem.css'
 
 export default {
   extends: DefaultTheme,
@@ -18,5 +21,8 @@ export default {
     app.component('ChapterIndex', ChapterIndex)
     app.component('HomeHero', HomeHero)
     app.component('AdminComments', AdminComments)
+    // 题目页：frontmatter.layout: problem 时由默认主题的 VPContent 渲染这个组件
+    app.component('problem', ProblemLayout)
+    app.component('SampleCase', SampleCase)
   },
 } satisfies Theme

@@ -1,7 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { login as loginAt } from './helpers'
 
 // 评论与登录：跑在 scripts/serve-e2e.ts（构建产物 + 本地 API + 内存数据库）上
 const BASE = 'http://localhost:4174/'
+const login = (page: Page, email: string, name: string) => loginAt(page, BASE, email, name)
 test.use({ baseURL: BASE })
 
 const PAGE = 'ch02/2-8'
@@ -25,21 +27,6 @@ async function selectText(page: Page, text: string) {
     throw new Error(`正文里找不到：${t}`)
   }, text)
   await expect(page.locator('.cl-sel-btn')).toBeVisible()
-}
-
-async function login(page: Page, email: string, name: string) {
-  await page.locator('.cl-nav-btn', { hasText: '登录' }).click()
-  await page.locator('.cl-dialog input[type=email]').fill(email)
-  await page.locator('.cl-dialog button[type=submit]').click()
-  await expect(page.locator('.cl-dialog')).toContainText('验证码已发送')
-  const code = await (await page.request.get(`${BASE}__test/last-code?email=${encodeURIComponent(email)}`)).text()
-  await page.locator('.cl-dialog input[autocomplete=one-time-code]').fill(code)
-  await page.locator('.cl-dialog button[type=submit]').click()
-  await expect(page.locator('.cl-dialog-title')).toHaveText('设置昵称')
-  await page.locator('.cl-dialog input[autocomplete=nickname]').fill(name)
-  await page.locator('.cl-dialog button[type=submit]').click()
-  await expect(page.locator('.cl-dialog')).toHaveCount(0)
-  await expect(page.locator('.cl-nav-btn')).toContainText(name)
 }
 
 const uid = () => Math.random().toString(36).slice(2, 8)

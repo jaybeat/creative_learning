@@ -16,7 +16,7 @@ async function freshDb() {
     return db
   })
   const db = await shared
-  await db.query('TRUNCATE users, email_codes, sessions, comments, mail_log RESTART IDENTITY CASCADE')
+  await db.query('TRUNCATE users, email_codes, sessions, comments, mail_log, submissions RESTART IDENTITY CASCADE')
   return db
 }
 

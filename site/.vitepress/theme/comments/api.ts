@@ -18,6 +18,16 @@ export interface Comment {
   hidden: boolean
 }
 
+export interface Submission {
+  id: string
+  problemId: string
+  language: string
+  /** pending | judging | accepted | wrong_answer | compile_error | runtime_error | time_limit */
+  status: string
+  createdAt: string
+  code?: string
+}
+
 export interface Thread extends Comment {
   pagePath: string
   pageTitle: string
@@ -47,6 +57,9 @@ const MESSAGES: Record<string, string> = {
   comment_rate: '发得太快了，歇一会儿再发',
   not_found: '这条评论已不存在',
   forbidden: '没有权限',
+  bad_problem: '题目不存在',
+  bad_code: '代码不能为空，最多 64 KB',
+  submit_rate: '提交得太快了，歇一会儿再交',
 }
 
 export class ApiError extends Error {
@@ -89,6 +102,10 @@ export const api = {
   reply: (parentId: string, body: string) => request<{ id: string }>('POST', '/comments', { parentId, body }),
   remove: (id: string) => request<{ ok: true }>('DELETE', `/comments/${id}`, {}),
   hide: (id: string, hidden: boolean) => request<{ ok: true }>('POST', `/comments/${id}/hide`, { hidden }),
+  submit: (problemId: string, code: string) => request<Submission>('POST', '/submissions', { problemId, code }),
+  submissions: (problemId: string) =>
+    request<{ submissions: Submission[] }>('GET', `/submissions?problem=${encodeURIComponent(problemId)}`),
+  submission: (id: string) => request<Submission>('GET', `/submissions/${id}`),
   adminComments: (filter: 'unreplied' | 'all', before?: string) =>
     request<{ threads: Thread[]; next: string | null }>(
       'GET',

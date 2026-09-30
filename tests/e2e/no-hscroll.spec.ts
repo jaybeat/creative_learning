@@ -14,11 +14,15 @@ const sidebar: SidebarItem[] = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'site/.vitepress/generated/sidebar.json'), 'utf8'),
 )
 
+// 侧栏里的所有页面：章 → 节，以及章下的练习分组 → 题目页
 const links: string[] = ['/']
-for (const ch of sidebar) {
-  if (ch.link) links.push(ch.link)
-  for (const s of ch.items ?? []) if (s.link) links.push(s.link)
+const walk = (items: SidebarItem[]) => {
+  for (const it of items) {
+    if (it.link) links.push(it.link)
+    walk(it.items ?? [])
+  }
 }
+walk(sidebar)
 
 /** 去掉开头的 `/`，让 baseURL（可能带 SITE_BASE 前缀）生效 */
 const rel = (link: string) => link.replace(/^\//, '')
