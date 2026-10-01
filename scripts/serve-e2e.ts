@@ -12,6 +12,8 @@ import { pgliteDb } from '../server/db-pglite.js'
 import { memoryMailer } from '../server/mailer.js'
 import { migrate } from '../server/migrate.js'
 import { readMigrations } from '../server/migrations-fs.js'
+import { fakeJudge } from '../server/judge.js'
+import { SOLVERS } from './lib/poly-ref.js'
 import { ROOT } from './lib/paths.js'
 
 const PORT = Number(process.env.E2E_PORT) || 4174
@@ -37,7 +39,14 @@ async function main() {
     SITE_URL: `http://localhost:${PORT}`,
     INSECURE_COOKIE: '1',
   })
-  const api = createApp({ db, mailer, config })
+  // 假评测机：代码里写「CORRECT ch02-ex-N」就按参考解输出，含 TLE 就超时，含 COMPILE_ERROR 就编译错误，否则输出错误答案
+  const judge = fakeJudge((code, input) => {
+    const m = /CORRECT (ch\d{2}-ex-\d+)/.exec(code)
+    if (m && SOLVERS[m[1]]) return SOLVERS[m[1]](input)
+    if (code.includes('TLE')) return { status: 'time_limit' }
+    return 'wrong answer\n'
+  })
+  const api = createApp({ db, mailer, config, judge })
 
   const app = new Hono()
   app.get('/__test/last-code', (c) => {

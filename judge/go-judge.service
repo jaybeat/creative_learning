@@ -1,0 +1,13 @@
+[Unit]
+Description=go-judge sandbox (only listens on 127.0.0.1:5050)
+After=network.target
+
+[Service]
+# 需要 root：创建 cgroup 与命名空间。选手程序在嵌套容器里以 uid 1536 运行、没有网络
+ExecStart=/opt/judge/bin/go-judge -http-addr 127.0.0.1:5050 -parallelism 2 -file-timeout 10m -release
+Restart=always
+RestartSec=2
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -3,6 +3,7 @@ import { handle } from 'hono/vercel'
 import { createApp } from '../server/app.js'
 import { loadConfig } from '../server/config.js'
 import { neonDb } from '../server/db.js'
+import { judgeFromEnv } from '../server/judge.js'
 import { mailerFromEnv } from '../server/mailer.js'
 
 const config = loadConfig(process.env)
@@ -10,6 +11,7 @@ const app = createApp({
   db: neonDb(process.env.DATABASE_URL ?? ''),
   mailer: mailerFromEnv(process.env, config.brand),
   config,
+  judge: judgeFromEnv(process.env),
 })
 
 const handler = handle(app)
