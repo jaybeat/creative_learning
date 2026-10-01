@@ -16,7 +16,8 @@ function waitUntil(p: Promise<unknown>): void {
   const ctx = (globalThis as Record<symbol, { get?: () => { waitUntil?: (p: Promise<unknown>) => void } } | undefined>)[
     Symbol.for('@vercel/request-context')
   ]?.get?.()
-  ctx?.waitUntil?.(guarded)
+  if (ctx?.waitUntil) ctx.waitUntil(guarded)
+  else console.warn('[waitUntil] 取不到 Vercel 请求上下文，后台任务可能在响应后被冻结')
 }
 
 const config = loadConfig(process.env)

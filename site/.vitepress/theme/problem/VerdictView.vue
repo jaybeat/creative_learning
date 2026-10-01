@@ -23,6 +23,8 @@ defineProps<{ s: Submission }>()
       ></span>
     </div>
     <p v-if="VERDICT_HINT[s.status]" class="vv-hint">{{ VERDICT_HINT[s.status] }}</p>
+    <!-- 评测失败时附上原因代码，读者反馈问题时便于排查 -->
+    <p v-if="s.status === 'system_error' && s.result?.message" class="vv-reason">原因代码：{{ s.result.message }}</p>
     <pre v-if="s.result?.compileMessage" class="vv-compile">{{ s.result.compileMessage }}</pre>
     <template v-if="s.result?.firstFail">
       <p class="vv-fail-title">

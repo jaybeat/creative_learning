@@ -489,6 +489,12 @@
   font-size: 13px;
   color: var(--vp-c-text-2);
 }
+.vv-reason {
+  margin: -4px 0 8px;
+  font-size: 12px;
+  color: var(--vp-c-text-3);
+  font-family: var(--book-mono);
+}
 .vv-fail-title {
   margin: 8px 0 6px;
   font-weight: 600;

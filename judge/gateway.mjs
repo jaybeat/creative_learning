@@ -146,14 +146,18 @@ export function createGateway({ secret, goJudge, now = () => Date.now() }) {
     return { status, headers, body }
   }
 
-  return async function handle({ method, path, headers, body }) {
+  return async function handle({ method, path, headers, body, ip = '-' }) {
     if (method === 'GET' && path === '/health') return reply(200, null, { ok: true })
     if (method !== 'POST' || path !== '/judge') return reply(404, null, { error: 'not_found' })
     if (Buffer.byteLength(body) > LIMITS.bodyBytes) return reply(413, null, { error: 'too_large' })
 
     const why = verifyRequest(secret, { method, path, headers, body, nonces, now: now() })
     // 验签失败不签名响应（不给对方可用的签名样本），也不透露具体原因以外的信息
-    if (why) return reply(401, null, { error: why })
+    if (why) {
+      // 只记原因和来源，不记请求内容
+      console.log(`[gateway] reject ${why} from ${ip}`)
+      return reply(401, null, { error: why })
+    }
     const nonce = headers['x-judge-nonce']
 
     let req
@@ -180,7 +184,9 @@ export function createGateway({ secret, goJudge, now = () => Date.now() }) {
       promise.catch(() => cache.delete(req.key))
     }
     try {
-      return reply(200, nonce, await entry.promise)
+      const r = await entry.promise
+      console.log(`[gateway] ok ${req.key} from ${ip} inputs=${req.inputs.length} ${now() - t}ms`)
+      return reply(200, nonce, r)
     } catch (e) {
       console.error('[gateway]', req.key, e)
       return reply(502, nonce, { error: 'judge_failed' })
@@ -205,7 +211,13 @@ export function startServer({ secret, port = 8443, goJudgeUrl = 'http://127.0.0.
       if (res.writableEnded) return
       const url = new URL(req.url ?? '/', 'http://x')
       try {
-        const r = await handle({ method: req.method ?? 'GET', path: url.pathname, headers: req.headers, body: Buffer.concat(chunks).toString('utf8') })
+        const r = await handle({
+          method: req.method ?? 'GET',
+          path: url.pathname,
+          headers: req.headers,
+          body: Buffer.concat(chunks).toString('utf8'),
+          ip: req.socket.remoteAddress ?? '-',
+        })
         res.writeHead(r.status, r.headers).end(r.body)
       } catch (e) {
         console.error('[gateway]', e)

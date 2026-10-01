@@ -19,5 +19,5 @@ export declare function createGateway(o: {
   secret: string
   goJudge: (path: string, init?: RequestInit) => Promise<Response>
   now?: () => number
-}): (req: { method: string; path: string; headers: Record<string, string | string[] | undefined>; body: string }) => Promise<GatewayResponse>
+}): (req: { method: string; path: string; headers: Record<string, string | string[] | undefined>; body: string; ip?: string }) => Promise<GatewayResponse>
 export declare function startServer(o: { secret: string; port?: number; goJudgeUrl?: string }): import('node:http').Server

@@ -59,6 +59,7 @@ export async function judgeSubmission({ db, judge }: Deps, id: string): Promise<
   let status: string
   let result: unknown
   if (tests.length === 0) {
+    console.error('[judge] no tests for', row.problem_id, 'cwd =', process.cwd())
     status = 'system_error'
     result = { message: 'no_tests' }
   } else {
