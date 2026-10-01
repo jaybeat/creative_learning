@@ -11,6 +11,13 @@ const replying = ref(false)
 const text = ref('')
 const busy = ref(false)
 const error = ref('')
+/** 管理员回复时可以先不发邮件，之后在 /admin 合并成一封；选择记在本机 */
+const SILENT_KEY = 'cl-silent-reply'
+const silent = ref(typeof localStorage !== 'undefined' && localStorage.getItem(SILENT_KEY) === '1')
+function toggleSilent(e: Event): void {
+  silent.value = (e.target as HTMLInputElement).checked
+  localStorage.setItem(SILENT_KEY, silent.value ? '1' : '0')
+}
 
 const orphan = computed(() => anchors.value.has(props.thread.id) && anchors.value.get(props.thread.id) === null)
 
@@ -36,7 +43,7 @@ function startReply(): void {
 
 const send = () =>
   act(async () => {
-    await api.reply(props.thread.id, text.value)
+    await api.reply(props.thread.id, text.value, !!me.value?.isAdmin && silent.value)
     text.value = ''
     replying.value = false
   })
@@ -82,6 +89,10 @@ const canRemove = (c: Comment) => !c.deleted && (c.mine || !!me.value?.isAdmin)
     <div v-if="!thread.deleted || thread.replies.length" class="cl-reply">
       <form v-if="replying" @submit.prevent="send">
         <textarea v-model="text" rows="3" maxlength="2000" placeholder="写下你的回复" aria-label="回复内容"></textarea>
+        <label v-if="me?.isAdmin" class="cl-check">
+          <input type="checkbox" :checked="silent" @change="toggleSilent" />
+          先不发邮件，稍后在管理页合并通知
+        </label>
         <div class="cl-row">
           <button type="button" class="cl-btn" @click="replying = false">取消</button>
           <button type="submit" class="cl-btn cl-btn-primary" :disabled="busy || !text.trim()">{{ busy ? '发送中…' : '回复' }}</button>

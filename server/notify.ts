@@ -99,3 +99,68 @@ export async function sendDigest(db: Db, mailer: Mailer, config: Config): Promis
   }
   return sent
 }
+
+/** 管理员静默回复后、还没合并通知的读者：每人一行（只算原评论作者还在、没删的回复） */
+export async function listPendingNotify(db: Db) {
+  return db.query<{ user_id: string; name: string | null; n: number; notify_replies: boolean }>(
+    `SELECT t.user_id, u.display_name AS name, count(*)::int AS n, u.notify_replies
+       FROM comments r
+       JOIN comments t ON t.id = r.parent_id
+       JOIN users u ON u.id = t.user_id
+      WHERE r.notify_pending AND r.deleted_at IS NULL AND u.deleted_at IS NULL AND t.user_id <> r.user_id
+      GROUP BY t.user_id, u.display_name, u.notify_replies
+      ORDER BY min(r.created_at)`,
+  )
+}
+
+/**
+ * 把管理员给某位读者的静默回复合并成一封邮件：按页面列出原文、读者的评论、作者的回复和链接。
+ * 读者关了通知时不发信，只清掉标记。返回是否发了信。
+ */
+export async function sendMergedReplies(db: Db, mailer: Mailer, config: Config, userId: string): Promise<boolean> {
+  const rows = await db.query<{
+    id: string; thread_id: string; page_path: string; page_title: string; quote_exact: string | null
+    question: string; body: string; replier: string | null; email: string | null; notify_replies: boolean
+  }>(
+    `SELECT r.id, t.id AS thread_id, t.page_path, t.page_title, t.quote_exact, t.body AS question, r.body,
+            ru.display_name AS replier, u.email, u.notify_replies
+       FROM comments r
+       JOIN comments t ON t.id = r.parent_id
+       JOIN users u ON u.id = t.user_id
+       JOIN users ru ON ru.id = r.user_id
+      WHERE r.notify_pending AND r.deleted_at IS NULL AND t.user_id = $1 AND u.deleted_at IS NULL AND r.user_id <> t.user_id
+      ORDER BY t.created_at, r.created_at`,
+    [userId],
+  )
+  if (rows.length === 0) return false
+  const ids = rows.map((r) => r.id)
+  const { email, notify_replies } = rows[0]
+  let sent = false
+  if (email && notify_replies) {
+    if ((await mailQuotaLeft(db, config)) <= 0) throw new Error('今日发信额度已用完')
+    const replier = rows[0].replier ?? '作者'
+    const threads = new Set(rows.map((r) => r.thread_id)).size
+    const lines = [`${replier} 回复了你的 ${threads} 条评论：`, '']
+    for (const r of rows) {
+      lines.push(`■ ${r.page_title || r.page_path}`)
+      if (r.quote_exact) lines.push(`  原文：「${excerpt(r.quote_exact, 60)}」`)
+      lines.push(`  你：${excerpt(r.question, 300)}`)
+      lines.push(`  ${r.replier ?? '作者'}：${excerpt(r.body, 600)}`)
+      lines.push(`  ${threadUrl(config, r.page_path, r.thread_id)}`, '')
+    }
+    lines.push(
+      '——',
+      `不想再收到回复通知？打开这个链接关闭：${config.siteUrl}/api/unsubscribe?t=${encodeURIComponent(signUserId(userId, config.unsubscribeSecret))}`,
+    )
+    await sendLogged(
+      db,
+      mailer,
+      'reply',
+      { to: email, subject: `【${config.brand}】${replier} 回复了你的 ${threads} 条评论`, text: lines.join('\n') },
+      { userId },
+    )
+    sent = true
+  }
+  await db.query('UPDATE comments SET notify_pending = false WHERE id = ANY($1::uuid[])', [ids])
+  return sent
+}

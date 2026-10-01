@@ -2,8 +2,8 @@ import type { Deps } from './app.js'
 import type { Api } from './auth.js'
 import { safeEqual, verifyUserToken } from './crypto.js'
 import { fail } from './http.js'
-import { sendDigest } from './notify.js'
-import { buildThreads, SELECT_ROWS, type Row } from './comments.js'
+import { listPendingNotify, sendDigest, sendMergedReplies } from './notify.js'
+import { buildThreads, SELECT_ROWS, UUID_RE, type Row } from './comments.js'
 
 const PAGE_SIZE = 30
 
@@ -45,6 +45,31 @@ export function adminRoutes(app: Api, { db, mailer, config }: Deps) {
     const replies = ids.length ? await db.query<Row>(`${SELECT_ROWS} WHERE c.parent_id = ANY($1::uuid[])`, [ids]) : []
     const threads = buildThreads([...slice, ...replies], u).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return c.json({ threads, next: more ? threads[threads.length - 1].createdAt : null })
+  })
+
+  /** 静默回复后待合并通知的读者 */
+  app.get('/admin/pending-notify', async (c) => {
+    const u = c.get('user')
+    if (!u) return fail(c, 401, 'login_required')
+    if (!u.isAdmin) return fail(c, 403, 'forbidden')
+    const rows = await listPendingNotify(db)
+    return c.json({ users: rows.map((r) => ({ userId: r.user_id, name: r.name ?? '读者', count: r.n, notifyReplies: r.notify_replies })) })
+  })
+
+  /** 把给这位读者的静默回复合并成一封邮件发出 */
+  app.post('/admin/pending-notify/:userId/send', async (c) => {
+    const u = c.get('user')
+    if (!u) return fail(c, 401, 'login_required')
+    if (!u.isAdmin) return fail(c, 403, 'forbidden')
+    const userId = c.req.param('userId')
+    if (!UUID_RE.test(userId)) return fail(c, 404, 'not_found')
+    try {
+      const sent = await sendMergedReplies(db, mailer, config, userId)
+      return c.json({ ok: true, sent })
+    } catch (err) {
+      console.error('[mail] 合并通知发送失败', err)
+      return fail(c, 502, 'mail_failed')
+    }
   })
 
   /** 邮件里的退订链接：GET 只显示确认按钮（邮箱的链接预扫描不会误触发），POST 才真正关闭 */
