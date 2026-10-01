@@ -87,7 +87,7 @@ export async function judgeSubmission({ db, judge }: Deps, id: string): Promise<
 }
 
 /**
- * 兜底：评测中途函数被回收等原因，提交一直停在 judging。查询时发现超时就抢占并重评一次；
+ * 兜底：评测请求中途断开、函数被回收等原因，提交一直停在 judging。查询时发现超时就抢占并重评一次；
  * 次数用完则标为 system_error。返回是否发起了重评。
  */
 async function rescueStale(deps: Deps, id: string): Promise<boolean> {
@@ -100,7 +100,7 @@ async function rescueStale(deps: Deps, id: string): Promise<boolean> {
     [id, LIMITS.maxAttempts, String(LIMITS.staleSeconds)],
   )
   if (claimed.length) {
-    deps.defer(judgeSubmission(deps, id))
+    await judgeSubmission(deps, id)
     return true
   }
   await db.query(
@@ -112,7 +112,7 @@ async function rescueStale(deps: Deps, id: string): Promise<boolean> {
   return false
 }
 
-/** 提交记录只给本人看。配了评测机时异步评测：先返回 judging，前端轮询结果 */
+/** 提交记录只给本人看。配了评测机时在请求里评测并返回结论 */
 export function submissionRoutes(app: Api, deps: Deps) {
   const { db } = deps
 
@@ -140,8 +140,12 @@ export function submissionRoutes(app: Api, deps: Deps) {
        RETURNING id, problem_id, language, status, created_at`,
       [u.id, b.problemId, code, judging ? 'judging' : 'pending', judging ? 1 : 0],
     )
-    if (judging) deps.defer(judgeSubmission(deps, row.id))
-    return c.json(toPublic(row, false), 201)
+    if (!judging) return c.json(toPublic(row, false), 201)
+    // 在请求里等评测完成（通常不到 1 秒）。Vercel 会在响应后冻结函数，后台任务不可靠；
+    // 请求中途断开时这条记录停在 judging，前端轮询、服务端兜底重评
+    await judgeSubmission(deps, row.id)
+    const [done] = await db.query<Row>('SELECT id, problem_id, language, status, created_at, code, result FROM submissions WHERE id = $1', [row.id])
+    return c.json(toPublic(done, true), 201)
   })
 
   app.get('/submissions', async (c) => {

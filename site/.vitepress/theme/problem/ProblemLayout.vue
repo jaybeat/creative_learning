@@ -186,15 +186,22 @@ function submit(): void {
   requireLogin(async () => {
     if (busy.value) return
     busy.value = true
+    // 提交在请求里评测，通常一两秒返回结论
+    tab.value = 'submissions'
+    selected.value = null
+    message.value = '评测中…（编译并运行全部测试点，通常几秒内完成）'
     try {
       const s = await api.submit(problemId.value, code.value)
+      message.value = ''
       upsert(s)
-      tab.value = 'submissions'
       selected.value = s
+      // 请求中途断开等情况下仍是 judging：继续查询，服务端会兜底重评
       if (s.status === 'judging') void poll(s.id)
       else if (s.status === 'pending') message.value = '已提交。评测机还没有配置，暂时只保存代码。'
     } catch (e) {
       message.value = e instanceof ApiError ? e.message : '提交失败，请重试'
+      // 请求失败时提交可能已经入库并在评测：刷新列表看看
+      void loadSubmissions()
     } finally {
       busy.value = false
     }

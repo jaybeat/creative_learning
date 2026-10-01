@@ -17,13 +17,9 @@ export interface Deps {
   config: Config
   /** 评测机；没配置时为 null（提交只保存、「运行」不可用） */
   judge: Judge | null
-  /** 在响应之后继续执行的任务（Vercel 上是 waitUntil；本地直接让它跑完） */
-  defer: (p: Promise<unknown>) => void
 }
 
-export type DepsInput = Omit<Deps, 'judge' | 'defer'> & Partial<Pick<Deps, 'judge' | 'defer'>>
-
-const runInBackground = (p: Promise<unknown>) => void p.catch((e) => console.error('[defer]', e))
+export type DepsInput = Omit<Deps, 'judge'> & Partial<Pick<Deps, 'judge'>>
 
 export interface SessionUser {
   id: string
@@ -39,7 +35,7 @@ export type AppEnv = { Variables: { user: SessionUser | null; tokenHash: string 
 const RENEW_BELOW_DAYS = 15
 
 export function createApp(input: DepsInput) {
-  const deps: Deps = { judge: null, defer: runInBackground, ...input }
+  const deps: Deps = { judge: null, ...input }
   const { db, config } = deps
   const app = new Hono<AppEnv>().basePath('/api')
 

@@ -29,12 +29,7 @@ export async function setup(over: Partial<Config> = {}, opts: { judge?: Judge | 
     secureCookie: false,
     ...over,
   }
-  /** 响应之后继续执行的任务（异步评测）：测试里收集起来，用 settle() 等它们跑完 */
-  const pending: Promise<unknown>[] = []
-  const app = createApp({ db, mailer, config, judge: opts.judge ?? null, defer: (p) => void pending.push(p) })
-  const settle = async () => {
-    while (pending.length) await pending.shift()
-  }
+  const app = createApp({ db, mailer, config, judge: opts.judge ?? null })
 
   /** 模拟一个浏览器：记住 Cookie，写请求自动带同源 Origin */
   function client(ip = '1.1.1.1') {
@@ -98,5 +93,5 @@ export async function setup(over: Partial<Config> = {}, opts: { judge?: Judge | 
     await db.query(`UPDATE mail_log SET created_at = created_at - ($1 || ' seconds')::interval`, [String(seconds)])
   }
 
-  return { db, mailer, config, app, client, age, settle }
+  return { db, mailer, config, app, client, age }
 }

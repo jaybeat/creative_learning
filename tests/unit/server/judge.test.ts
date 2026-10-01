@@ -49,16 +49,15 @@ describe('grade', () => {
   })
 })
 
-describe('提交：异步评测', () => {
-  it('提交后立即返回 judging；评测完成后能查到通过与 x/y', async () => {
+describe('提交：评测', () => {
+  it('提交在请求里评测，直接返回结论与 x/y；之后也能查到', async () => {
     const judge = judgeFor('ch02-ex-1')
-    const { client, settle } = await setup({}, { judge })
+    const { client } = await setup({}, { judge })
     const a = client()
     await a.login('a@qq.com')
     const r = await a.post('/submissions', { problemId: 'ch02-ex-1', code: '/* CORRECT */' })
     expect(r.status).toBe(201)
-    expect(r.json.status).toBe('judging')
-    await settle()
+    expect(r.json).toMatchObject({ status: 'accepted', passed: loadTests('ch02-ex-1').length })
     const d = (await a.get(`/submissions/${r.json.id}`)).json
     const total = loadTests('ch02-ex-1').length
     expect(d).toMatchObject({ status: 'accepted', passed: total, total })
@@ -69,23 +68,21 @@ describe('提交：异步评测', () => {
   })
 
   it('答案错误：显示第一个没过的测试点（第 1 个就是题面样例 1）', async () => {
-    const { client, settle } = await setup({}, { judge: judgeFor('ch02-ex-2') })
+    const { client } = await setup({}, { judge: judgeFor('ch02-ex-2') })
     const a = client()
     await a.login('a@qq.com')
     const id = (await a.post('/submissions', { problemId: 'ch02-ex-2', code: 'int main(){}' })).json.id
-    await settle()
     const d = (await a.get(`/submissions/${id}`)).json
     expect(d.status).toBe('wrong_answer')
     expect(d.result.firstFail).toMatchObject({ index: 1, status: 'wrong_answer', input: '3 3 5 2 2 -1 0\n3 1 5 -2 2 4 1\n', actual: 'nope\n', line: 1 })
   })
 
   it('编译错误、超时', async () => {
-    const { client, settle } = await setup({}, { judge: judgeFor('ch02-ex-3') })
+    const { client } = await setup({}, { judge: judgeFor('ch02-ex-3') })
     const a = client()
     await a.login('a@qq.com')
     const ce = (await a.post('/submissions', { problemId: 'ch02-ex-3', code: 'COMPILE_ERROR' })).json.id
     const tle = (await a.post('/submissions', { problemId: 'ch02-ex-3', code: 'TLE' })).json.id
-    await settle()
     expect((await a.get(`/submissions/${ce}`)).json).toMatchObject({ status: 'compile_error', result: { compileMessage: expect.stringContaining('error') } })
     expect((await a.get(`/submissions/${tle}`)).json.status).toBe('time_limit')
   })
@@ -93,41 +90,36 @@ describe('提交：异步评测', () => {
   it('评测机连不上：system_error', async () => {
     const judge = judgeFor('ch02-ex-1')
     judge.failNext = 1
-    const { client, settle } = await setup({}, { judge })
+    const { client } = await setup({}, { judge })
     const a = client()
     await a.login('a@qq.com')
     const id = (await a.post('/submissions', { problemId: 'ch02-ex-1', code: '/* CORRECT */' })).json.id
-    await settle()
     expect((await a.get(`/submissions/${id}`)).json).toMatchObject({ status: 'system_error', result: { message: 'judge_unavailable' } })
   })
 
   it('停在 judging 超过 2 分钟：被查询时重评一次（并发查询也只重评一次）', async () => {
     const judge = judgeFor('ch02-ex-1')
-    const { client, settle, db } = await setup({}, { judge })
+    const { client, db } = await setup({}, { judge })
     const a = client()
     await a.login('a@qq.com')
     const id = (await a.post('/submissions', { problemId: 'ch02-ex-1', code: '/* CORRECT */' })).json.id
-    // 模拟函数在评测前被回收：丢掉这次评测，把行改回 judging 且时间往前挪
-    await settle()
+    // 模拟请求中途断开：把行改回 judging 且时间往前挪
     await db.query(`UPDATE submissions SET status = 'judging', result = NULL, updated_at = now() - interval '3 minutes' WHERE id = $1`, [id])
     const before = judge.calls.length
     await Promise.all([a.get(`/submissions/${id}`), a.get(`/submissions/${id}`)])
-    await settle()
     expect(judge.calls.length - before).toBe(1)
     expect((await a.get(`/submissions/${id}`)).json.status).toBe('accepted')
   })
 
   it('重评次数用完：标为 system_error，不再评测', async () => {
     const judge = judgeFor('ch02-ex-1')
-    const { client, settle, db } = await setup({}, { judge })
+    const { client, db } = await setup({}, { judge })
     const a = client()
     await a.login('a@qq.com')
     const id = (await a.post('/submissions', { problemId: 'ch02-ex-1', code: '/* CORRECT */' })).json.id
-    await settle()
     await db.query(`UPDATE submissions SET status = 'judging', attempts = 3, updated_at = now() - interval '3 minutes' WHERE id = $1`, [id])
     const before = judge.calls.length
     expect((await a.get(`/submissions/${id}`)).json.status).toBe('system_error')
-    await settle()
     expect(judge.calls.length).toBe(before)
   })
 
