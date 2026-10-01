@@ -15,7 +15,8 @@ export const LIMITS = {
   /** 幂等缓存保留时间 */
   cacheMs: 10 * 60 * 1000,
   compile: { cpu: 10e9, clock: 15e9, memory: 512 << 20, proc: 64, stderr: 64 * 1024, message: 4096 },
-  run: { cpu: 1e9, clock: 3e9, memory: 128 << 20, proc: 1, stdout: 64 * 1024, stderr: 4096 },
+  // 输出上限 256 KB：乘法题最大的正确输出约 93 KB
+  run: { cpu: 1e9, clock: 3e9, memory: 128 << 20, proc: 1, stdout: 256 * 1024, stderr: 4096 },
 }
 
 const KEY_RE = /^[A-Za-z0-9_-]{1,64}$/

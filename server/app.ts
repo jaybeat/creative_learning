@@ -8,12 +8,22 @@ import { authRoutes } from './auth.js'
 import { commentRoutes } from './comments.js'
 import { adminRoutes } from './admin.js'
 import { submissionRoutes } from './submissions.js'
+import { runRoutes } from './run.js'
+import type { Judge } from './judge.js'
 
 export interface Deps {
   db: Db
   mailer: Mailer
   config: Config
+  /** 评测机；没配置时为 null（提交只保存、「运行」不可用） */
+  judge: Judge | null
+  /** 在响应之后继续执行的任务（Vercel 上是 waitUntil；本地直接让它跑完） */
+  defer: (p: Promise<unknown>) => void
 }
+
+export type DepsInput = Omit<Deps, 'judge' | 'defer'> & Partial<Pick<Deps, 'judge' | 'defer'>>
+
+const runInBackground = (p: Promise<unknown>) => void p.catch((e) => console.error('[defer]', e))
 
 export interface SessionUser {
   id: string
@@ -28,7 +38,8 @@ export type AppEnv = { Variables: { user: SessionUser | null; tokenHash: string 
 /** 会话剩余不足这么多天时顺延到满 30 天（滑动续期） */
 const RENEW_BELOW_DAYS = 15
 
-export function createApp(deps: Deps) {
+export function createApp(input: DepsInput) {
+  const deps: Deps = { judge: null, defer: runInBackground, ...input }
   const { db, config } = deps
   const app = new Hono<AppEnv>().basePath('/api')
 
@@ -72,6 +83,7 @@ export function createApp(deps: Deps) {
   commentRoutes(app, deps)
   adminRoutes(app, deps)
   submissionRoutes(app, deps)
+  runRoutes(app, deps)
 
   app.notFound((c) => fail(c, 404, 'not_found'))
   app.onError((err, c) => {

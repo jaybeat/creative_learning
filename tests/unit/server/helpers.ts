@@ -4,6 +4,7 @@ import { pgliteDb } from '../../../server/db-pglite'
 import { memoryMailer } from '../../../server/mailer'
 import { migrate } from '../../../server/migrate'
 import { readMigrations } from '../../../server/migrations-fs'
+import type { Judge } from '../../../server/judge'
 
 export const ADMIN = 'author@example.com'
 
@@ -16,11 +17,11 @@ async function freshDb() {
     return db
   })
   const db = await shared
-  await db.query('TRUNCATE users, email_codes, sessions, comments, mail_log, submissions RESTART IDENTITY CASCADE')
+  await db.query('TRUNCATE users, email_codes, sessions, comments, mail_log, submissions, judge_log RESTART IDENTITY CASCADE')
   return db
 }
 
-export async function setup(over: Partial<Config> = {}) {
+export async function setup(over: Partial<Config> = {}, opts: { judge?: Judge | null } = {}) {
   const db = await freshDb()
   const mailer = memoryMailer()
   const config: Config = {
@@ -28,7 +29,12 @@ export async function setup(over: Partial<Config> = {}) {
     secureCookie: false,
     ...over,
   }
-  const app = createApp({ db, mailer, config })
+  /** 响应之后继续执行的任务（异步评测）：测试里收集起来，用 settle() 等它们跑完 */
+  const pending: Promise<unknown>[] = []
+  const app = createApp({ db, mailer, config, judge: opts.judge ?? null, defer: (p) => void pending.push(p) })
+  const settle = async () => {
+    while (pending.length) await pending.shift()
+  }
 
   /** 模拟一个浏览器：记住 Cookie，写请求自动带同源 Origin */
   function client(ip = '1.1.1.1') {
@@ -92,5 +98,5 @@ export async function setup(over: Partial<Config> = {}) {
     await db.query(`UPDATE mail_log SET created_at = created_at - ($1 || ' seconds')::interval`, [String(seconds)])
   }
 
-  return { db, mailer, config, app, client, age }
+  return { db, mailer, config, app, client, age, settle }
 }
