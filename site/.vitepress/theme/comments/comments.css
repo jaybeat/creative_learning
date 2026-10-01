@@ -81,6 +81,15 @@
   gap: 8px;
   margin-top: 10px;
 }
+.cl-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+  cursor: pointer;
+}
 .cl-error {
   margin: 10px 0 0;
   color: var(--vp-c-danger-1);
@@ -434,6 +443,37 @@ button.cl-quote-text:hover {
   margin: 0 0 16px;
   font-size: 24px;
   font-weight: 600;
+}
+.cl-admin-pending {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg-soft);
+}
+.cl-admin-pending h2 {
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.cl-admin-pending ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cl-admin-pending li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+.cl-notice {
+  margin: 0 0 16px;
+  color: var(--vp-c-green-1, var(--vp-c-brand-1));
+  font-size: 14px;
 }
 .cl-admin-tabs {
   display: flex;

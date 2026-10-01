@@ -12,7 +12,7 @@ export const LIMITS = {
 }
 
 const PAGE_RE = /^\/[A-Za-z0-9\-_/]{0,200}$/
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export interface Row {
   id: string
@@ -122,11 +122,13 @@ export function commentRoutes(app: Api, { db, mailer, config }: Deps) {
     const text = typeof b.body === 'string' ? b.body.trim() : ''
     if (!text || [...text].length > LIMITS.body) return fail(c, 400, 'bad_body')
 
-    const [rate] = await db.query<{ n: number }>(
-      `SELECT count(*)::int AS n FROM comments WHERE user_id = $1 AND created_at > now() - interval '1 minute'`,
-      [u.id],
-    )
-    if (rate.n >= LIMITS.perMinute) return fail(c, 429, 'comment_rate')
+    if (!u.isAdmin) {
+      const [rate] = await db.query<{ n: number }>(
+        `SELECT count(*)::int AS n FROM comments WHERE user_id = $1 AND created_at > now() - interval '1 minute'`,
+        [u.id],
+      )
+      if (rate.n >= LIMITS.perMinute) return fail(c, 429, 'comment_rate')
+    }
 
     if (b.parentId !== undefined) {
       if (typeof b.parentId !== 'string' || !UUID_RE.test(b.parentId)) return fail(c, 400, 'bad_parent')
@@ -136,11 +138,13 @@ export function commentRoutes(app: Api, { db, mailer, config }: Deps) {
       )
       if (!p || p.deleted_at || (p.hidden_at && !u.isAdmin)) return fail(c, 404, 'not_found')
       if (p.parent_id) return fail(c, 400, 'bad_parent')
+      // 管理员可以先不发邮件，之后在 /admin 合并成一封（见 sendMergedReplies）
+      const silent = u.isAdmin && b.silent === true
       const [row] = await db.query<{ id: string }>(
-        `INSERT INTO comments (user_id, parent_id, page_path, page_title, body) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [u.id, p.id, p.page_path, p.page_title, text],
+        `INSERT INTO comments (user_id, parent_id, page_path, page_title, body, notify_pending) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        [u.id, p.id, p.page_path, p.page_title, text, silent],
       )
-      await notifyReply(db, mailer, config, { threadId: p.id, replierId: u.id, replierName: u.name, body: text })
+      if (!silent) await notifyReply(db, mailer, config, { threadId: p.id, replierId: u.id, replierName: u.name, body: text })
       return c.json({ id: row.id }, 201)
     }
 
