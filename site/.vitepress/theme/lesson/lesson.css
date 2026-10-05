@@ -1,0 +1,298 @@
+/* ===== 分页（Lesson.vue） ===== */
+
+/* 分页的节：节名不占页面（读者从目录点进来，已经知道在哪一节），只留给读屏软件和评论定位 */
+.vp-doc h1.lesson-section-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 每页的页标题（页首的加粗段落标题）占原来节标题的位置，字号与 h1 相同 */
+.vp-doc .lesson-page > h3.para-title:first-child {
+  margin: 0 0 20px;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 40px;
+  letter-spacing: -0.02em;
+}
+@media (min-width: 768px) {
+  .vp-doc .lesson-page > h3.para-title:first-child {
+    font-size: 32px;
+  }
+}
+
+.vp-doc .lesson-steps {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 24px;
+}
+.vp-doc .lesson-step {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--vp-c-divider);
+}
+.vp-doc .lesson-step.done,
+.vp-doc .lesson-step.current {
+  background: var(--vp-c-brand-1);
+}
+.vp-doc .lesson-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 40px 0 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+.vp-doc .lesson-count {
+  margin-right: auto;
+  color: var(--vp-c-text-3);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+/* 「上一页」在左，页码居中靠左，「继续」在最右 */
+.vp-doc .lesson-nav .lesson-btn:first-child:not(.primary) {
+  order: -1;
+}
+
+/* 不是最后一页：隐藏页底的上一节 / 下一节（读完最后一页才算读完本节） */
+html[data-lesson-more] .VPDocFooter {
+  display: none;
+}
+
+/* ===== 按钮（翻页与练习题共用） ===== */
+.vp-doc .lesson-btn {
+  padding: 6px 18px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.6;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.vp-doc .lesson-btn:hover:not(:disabled) {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+.vp-doc .lesson-btn.primary {
+  border-color: var(--vp-c-brand-3);
+  background: var(--vp-c-brand-3);
+  color: var(--vp-c-white);
+}
+.vp-doc .lesson-btn.primary:hover:not(:disabled) {
+  border-color: var(--vp-c-brand-2);
+  background: var(--vp-c-brand-2);
+  color: var(--vp-c-white);
+}
+.vp-doc .lesson-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ===== 练习题（Quiz.vue） ===== */
+.vp-doc .quiz {
+  margin: 24px 0 40px;
+}
+.vp-doc .quiz-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 6px;
+  background: var(--vp-c-warning-soft);
+  color: var(--vp-c-warning-1);
+  font-size: 14px;
+  font-weight: 600;
+}
+/* 题目的问句写在页标题里；题干只给判断需要的信息，放在浅底卡片里 */
+.vp-doc .quiz-stem {
+  margin: 12px 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+}
+.vp-doc .quiz-stem p {
+  margin: 4px 0;
+}
+/* 题干卡片里的代码块：手机上 VitePress 默认让代码块左右顶到屏幕边（负外边距），在卡片里要收回来 */
+.vp-doc .quiz-stem div[class*='language-'] {
+  margin: 8px 0;
+  border-radius: 8px;
+}
+.vp-doc .quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 560px;
+}
+.vp-doc .quiz-option {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1.5px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg);
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.vp-doc .quiz-option:hover:not([aria-disabled='true']) {
+  border-color: var(--vp-c-brand-2);
+}
+.vp-doc .quiz-option:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+.vp-doc .quiz-option[aria-disabled='true'] {
+  cursor: default;
+}
+.vp-doc .quiz-option.picked {
+  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+}
+.vp-doc .quiz-option.right {
+  border-color: var(--vp-c-green-2);
+  background: var(--vp-c-green-soft);
+}
+.vp-doc .quiz-option.wrong {
+  border-color: var(--vp-c-red-2);
+  background: var(--vp-c-red-soft);
+}
+.vp-doc .quiz-letter {
+  flex: none;
+  min-width: 1.4em;
+  padding-right: 12px;
+  border-right: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-2);
+  font-weight: 600;
+}
+/* 多选题的字母用方框提示「可以选多个」 */
+.vp-doc .quiz-options[role='group'] .quiz-letter::before {
+  content: '☐ ';
+  font-weight: 400;
+}
+.vp-doc .quiz-options[role='group'] .picked .quiz-letter::before {
+  content: '☑ ';
+}
+.vp-doc .quiz-text {
+  min-width: 0;
+  flex: 1;
+}
+.vp-doc .quiz-why {
+  margin-top: 6px;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+}
+.vp-doc .quiz-why p {
+  margin: 4px 0 0;
+  line-height: 1.7;
+}
+.vp-doc .quiz-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.vp-doc .quiz-feedback {
+  flex-basis: 100%;
+  margin: 0;
+  font-weight: 600;
+}
+.vp-doc .is-right .quiz-feedback {
+  color: var(--vp-c-green-1);
+}
+.vp-doc .is-wrong .quiz-feedback {
+  color: var(--vp-c-red-1);
+}
+.vp-doc .quiz-explain {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--vp-c-green-2);
+  border-radius: 6px;
+  background: var(--vp-c-bg-soft);
+}
+.vp-doc .quiz-explain p {
+  margin: 4px 0;
+}
+
+/* ===== 填空题（FillQuiz.vue / QuizBlank.vue） ===== */
+.vp-doc .fill-body li {
+  margin: 10px 0;
+}
+.vp-doc .quiz-blank {
+  display: inline-block;
+  min-width: 4em;
+  margin: 0 4px;
+  padding: 1px 10px;
+  border: 1.5px dashed var(--vp-c-brand-2);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font-size: inherit;
+  line-height: 1.7;
+  text-align: center;
+  vertical-align: baseline;
+  cursor: pointer;
+}
+.vp-doc .quiz-blank.is-picked {
+  border-style: solid;
+  background: var(--vp-c-brand-soft);
+}
+.vp-doc .quiz-blank.is-filled {
+  border-style: solid;
+  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+}
+.vp-doc .quiz-blank.is-right {
+  border-style: solid;
+  border-color: var(--vp-c-green-2);
+  background: var(--vp-c-green-soft);
+  cursor: default;
+}
+.vp-doc .quiz-blank.is-wrong {
+  border-style: solid;
+  border-color: var(--vp-c-red-2);
+  background: var(--vp-c-red-soft);
+  cursor: default;
+}
+.vp-doc .quiz-blank:focus-visible,
+.vp-doc .fill-chip:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+.vp-doc .fill-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+.vp-doc .fill-chip {
+  padding: 6px 16px;
+  border: 1.5px solid var(--vp-c-divider);
+  border-radius: 999px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font-size: 15px;
+  cursor: grab;
+  transition: border-color 0.15s, background-color 0.15s, opacity 0.15s;
+}
+.vp-doc .fill-chip:hover:not(:disabled) {
+  border-color: var(--vp-c-brand-2);
+}
+.vp-doc .fill-chip.picked {
+  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+}
+.vp-doc .fill-chip.used,
+.vp-doc .fill-chip:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

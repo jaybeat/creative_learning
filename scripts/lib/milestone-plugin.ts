@@ -1,9 +1,19 @@
 import type MarkdownIt from 'markdown-it'
 import type { MdToken } from './md'
 
-/** 触发识别的首行标签：节尾里程碑卡片 / 节首问题卡片 */
+/** 触发识别的首行标签：节尾里程碑卡片 / 节首问题卡片 / 例题的题目卡片与答案卡片 */
 export const MILESTONE_START = '到这里你有了'
 export const QUESTION_START = '本节问题'
+export const PROBLEM_START = '题目'
+export const ANSWER_START = '答案'
+
+/** 首行标签 → 卡片 class（追加在 milestone 之后） */
+const CARD_CLASS: Record<string, string> = {
+  [MILESTONE_START]: '',
+  [QUESTION_START]: 'milestone-question',
+  [PROBLEM_START]: 'milestone-problem',
+  [ANSWER_START]: 'milestone-answer',
+}
 
 /** 标签 → 视觉类别。未知标签一律 note，不报错（作者以后会发明新标签）。 */
 export const LABEL_KIND: Record<string, string> = {
@@ -11,6 +21,8 @@ export const LABEL_KIND: Record<string, string> = {
   下一步: 'next',
   还没解决的: 'open',
   本节问题: 'question',
+  题目: 'problem',
+  答案: 'answer',
   练一练: 'practice',
   学到的: 'note',
   验证了: 'note',
@@ -39,15 +51,13 @@ function isLabelStart(group: MdToken[]): boolean {
   return group.length >= 3 && group[0].type === 'strong_open' && group[1].type === 'text' && group[2].type === 'strong_close'
 }
 
-type CardKind = 'milestone' | 'question'
-
-function cardKindOf(inline: MdToken): CardKind | null {
+/** 引用块第一行的标签决定它是不是卡片、是哪种卡片；返回 blockquote 的 class，不是卡片返回 null */
+function cardClassOf(inline: MdToken): string | null {
   const c = compact(inline.children ?? [])
   if (!isLabelStart(c)) return null
-  const label = c[1].content.trim()
-  if (label === MILESTONE_START) return 'milestone'
-  if (label === QUESTION_START) return 'question'
-  return null
+  const extra = CARD_CLASS[c[1].content.trim()]
+  if (extra === undefined) return null
+  return extra ? 'milestone ' + extra : 'milestone'
 }
 
 /** 按 softbreak / hardbreak 把 inline children 切成行 */
@@ -89,7 +99,8 @@ function rowsFromInline(Token: TokenCtor, inline: MdToken): MdToken[] {
 }
 
 /**
- * 卡片：blockquote 第一段以 `**到这里你有了**`（节尾里程碑）或 `**本节问题**`（节首问题）开头时，
+ * 卡片：blockquote 第一段以 `**到这里你有了**`（节尾里程碑）、`**本节问题**`（节首问题）、
+ * `**题目**` / `**答案**`（例题）开头时，
  * 把「**标签**：内容」的每一行渲染成卡片的一行（图标 + 标签 + 内容）。
  * 其他引用块原样不动。作者的 Markdown 写法不变，在普通预览器里仍是正常引用块。
  */
@@ -112,10 +123,10 @@ export function milestonePlugin(md: MarkdownIt): void {
       if (close < 0) continue
 
       const firstInline = tokens.slice(i + 1, close).find((t) => t.type === 'inline')
-      const card = firstInline ? cardKindOf(firstInline) : null
-      if (!card) continue
+      const cls = firstInline ? cardClassOf(firstInline) : null
+      if (!cls) continue
 
-      tokens[i].attrJoin('class', card === 'question' ? 'milestone milestone-question' : 'milestone')
+      tokens[i].attrJoin('class', cls)
       const inner = tokens.slice(i + 1, close)
       const rebuilt: MdToken[] = []
       for (let k = 0; k < inner.length; k++) {
