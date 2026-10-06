@@ -69,7 +69,7 @@ test('分页的节不显示节名，页标题做大标题；没分页的节照�
   const bodySize = await page.locator(pages).nth(0).locator('p').first().evaluate(fontSize)
   expect(titleSize).toBeGreaterThan(bodySize)
 
-  await page.goto('ch02/2-8')
+  await page.goto('ch02/2-10')
   await expect(page.locator('.vp-doc h1')).not.toHaveClass(/lesson-section-title/)
   expect((await page.locator('.vp-doc h1').boundingBox())!.width).toBeGreaterThan(100)
 })
@@ -167,6 +167,8 @@ test('2.5：九页，页标题依次是六个概念/操作页和三道练习；�
 })
 
 test('填空题：点选项再点空、先点空再点选项都能放；填错标红可再试；答对记住', async ({ page }) => {
+  // 本文件里步骤最多的一条（十几次点击加一次刷新）：并发跑 4 个浏览器配置时，WebKit 桌面版偶尔超过默认 30 秒
+  test.slow()
   await page.goto('ch02/2-5#p7')
   const quiz = page.locator(pages).nth(6).locator('.fill-quiz')
   const chip = (t: string) => quiz.locator('.fill-chip', { hasText: new RegExp(`^\s*${t}\s*$`) })
@@ -222,4 +224,28 @@ test('2.6：八页，每讲完一件事就给代码，最后一页只装配；�
   await expect(page.locator(pages).nth(5).locator('.quiz-badge')).toHaveText('填空')
   await expect(page.locator(pages).nth(5).locator('.quiz-blank')).toHaveCount(4)
   for (const i of [6, 7]) await expect(page.locator(pages).nth(i).locator('.quiz-badge')).toHaveText('单选')
+})
+
+test('2.7：六页，三页讲解（含格子图和增长表）加三道练习', async ({ page }) => {
+  await page.goto('ch02/2-7')
+  await expect(page.locator(pages)).toHaveCount(6)
+  await expect(page.locator('.vp-doc h1')).toHaveClass(/lesson-section-title/)
+  const titles = ['时间复杂度看什么', '插入和删除的时间复杂度', '编辑器各条指令的时间复杂度']
+  for (const [i, text] of titles.entries()) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toContainText(text)
+  await expect(page.locator(pages).nth(0).locator('.diagram')).toHaveCount(1)
+  await expect(page.locator(pages).nth(1).locator('.diagram')).toHaveCount(5) // 问题图、尾部、头部前后、一般
+  await expect(page.locator(pages).nth(1).locator('table')).toHaveCount(3) // 插入、删除各一张，五个操作汇总一张
+  await expect(page.locator(pages).nth(3).locator('.quiz-badge')).toHaveText('填空')
+  for (const i of [4, 5]) await expect(page.locator(pages).nth(i).locator('.quiz-badge')).toHaveText('单选')
+})
+
+test('2.8：九页，六页讲解加三道练习；动态数组的概念页不写C代码', async ({ page }) => {
+  await page.goto('ch02/2-8')
+  await expect(page.locator(pages)).toHaveCount(9)
+  await expect(page.locator('.vp-doc h1')).toHaveClass(/lesson-section-title/)
+  const titles = ['数组满了怎么办', '什么是动态数组', '向系统申请空间', '动态数组的定义和初始化', '动态数组的操作', '动态数组实现编辑器']
+  for (const [i, text] of titles.entries()) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toContainText(text)
+  await expect(page.locator(pages).nth(1).locator('.language-c')).toHaveCount(0)
+  await expect(page.locator(pages).nth(6).locator('.quiz-badge')).toHaveText('填空')
+  for (const i of [7, 8]) await expect(page.locator(pages).nth(i).locator('.quiz-badge')).toHaveText('单选')
 })

@@ -68,7 +68,8 @@ test.describe('长代码折叠', () => {
 test.describe('阅读进度', () => {
   test('读到页底即已读；首页继续阅读；侧栏 ✓；清除', async ({ page }) => {
     page.on('dialog', (d) => d.accept())
-    await page.goto('ch02/2-8')
+    // 2.8 分页了：页底的上一节/下一节（已读标记就挂在那里）只在最后一页出现
+    await page.goto('ch02/2-8#p9')
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     await page.waitForFunction(() => {
       const raw = localStorage.getItem('ds-book:progress')
@@ -199,7 +200,8 @@ test.describe('字号调节', () => {
 
 test.describe('键盘翻节', () => {
   test('← → 翻节，焦点在搜索框时不触发', async ({ page }) => {
-    await page.goto('ch02/2-8')
+    // 分页的节里 ← → 先翻页，所以从 2.8 的最后一页开始
+    await page.goto('ch02/2-8#p9')
     await page.keyboard.press('ArrowRight')
     await expect(page).toHaveURL(/\/ch02\/2-9$/)
     await expect(page.locator('.vp-doc h1')).toHaveText(/^2\.9/)
@@ -250,7 +252,8 @@ test.describe('标题锚点', () => {
   })
 
   test('本节问题卡片与结尾卡片', async ({ page }) => {
-    await page.goto('ch02/2-8')
+    // 改版后的节删掉了练一练，这条用还没改版、仍有练一练的 2.9
+    await page.goto('ch02/2-9')
     await expect(page.locator('blockquote.milestone-question .ms-question')).toHaveCount(1)
     await expect(page.locator('blockquote.milestone:not(.milestone-question) .ms-practice#practice')).toHaveCount(1)
   })

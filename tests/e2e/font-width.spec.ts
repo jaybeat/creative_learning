@@ -58,7 +58,7 @@ test('图示块里的字符宽度严格对齐', async ({ page }) => {
 })
 
 test('代码块内没有粗体、斜体和连字', async ({ page }) => {
-  await page.goto('ch02/2-8')
+  await page.goto('ch02/2-8#p4')
   await page.waitForSelector('.language-c code')
   const bad = await page.evaluate(() => {
     const spans = document.querySelectorAll('.vp-doc [class*="language-"] code span')

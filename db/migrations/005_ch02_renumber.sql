@@ -41,6 +41,17 @@ UPDATE comments
 SET heading_id = '2-6-p5'
 WHERE page_path = '/ch02/2-6' AND heading_id ~ '^2-6-p[0-9]+$';
 
+-- 3b. 原 2.7（顺序表的时间复杂度）节号不变，分页改写：原加粗段落
+--     p1 先数一个例子 → 第2页（插入和删除），p2 只看趋势 → 第1页，p3 五个操作 → 第2页，p4 回到编辑器 → 第3页
+UPDATE comments
+SET heading_id = CASE heading_id
+      WHEN '2-7-p1' THEN '2-7-p2'
+      WHEN '2-7-p2' THEN '2-7-p1'
+      WHEN '2-7-p3' THEN '2-7-p2'
+      WHEN '2-7-p4' THEN '2-7-p3'
+    END
+WHERE page_path = '/ch02/2-7' AND heading_id IN ('2-7-p1', '2-7-p2', '2-7-p3', '2-7-p4');
+
 -- 4. 原 2.1.1（指令）→ 2.6 第1页「编辑器要做什么」（2-6-p1）；原 2.1.3（光标、指令落到操作上）→ 2.6，跨第2–4页，heading 置空
 UPDATE comments
 SET page_path = '/ch02/2-6', heading_id = '2-6-p1'
