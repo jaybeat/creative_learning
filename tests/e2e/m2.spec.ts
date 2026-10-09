@@ -13,11 +13,11 @@ async function openSearch(page: Page) {
 }
 
 test.describe('搜索', () => {
-  // 期望值对应修订版（15 节）的节号
+  // 期望值对应修订版（17 节）的节号
   const cases: Array<[string, RegExp]> = [
-    ['头结点', /2\.11/],
+    ['头结点', /2\.13/],
     ['扩容', /2\.8/],
-    ['malloc', /2\.(8|9)/],
+    ['malloc', /2\.(8|9|1[0-2])/],
     ['值传递', /2\.5/],
   ]
   for (const [kw, expected] of cases) {
@@ -79,7 +79,7 @@ test.describe('阅读进度', () => {
     await page.goto('')
     const cont = page.locator('.continue-reading .cr-button')
     await expect(cont).toHaveText(/继续阅读：2\.8/)
-    await expect(page.locator('.book-chapters .cl-meta').filter({ hasText: '已读 1/15 节' })).toHaveCount(1)
+    await expect(page.locator('.book-chapters .cl-meta').filter({ hasText: '已读 1/17 节' })).toHaveCount(1)
 
     await page.reload()
     await expect(page.locator('.continue-reading .cr-button')).toHaveText(/继续阅读：2\.8/)
@@ -238,9 +238,9 @@ test.describe('键盘翻节', () => {
 
 test.describe('标题锚点', () => {
   test('小节标题带 # 锚点链接', async ({ page }) => {
-    await page.goto('ch02/2-9')
+    await page.goto('ch02/2-13')
     const anchor = page.locator('h2 a.header-anchor').first()
-    await expect(anchor).toHaveAttribute('href', '#2-9-1')
+    await expect(anchor).toHaveAttribute('href', '#2-13-1')
   })
 
   test('加粗段落标题进右侧大纲，锚点为纯 ASCII', async ({ page, viewport }) => {
@@ -252,8 +252,8 @@ test.describe('标题锚点', () => {
   })
 
   test('本节问题卡片与结尾卡片', async ({ page }) => {
-    // 改版后的节删掉了练一练，这条用还没改版、仍有练一练的 2.9
-    await page.goto('ch02/2-9')
+    // 改版后的节删掉了练一练，这条用还没改版、仍有练一练的 2.13
+    await page.goto('ch02/2-13')
     await expect(page.locator('blockquote.milestone-question .ms-question')).toHaveCount(1)
     await expect(page.locator('blockquote.milestone:not(.milestone-question) .ms-practice#practice')).toHaveCount(1)
   })

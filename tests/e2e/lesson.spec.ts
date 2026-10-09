@@ -69,7 +69,7 @@ test('分页的节不显示节名，页标题做大标题；没分页的节照�
   const bodySize = await page.locator(pages).nth(0).locator('p').first().evaluate(fontSize)
   expect(titleSize).toBeGreaterThan(bodySize)
 
-  await page.goto('ch02/2-10')
+  await page.goto('ch02/2-13')
   await expect(page.locator('.vp-doc h1')).not.toHaveClass(/lesson-section-title/)
   expect((await page.locator('.vp-doc h1').boundingBox())!.width).toBeGreaterThan(100)
 })

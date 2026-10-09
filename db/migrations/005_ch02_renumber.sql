@@ -3,7 +3,7 @@
 --     其中指令格式（原 2.1.1）和光标（原 2.1.3）移到 2.6「用顺序表实现编辑器」，纸上跑一遍（原 2.1.4）改写成 2.2 的例题；
 --   原 2.2（顺序表）→ 2.3「顺序存储与顺序表」；
 --   原 2.3（初始化、插入、取元素）、原 2.4（删除）合成 2.4「顺序表操作的实现」；
---   原 2.5 及以后节号不变；原 2.5、2.6 按分页改写，小节和加粗段落标题对应到新的页。
+--   原 2.5–2.9 节号不变（链表部分 2.10 以后的拆分与顺延见第 7 步）；原 2.5、2.6 按分页改写，小节和加粗段落标题对应到新的页。
 -- 评论按 page_path（/ch02/2-8）和 heading_id（2-8、2-8-1、2-8-p1）挂在节上，要跟着内容一起挪，否则会出现在错误的页面上。
 -- 分页改写后没有带编号的小节，挪进去的评论 heading_id 置空（它只是定位时的同分优先提示，置空后仍按引文定位）。
 -- 步骤顺序不能换：每一步都只挪还没被挪过的评论（先把目标位置上的原评论挪走，再挪别处的评论进来）。
@@ -75,3 +75,49 @@ WHERE page_path = '/ch02/2-1' AND heading_id = '2-1-2'
 UPDATE comments
 SET heading_id = NULL
 WHERE page_path = '/ch02/2-1' AND heading_id = '2-1-2';
+
+-- 7. 链表部分（2026-10-09）：原 2.10 拆成 2.10「链表的初始化与读取」、2.11「链表的插入」、2.12「链表的删除」；
+--    原 2.11 的删除并入 2.12，头结点成为 2.13；原 2.12–2.15 内容不变，顺延成 2.14–2.17，小节号跟着换。
+--    按节号从大到小挪，一条评论不会被挪两次。
+UPDATE comments
+SET page_path = '/ch02/2-17', heading_id = regexp_replace(heading_id, '^2-15', '2-17')
+WHERE page_path = '/ch02/2-15';
+
+UPDATE comments
+SET page_path = '/ch02/2-16', heading_id = regexp_replace(heading_id, '^2-14', '2-16')
+WHERE page_path = '/ch02/2-14';
+
+UPDATE comments
+SET page_path = '/ch02/2-15', heading_id = regexp_replace(heading_id, '^2-13', '2-15')
+WHERE page_path = '/ch02/2-13';
+
+UPDATE comments
+SET page_path = '/ch02/2-14', heading_id = regexp_replace(heading_id, '^2-12', '2-14')
+WHERE page_path = '/ch02/2-12';
+
+-- 7b. 原 2.11：2.11.3 头结点 → 2.13.1；其余（删除、验证、没有小节的）→ 2.12（分页改写，heading 置空）
+UPDATE comments
+SET page_path = '/ch02/2-13', heading_id = '2-13-1'
+WHERE page_path = '/ch02/2-11' AND heading_id = '2-11-3';
+
+UPDATE comments
+SET page_path = '/ch02/2-12', heading_id = NULL
+WHERE page_path = '/ch02/2-11';
+
+-- 7c. 2.9 分页改写，原小节 2.9.1、2.9.2 的 heading 置空；原 2.10.1（LinkList）的内容已移到 2.9
+UPDATE comments
+SET heading_id = NULL
+WHERE page_path = '/ch02/2-9';
+
+UPDATE comments
+SET page_path = '/ch02/2-9', heading_id = NULL
+WHERE page_path = '/ch02/2-10' AND heading_id = '2-10-1';
+
+-- 7d. 原 2.10.3、2.10.4（插入、验证）→ 2.11；其余留在 2.10（分页改写，heading 置空）
+UPDATE comments
+SET page_path = '/ch02/2-11', heading_id = NULL
+WHERE page_path = '/ch02/2-10' AND heading_id IN ('2-10-3', '2-10-4');
+
+UPDATE comments
+SET heading_id = NULL
+WHERE page_path = '/ch02/2-10';
