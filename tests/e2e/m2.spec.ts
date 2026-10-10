@@ -46,7 +46,14 @@ function pageWithFold(): string {
 test.describe('长代码折叠', () => {
   test('超过 40 行的 C 代码默认折叠，点击展开', async ({ page }) => {
     await page.goto(pageWithFold())
+    // 分页的节里，长代码可能在后面的页上：先翻到它所在的那一页
+    const n = await page.locator('[data-fold]').first().evaluate((el) => {
+      const pg = el.closest('.lesson-page')
+      return pg ? [...document.querySelectorAll('.lesson-page')].indexOf(pg) + 1 : 0
+    })
+    if (n > 0) await page.goto(`${pageWithFold()}#p${n}`)
     const box = page.locator('[data-fold]').first()
+    await expect(box).toBeVisible()
     await expect(box).toHaveClass(/is-folded/)
     const pre = box.locator('pre')
     const before = await pre.evaluate((el) => el.clientHeight)
@@ -238,9 +245,9 @@ test.describe('键盘翻节', () => {
 
 test.describe('标题锚点', () => {
   test('小节标题带 # 锚点链接', async ({ page }) => {
-    await page.goto('ch02/2-13')
+    await page.goto('ch02/2-16')
     const anchor = page.locator('h2 a.header-anchor').first()
-    await expect(anchor).toHaveAttribute('href', '#2-13-1')
+    await expect(anchor).toHaveAttribute('href', '#2-16-1')
   })
 
   test('加粗段落标题进右侧大纲，锚点为纯 ASCII', async ({ page, viewport }) => {
@@ -252,8 +259,8 @@ test.describe('标题锚点', () => {
   })
 
   test('本节问题卡片与结尾卡片', async ({ page }) => {
-    // 改版后的节删掉了练一练，这条用还没改版、仍有练一练的 2.13
-    await page.goto('ch02/2-13')
+    // 改版后的节删掉了练一练，这条用还没改版、仍有练一练的 2.16
+    await page.goto('ch02/2-16')
     await expect(page.locator('blockquote.milestone-question .ms-question')).toHaveCount(1)
     await expect(page.locator('blockquote.milestone:not(.milestone-question) .ms-practice#practice')).toHaveCount(1)
   })

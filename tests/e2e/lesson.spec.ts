@@ -69,7 +69,7 @@ test('分页的节不显示节名，页标题做大标题；没分页的节照�
   const bodySize = await page.locator(pages).nth(0).locator('p').first().evaluate(fontSize)
   expect(titleSize).toBeGreaterThan(bodySize)
 
-  await page.goto('ch02/2-13')
+  await page.goto('ch02/2-16')
   await expect(page.locator('.vp-doc h1')).not.toHaveClass(/lesson-section-title/)
   expect((await page.locator('.vp-doc h1').boundingBox())!.width).toBeGreaterThan(100)
 })
@@ -226,9 +226,9 @@ test('2.6：八页，每讲完一件事就给代码，最后一页只装配；�
   for (const i of [6, 7]) await expect(page.locator(pages).nth(i).locator('.quiz-badge')).toHaveText('单选')
 })
 
-test('2.7：六页，三页讲解（含格子图和增长表）加三道练习', async ({ page }) => {
+test('2.7：五页，三页讲解（含格子图和增长表）加两道练习', async ({ page }) => {
   await page.goto('ch02/2-7')
-  await expect(page.locator(pages)).toHaveCount(6)
+  await expect(page.locator(pages)).toHaveCount(5)
   await expect(page.locator('.vp-doc h1')).toHaveClass(/lesson-section-title/)
   const titles = ['时间复杂度看什么', '插入和删除的时间复杂度', '编辑器各条指令的时间复杂度']
   for (const [i, text] of titles.entries()) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toContainText(text)
@@ -236,7 +236,7 @@ test('2.7：六页，三页讲解（含格子图和增长表）加三道练习',
   await expect(page.locator(pages).nth(1).locator('.diagram')).toHaveCount(5) // 问题图、尾部、头部前后、一般
   await expect(page.locator(pages).nth(1).locator('table')).toHaveCount(3) // 插入、删除各一张，五个操作汇总一张
   await expect(page.locator(pages).nth(3).locator('.quiz-badge')).toHaveText('填空')
-  for (const i of [4, 5]) await expect(page.locator(pages).nth(i).locator('.quiz-badge')).toHaveText('单选')
+  await expect(page.locator(pages).nth(4).locator('.quiz-badge')).toHaveText('单选')
 })
 
 test('2.8：九页，六页讲解加三道练习；动态数组的概念页不写C代码', async ({ page }) => {

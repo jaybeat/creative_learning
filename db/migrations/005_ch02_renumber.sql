@@ -95,9 +95,9 @@ UPDATE comments
 SET page_path = '/ch02/2-14', heading_id = regexp_replace(heading_id, '^2-12', '2-14')
 WHERE page_path = '/ch02/2-12';
 
--- 7b. 原 2.11：2.11.3 头结点 → 2.13.1；其余（删除、验证、没有小节的）→ 2.12（分页改写，heading 置空）
+-- 7b. 原 2.11：2.11.3 头结点 → 2.13（分页改写，heading 置空）；其余（删除、验证、没有小节的）→ 2.12（heading 置空）
 UPDATE comments
-SET page_path = '/ch02/2-13', heading_id = '2-13-1'
+SET page_path = '/ch02/2-13', heading_id = NULL
 WHERE page_path = '/ch02/2-11' AND heading_id = '2-11-3';
 
 UPDATE comments
@@ -121,3 +121,20 @@ WHERE page_path = '/ch02/2-10' AND heading_id IN ('2-10-3', '2-10-4');
 UPDATE comments
 SET heading_id = NULL
 WHERE page_path = '/ch02/2-10';
+
+-- 7e. 2.14「用链表实现编辑器」分页改写（原 2.12 编辑器2.0）。原加粗段落 p1 一个预测、p2 改动 → 第2页「先预测：只改类型名」，
+--     p3 验证 → 第3页，p4 为什么能这样 → 第4页（第 7 步已把它们挪成 2-14-p1…p4）
+UPDATE comments
+SET heading_id = '2-14-p2'
+WHERE page_path = '/ch02/2-14' AND heading_id IN ('2-14-p1', '2-14-p2');
+
+-- 7f. 2.15「链表的时间复杂度」分页改写（原 2.13）。原加粗段落 p1 数什么、p2 逐个操作 → 第1页，
+--     p3 和顺序表放在一起 → 第2页，p4 回到编辑器 → 第3页（第 7 步已把它们挪成 2-15-p1…p4）
+UPDATE comments
+SET heading_id = CASE heading_id
+      WHEN '2-15-p1' THEN '2-15-p1'
+      WHEN '2-15-p2' THEN '2-15-p1'
+      WHEN '2-15-p3' THEN '2-15-p2'
+      WHEN '2-15-p4' THEN '2-15-p3'
+    END
+WHERE page_path = '/ch02/2-15' AND heading_id IN ('2-15-p1', '2-15-p2', '2-15-p3', '2-15-p4');

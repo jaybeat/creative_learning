@@ -66,7 +66,7 @@ test.describe('宽内容在各自容器内滚动', () => {
   })
 
   test('长代码不折行，在代码块内横向滚动', async ({ page }) => {
-    await page.goto('ch02/2-13')
+    await page.goto('ch02/2-16')
     const info = await page.evaluate(() => {
       const pres = [...document.querySelectorAll('.vp-doc [class*="language-"] pre')] as HTMLElement[]
       const overflowing = pres.filter((p) => p.scrollWidth > p.clientWidth)
