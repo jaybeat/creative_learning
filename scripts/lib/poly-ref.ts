@@ -32,18 +32,10 @@ export function mul(a: Poly, b: Poly): Poly {
   return r
 }
 
-/** 按题面规则输出 */
+/** 按题面规则输出：「k c1 e1 c2 e2 …」，指数从高到低，零多项式为「0」 */
 export function formatPoly(p: Poly): string {
   const terms = [...p.entries()].filter(([, c]) => c !== 0).sort((x, y) => y[0] - x[0])
-  if (terms.length === 0) return '0'
-  return terms
-    .map(([e, c], i) => {
-      const abs = Math.abs(c)
-      const body = e === 0 ? `${abs}` : `${abs === 1 ? '' : abs}${e === 1 ? 'x' : `x^${e}`}`
-      if (i === 0) return (c < 0 ? '-' : '') + body
-      return (c < 0 ? ' - ' : ' + ') + body
-    })
-    .join('')
+  return [terms.length, ...terms.map(([e, c]) => `${c} ${e}`)].join(' ')
 }
 
 /** 三问的完整解：输入全文 → 期望输出全文 */

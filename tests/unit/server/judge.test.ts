@@ -149,7 +149,7 @@ describe('运行', () => {
     const r = await a.post('/run', body({ inputs: ['3 4 5 4 1 -1 0\n', '0\n'] }))
     expect(r.status).toBe(200)
     expect(r.json.compile.ok).toBe(true)
-    expect(r.json.runs.map((x: any) => x.stdout)).toEqual(['4x^5 + 4x - 1\n', '0\n'])
+    expect(r.json.runs.map((x: any) => x.stdout)).toEqual(['3 4 5 4 1 -1 0\n', '0\n'])
     expect((await a.get('/submissions?problem=ch02-ex-1')).json.submissions).toEqual([])
   })
 

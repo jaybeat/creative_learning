@@ -21,9 +21,9 @@ describe('compareOutput', () => {
 })
 
 describe('多项式参考解', () => {
-  it('输出规则：系数 ±1、指数 0 / 1、首项负号、零多项式', () => {
-    expect(formatPoly(parsePoly('3 -1 1 1 0 1 3'))).toBe('x^3 - x + 1')
-    expect(formatPoly(parsePoly('2 -1 3 -5 0'))).toBe('-x^3 - 5')
+  it('输出规则：项数在前、指数从高到低、合并成 0 的项删掉、零多项式', () => {
+    expect(formatPoly(parsePoly('3 -1 1 1 0 1 3'))).toBe('3 1 3 -1 1 1 0')
+    expect(formatPoly(parsePoly('4 2 3 5 0 -1 3 1 1'))).toBe('3 1 3 1 1 5 0')
     expect(formatPoly(parsePoly('2 4 3 -4 3'))).toBe('0')
     expect(formatPoly(parsePoly('0'))).toBe('0')
   })

@@ -47,23 +47,9 @@ static Node *ReadPoly(void) {
 }
 
 static void PrintPoly(Node *h) {
-    if (!h->next) {
-        printf("0\n");
-        return;
-    }
-    for (Node *p = h->next; p; p = p->next) {
-        int a = p->coef < 0 ? -p->coef : p->coef;
-        if (p == h->next) {
-            if (p->coef < 0) printf("-");
-        } else {
-            printf(p->coef < 0 ? " - " : " + ");
-        }
-        if (p->exp == 0) printf("%d", a);
-        else {
-            if (a != 1) printf("%d", a);
-            if (p->exp == 1) printf("x");
-            else printf("x^%d", p->exp);
-        }
-    }
+    int k = 0;
+    for (Node *p = h->next; p; p = p->next) k++;
+    printf("%d", k);
+    for (Node *p = h->next; p; p = p->next) printf(" %d %d", p->coef, p->exp);
     printf("\n");
 }
