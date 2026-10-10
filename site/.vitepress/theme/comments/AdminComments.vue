@@ -26,14 +26,48 @@ async function load(more = false): Promise<void> {
   }
 }
 
+/** 静默回复后待合并通知的读者 */
+type Pending = { userId: string; name: string; count: number; notifyReplies: boolean }
+const pending = ref<Pending[]>([])
+const sending = ref('')
+const notice = ref('')
+
+async function loadPending(): Promise<void> {
+  if (!me.value?.isAdmin) return
+  try {
+    pending.value = (await api.pendingNotify()).users
+  } catch {
+    pending.value = []
+  }
+}
+
+async function sendPending(p: Pending): Promise<void> {
+  if (!window.confirm(`把给 ${p.name} 的 ${p.count} 条回复合并成一封邮件发出？`)) return
+  sending.value = p.userId
+  error.value = ''
+  try {
+    const r = await api.sendPendingNotify(p.userId)
+    notice.value = r.sent ? `已给 ${p.name} 发出一封合并通知` : `${p.name} 关闭了回复通知，没有发信，已清除待通知标记`
+    await loadPending()
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : '发送失败'
+  } finally {
+    sending.value = ''
+  }
+}
+
 const link = (t: Thread) => withBase(`${t.pagePath}?c=${t.id}`)
 
 onMounted(async () => {
   await loadMe()
   void load()
+  void loadPending()
 })
 watch(filter, () => void load())
-watch(me, () => void load())
+watch(me, () => {
+  void load()
+  void loadPending()
+})
 </script>
 
 <template>
@@ -45,6 +79,18 @@ watch(me, () => void load())
     </p>
     <p v-else-if="!me.isAdmin">只有作者可以查看这个页面。</p>
     <template v-else>
+      <section v-if="pending.length" class="cl-admin-pending">
+        <h2>待合并通知</h2>
+        <ul>
+          <li v-for="p in pending" :key="p.userId">
+            <span>{{ p.name }}：{{ p.count }} 条回复还没发邮件<template v-if="!p.notifyReplies">（对方关闭了通知）</template></span>
+            <button type="button" class="cl-btn cl-btn-primary" :disabled="!!sending" @click="sendPending(p)">
+              {{ sending === p.userId ? '发送中…' : p.notifyReplies ? '合并成一封发出' : '清除标记' }}
+            </button>
+          </li>
+        </ul>
+      </section>
+      <p v-if="notice" class="cl-notice">{{ notice }}</p>
       <div class="cl-admin-tabs" role="tablist">
         <button type="button" role="tab" :aria-selected="filter === 'unreplied'" :class="{ active: filter === 'unreplied' }" @click="filter = 'unreplied'">
           未回复

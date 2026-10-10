@@ -130,7 +130,8 @@ export const api = {
   comments: (page: string) => request<{ threads: Thread[] }>('GET', `/comments?page=${encodeURIComponent(page)}`),
   createThread: (t: { page: string; pageTitle: string; headingId: string | null; quote: Thread['quote']; body: string }) =>
     request<{ id: string }>('POST', '/comments', t),
-  reply: (parentId: string, body: string) => request<{ id: string }>('POST', '/comments', { parentId, body }),
+  reply: (parentId: string, body: string, silent = false) =>
+    request<{ id: string }>('POST', '/comments', silent ? { parentId, body, silent } : { parentId, body }),
   remove: (id: string) => request<{ ok: true }>('DELETE', `/comments/${id}`, {}),
   hide: (id: string, hidden: boolean) => request<{ ok: true }>('POST', `/comments/${id}/hide`, { hidden }),
   submit: (problemId: string, code: string) => request<Submission>('POST', '/submissions', { problemId, code }),
@@ -138,6 +139,9 @@ export const api = {
     request<{ submissions: Submission[] }>('GET', `/submissions?problem=${encodeURIComponent(problemId)}`),
   submission: (id: string) => request<Submission>('GET', `/submissions/${id}`),
   run: (problemId: string, code: string, inputs: string[]) => request<RunResponse>('POST', '/run', { problemId, code, inputs }),
+  pendingNotify: () =>
+    request<{ users: { userId: string; name: string; count: number; notifyReplies: boolean }[] }>('GET', '/admin/pending-notify'),
+  sendPendingNotify: (userId: string) => request<{ ok: true; sent: boolean }>('POST', `/admin/pending-notify/${userId}/send`, {}),
   adminComments: (filter: 'unreplied' | 'all', before?: string) =>
     request<{ threads: Thread[]; next: string | null }>(
       'GET',

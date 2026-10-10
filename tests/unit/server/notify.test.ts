@@ -158,3 +158,84 @@ describe('管理页评论流', () => {
     expect(p2.next).toBeNull()
   })
 })
+
+describe('静默回复与合并通知', () => {
+  it('管理员勾选静默：回复不发信，记为待通知；读者的 silent 无效', async () => {
+    const { client, mailer } = await setup()
+    const a = client()
+    await a.login('a@qq.com', '读者甲')
+    const b = client()
+    await b.login('b@qq.com', '读者乙')
+    const admin = client()
+    await admin.login(ADMIN, '作者')
+    const id = (await a.post('/comments', top)).json.id
+    const before = mailer.sent.length
+
+    expect((await admin.post('/comments', { parentId: id, body: '先不通知', silent: true })).status).toBe(201)
+    expect(mailer.sent.length).toBe(before)
+    await b.post('/comments', { parentId: id, body: '读者乙也说一句', silent: true })
+    expect(mailer.sent.length).toBe(before + 1)
+
+    expect((await a.get('/admin/pending-notify')).status).toBe(403)
+    const users = (await admin.get('/admin/pending-notify')).json.users
+    expect(users).toEqual([{ userId: expect.any(String), name: '读者甲', count: 1, notifyReplies: true }])
+  })
+
+  it('合并发送：多条回复只发一封，按评论先后列出，发完清掉标记', async () => {
+    const { client, mailer, db } = await setup()
+    const a = client()
+    await a.login('a@qq.com', '读者甲')
+    const admin = client()
+    await admin.login(ADMIN, '作者')
+    const t1 = (await a.post('/comments', { ...top, page: '/ch02/2-10', pageTitle: '2.10 链表', body: '第一条' })).json.id
+    const t2 = (await a.post('/comments', { ...top, page: '/ch02/2-2', pageTitle: '2.2 顺序表', body: '第二条' })).json.id
+    await db.query(`UPDATE comments SET created_at = created_at - interval '1 hour' WHERE id = $1`, [t1])
+    await admin.post('/comments', { parentId: t1, body: '回复一', silent: true })
+    await admin.post('/comments', { parentId: t2, body: '回复二', silent: true })
+
+    const [p] = (await admin.get('/admin/pending-notify')).json.users
+    expect(p.count).toBe(2)
+    const before = mailer.sent.length
+    expect((await a.post(`/admin/pending-notify/${p.userId}/send`)).status).toBe(403)
+    expect((await admin.post(`/admin/pending-notify/${p.userId}/send`)).json).toEqual({ ok: true, sent: true })
+    const mail = mailer.sent.slice(before)
+    expect(mail).toHaveLength(1)
+    expect(mail[0].to).toBe('a@qq.com')
+    expect(mail[0].subject).toContain('作者 回复了你的 2 条评论')
+    expect(mail[0].text.indexOf('回复一')).toBeLessThan(mail[0].text.indexOf('回复二'))
+    expect(mail[0].text).toContain('你：第一条')
+    expect(mail[0].text).toContain(`https://site.test/ch02/2-2?c=${t2}`)
+    expect(mail[0].text).toContain('https://site.test/api/unsubscribe?t=')
+
+    expect((await admin.get('/admin/pending-notify')).json.users).toEqual([])
+    expect((await admin.post(`/admin/pending-notify/${p.userId}/send`)).json.sent).toBe(false)
+    expect(mailer.sent.length).toBe(before + 1)
+  })
+
+  it('读者关了通知：不发信，只清标记', async () => {
+    const { client, mailer } = await setup()
+    const a = client()
+    await a.login('a@qq.com', '读者甲')
+    await a.patch('/me', { notifyReplies: false })
+    const admin = client()
+    await admin.login(ADMIN, '作者')
+    const id = (await a.post('/comments', top)).json.id
+    await admin.post('/comments', { parentId: id, body: '回复', silent: true })
+    const [p] = (await admin.get('/admin/pending-notify')).json.users
+    expect(p.notifyReplies).toBe(false)
+    const before = mailer.sent.length
+    expect((await admin.post(`/admin/pending-notify/${p.userId}/send`)).json.sent).toBe(false)
+    expect(mailer.sent.length).toBe(before)
+    expect((await admin.get('/admin/pending-notify')).json.users).toEqual([])
+  })
+
+  it('管理员不受每分钟 10 条的限制', async () => {
+    const { client } = await setup()
+    const a = client()
+    await a.login('a@qq.com', '读者甲')
+    const admin = client()
+    await admin.login(ADMIN, '作者')
+    const id = (await a.post('/comments', top)).json.id
+    for (let i = 0; i < 12; i++) expect((await admin.post('/comments', { parentId: id, body: `回复${i}`, silent: true })).status).toBe(201)
+  })
+})
