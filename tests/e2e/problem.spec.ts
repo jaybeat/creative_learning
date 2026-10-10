@@ -11,7 +11,7 @@ test('题面、样例、编辑器都在；代码草稿刷新后仍在', async ({
   await page.goto('ch02/ex-1')
   await expect(page.locator('.problem-doc h1')).toContainText('第一问')
   await expect(page.locator('.sample-case')).toHaveCount(4)
-  await expect(page.locator('.sample-case').first().locator('.sample-pre').first()).toHaveText('3 4 5 4 1 -1 0')
+  await expect(page.locator('.sample-case').first().locator('.sample-pre').first()).toHaveText('3 4 1 -1 0 4 5')
 
   const editor = page.locator('.cm-content')
   await expect(editor).toContainText('int main(void)')
