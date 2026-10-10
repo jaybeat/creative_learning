@@ -138,3 +138,24 @@ SET heading_id = CASE heading_id
       WHEN '2-15-p4' THEN '2-15-p3'
     END
 WHERE page_path = '/ch02/2-15' AND heading_id IN ('2-15-p1', '2-15-p2', '2-15-p3', '2-15-p4');
+
+-- 7g. 2.16「按结点操作」分页改写（原 2.14 编辑器2.1）。原小节 2.16.1 光标记哪个结点 → 第2页「给定结点，在它后面插入」，
+--     2.16.2 接口要跟着变、2.16.3 在单链表上实现 → 第3页「其他操作怎么改」，2.16.4 验证 → 第4页「编辑器2.1」（第 7 步已把它们挪成 2-16-1…4）
+UPDATE comments
+SET heading_id = CASE heading_id
+      WHEN '2-16-1' THEN '2-16-p2'
+      WHEN '2-16-2' THEN '2-16-p3'
+      WHEN '2-16-3' THEN '2-16-p3'
+      WHEN '2-16-4' THEN '2-16-p4'
+    END
+WHERE page_path = '/ch02/2-16' AND heading_id IN ('2-16-1', '2-16-2', '2-16-3', '2-16-4');
+
+-- 7h. 2.17「双向链表」分页改写（原 2.15 编辑器2.2）。原小节 2.17.1 让结点也记住前一个 → 第2页「什么是双向链表」，
+--     2.17.2 重写四个实现 → 第3页「双向链表的插入」，2.17.3 验证 → 第5页「编辑器2.2」（第 7 步已把它们挪成 2-17-1…3）
+UPDATE comments
+SET heading_id = CASE heading_id
+      WHEN '2-17-1' THEN '2-17-p2'
+      WHEN '2-17-2' THEN '2-17-p3'
+      WHEN '2-17-3' THEN '2-17-p5'
+    END
+WHERE page_path = '/ch02/2-17' AND heading_id IN ('2-17-1', '2-17-2', '2-17-3');

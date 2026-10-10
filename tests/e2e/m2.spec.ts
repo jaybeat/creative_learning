@@ -244,11 +244,7 @@ test.describe('键盘翻节', () => {
 })
 
 test.describe('标题锚点', () => {
-  test('小节标题带 # 锚点链接', async ({ page }) => {
-    await page.goto('ch02/2-16')
-    const anchor = page.locator('h2 a.header-anchor').first()
-    await expect(anchor).toHaveAttribute('href', '#2-16-1')
-  })
+  // 「小节标题带 # 锚点链接」：第1、2章都没有 ### 小节了（2.17 改版后），等后面的章有小节时再加回来
 
   test('加粗段落标题进右侧大纲，锚点为纯 ASCII', async ({ page, viewport }) => {
     await page.goto('ch02/2-8')
@@ -259,8 +255,8 @@ test.describe('标题锚点', () => {
   })
 
   test('本节问题卡片与结尾卡片', async ({ page }) => {
-    // 改版后的节删掉了练一练，这条用还没改版、仍有练一练的 2.16
-    await page.goto('ch02/2-16')
+    // 改版后的节删掉了练一练，这条用还没改版、仍有练一练的第1章
+    await page.goto('ch01/1-2')
     await expect(page.locator('blockquote.milestone-question .ms-question')).toHaveCount(1)
     await expect(page.locator('blockquote.milestone:not(.milestone-question) .ms-practice#practice')).toHaveCount(1)
   })
