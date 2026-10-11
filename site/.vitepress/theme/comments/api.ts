@@ -18,14 +18,39 @@ export interface Comment {
   hidden: boolean
 }
 
+export interface FirstFail {
+  index: number
+  status: string
+  input: string
+  expected: string
+  actual: string
+  line?: number
+  exitStatus?: number
+}
+
 export interface Submission {
   id: string
   problemId: string
   language: string
-  /** pending | judging | accepted | wrong_answer | compile_error | runtime_error | time_limit */
+  /** pending | judging | accepted | wrong_answer | compile_error | time_limit | memory_limit | runtime_error | output_limit | system_error */
   status: string
   createdAt: string
+  passed: number | null
+  total: number | null
+  /** 只有 GET /submissions/:id 返回 */
   code?: string
+  result?: {
+    tests?: { status: string; timeMs: number }[]
+    compileMessage?: string
+    firstFail?: FirstFail
+    message?: string
+  } | null
+}
+
+/** 「运行」的结果：每组输入的原始输出，比对在前端做 */
+export interface RunResponse {
+  compile: { ok: boolean; message: string }
+  runs: { status: 'ok' | 'time_limit' | 'memory_limit' | 'runtime_error' | 'output_limit'; stdout: string; timeMs: number; exitStatus: number }[]
 }
 
 export interface Thread extends Comment {
@@ -60,6 +85,12 @@ const MESSAGES: Record<string, string> = {
   bad_problem: '题目不存在',
   bad_code: '代码不能为空，最多 64 KB',
   submit_rate: '提交得太快了，歇一会儿再交',
+  bad_inputs: '测试输入太多或太长（最多 5 组，每组 16 KB）',
+  run_rate: '运行得太频繁了，歇一会儿再试',
+  judge_daily_limit: '今天的评测次数已经用完了，明天再来',
+  judge_unconfigured: '评测机还没有配置好',
+  judge_unavailable: '评测机暂时连不上，请稍后再试',
+  judge_error: '评测出错了，请稍后再试',
 }
 
 export class ApiError extends Error {
@@ -107,6 +138,7 @@ export const api = {
   submissions: (problemId: string) =>
     request<{ submissions: Submission[] }>('GET', `/submissions?problem=${encodeURIComponent(problemId)}`),
   submission: (id: string) => request<Submission>('GET', `/submissions/${id}`),
+  run: (problemId: string, code: string, inputs: string[]) => request<RunResponse>('POST', '/run', { problemId, code, inputs }),
   pendingNotify: () =>
     request<{ users: { userId: string; name: string; count: number; notifyReplies: boolean }[] }>('GET', '/admin/pending-notify'),
   sendPendingNotify: (userId: string) => request<{ ok: true; sent: boolean }>('POST', `/admin/pending-notify/${userId}/send`, {}),

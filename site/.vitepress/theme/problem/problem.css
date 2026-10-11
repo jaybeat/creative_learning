@@ -127,10 +127,16 @@
     flex: 1 1 0;
     min-height: 0;
   }
+  /* 面板最多占代码区一半：按钮行固定，内容区单独滚动 */
   .pw-panel {
     flex: 0 0 auto;
-    max-height: 40%;
+    display: flex;
+    flex-direction: column;
+    max-height: 50%;
+  }
+  .pw-body {
     overflow-y: auto;
+    min-height: 120px;
   }
 }
 
@@ -254,8 +260,50 @@
 .pw-panel {
   border-top: 1px solid var(--vp-c-divider);
 }
+.pw-actions {
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+.pw-tabs {
+  display: flex;
+  gap: 2px;
+}
+/* 手机上：第一行三个 Tab，第二行右对齐「运行」「提交」 */
+@media (max-width: 640px) {
+  .pw-tabs {
+    flex-basis: 100%;
+  }
+}
 .pw-tab {
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: var(--vp-c-text-2);
+}
+.pw-tab:hover {
+  color: var(--vp-c-text-1);
+}
+.pw-tab.active {
+  color: var(--vp-c-text-1);
+  background: var(--vp-c-default-soft);
   font-weight: 600;
+}
+.pw-run {
+  padding: 4px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-1);
+}
+.pw-run:hover {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+.pw-run:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.pw-body {
+  padding: 8px 0 4px;
+  font-size: 14px;
 }
 .pw-message,
 .pw-empty {
@@ -271,17 +319,29 @@
   margin: 0;
   padding: 0 12px 10px;
   list-style: none;
-  font-size: 14px;
 }
 .pw-list li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 0;
   border-bottom: 1px dashed var(--vp-c-divider);
 }
 .pw-list li:last-child {
   border-bottom: none;
+}
+.pw-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 6px 4px;
+  text-align: left;
+  border-radius: 4px;
+}
+.pw-item:hover {
+  background: var(--vp-c-default-soft);
+}
+.pw-count {
+  color: var(--vp-c-text-2);
+  font-family: var(--book-mono);
+  font-size: 12px;
 }
 .pw-time {
   flex: 1;
@@ -289,16 +349,225 @@
 }
 .pw-status {
   font-weight: 600;
-  color: var(--vp-c-text-2);
 }
-.pw-status.is-accepted {
+.pw-detail-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 6px;
+}
+
+/* 结论配色：通过 / 不通过 / 评测失败 / 中性 */
+.tone-good {
   color: var(--vp-c-green-1);
 }
-.pw-status.is-wrong_answer,
-.pw-status.is-compile_error,
-.pw-status.is-runtime_error,
-.pw-status.is-time_limit {
+.tone-bad {
   color: var(--vp-c-danger-1);
+}
+.tone-warn {
+  color: var(--vp-c-warning-1);
+}
+.tone-neutral {
+  color: var(--vp-c-text-2);
+}
+
+/* ---- 测试用例与运行结果 ---- */
+.run-panel,
+.verdict-view {
+  padding: 0 12px 8px;
+}
+.rp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.rp-chip {
+  padding: 2px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--vp-c-divider);
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+.rp-chip.active {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-text-1);
+  background: var(--vp-c-brand-soft);
+}
+.rp-chip.tone-good {
+  color: var(--vp-c-green-1);
+}
+.rp-chip.tone-bad {
+  color: var(--vp-c-danger-1);
+}
+.rp-add {
+  border-style: dashed;
+}
+.rp-dot {
+  margin-left: 2px;
+  color: var(--vp-c-warning-1);
+}
+.rp-x {
+  margin-left: 6px;
+  color: var(--vp-c-text-3);
+}
+.rp-x:hover {
+  color: var(--vp-c-danger-1);
+}
+.rp-label {
+  display: block;
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--vp-c-text-2);
+}
+.rp-input,
+.rp-expected {
+  display: block;
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  background: var(--vp-code-block-bg);
+  font-family: var(--book-mono);
+  font-variant-ligatures: none;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--vp-c-text-1);
+}
+.rp-input {
+  resize: vertical;
+  min-height: 3.6em;
+}
+.rp-input:focus {
+  outline: none;
+  border-color: var(--vp-c-brand-1);
+}
+.rp-note {
+  margin: 4px 0 8px;
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+}
+.rp-error {
+  margin: 4px 0 8px;
+  color: var(--vp-c-danger-1);
+}
+
+/* ---- 结论与对比 ---- */
+.vv-top {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.vv-status {
+  font-size: 18px;
+  font-weight: 700;
+}
+.vv-count {
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+}
+.vv-cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.vv-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: currentColor;
+  opacity: 0.85;
+}
+.vv-hint {
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+.vv-reason {
+  margin: -4px 0 8px;
+  font-size: 12px;
+  color: var(--vp-c-text-3);
+  font-family: var(--book-mono);
+}
+.vv-fail-title {
+  margin: 8px 0 6px;
+  font-weight: 600;
+}
+.vv-exit {
+  font-weight: 400;
+  color: var(--vp-c-text-2);
+}
+.vv-compile {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--vp-code-block-bg);
+  font-family: var(--book-mono);
+  font-variant-ligatures: none;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--vp-c-text-1);
+}
+.diff-view {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.diff-view.no-expected {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 640px) {
+  .diff-view,
+  .diff-view.no-expected {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.dv-col {
+  min-width: 0;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.dv-head {
+  display: flex;
+  white-space: nowrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--vp-c-text-2);
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+.dv-note {
+  color: var(--vp-c-danger-1);
+}
+.dv-pre {
+  margin: 0;
+  padding: 6px 8px;
+  max-height: 240px;
+  overflow: auto;
+  background: var(--vp-code-block-bg);
+  font-family: var(--book-mono);
+  font-variant-ligatures: none;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre;
+  color: var(--vp-c-text-1);
+}
+.dv-line.is-diff {
+  background: var(--vp-c-danger-soft);
+}
+.dv-missing {
+  color: var(--vp-c-danger-1);
+  font-family: var(--vp-font-family-base);
 }
 
 /* ---- 编辑器 ---- */
