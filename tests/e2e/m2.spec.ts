@@ -13,7 +13,7 @@ async function openSearch(page: Page) {
 }
 
 test.describe('搜索', () => {
-  // 期望值对应修订版（17 节）的节号
+  // 期望值对应改版后（20 节）的节号
   const cases: Array<[string, RegExp]> = [
     ['头结点', /2\.13/],
     ['扩容', /2\.8/],
@@ -86,7 +86,7 @@ test.describe('阅读进度', () => {
     await page.goto('')
     const cont = page.locator('.continue-reading .cr-button')
     await expect(cont).toHaveText(/继续阅读：2\.8/)
-    await expect(page.locator('.book-chapters .cl-meta').filter({ hasText: '已读 1/17 节' })).toHaveCount(1)
+    await expect(page.locator('.book-chapters .cl-meta').filter({ hasText: '已读 1/20 节' })).toHaveCount(1)
 
     await page.reload()
     await expect(page.locator('.continue-reading .cr-button')).toHaveText(/继续阅读：2\.8/)
