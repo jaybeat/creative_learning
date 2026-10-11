@@ -6,6 +6,7 @@ import xref from './generated/xref.json'
 import xrefOptions from './generated/xref-options.json'
 import { fenceKindPlugin, foldPlugin, wideTablePlugin } from '../../scripts/lib/md-plugins'
 import { milestonePlugin } from '../../scripts/lib/milestone-plugin'
+import { lessonPlugin } from '../../scripts/lib/lesson-plugin'
 import { formatUnresolved, xrefPlugin, type Unresolved } from '../../scripts/lib/xref-plugin'
 import { slugify } from '../../scripts/lib/slug'
 import { tokenize } from '../../scripts/lib/search-tokenize'
@@ -48,7 +49,7 @@ export default defineConfig({
     theme: { light: 'github-light', dark: 'github-dark' },
     anchor: { slugify },
     config(md) {
-      md.use(fenceKindPlugin).use(foldPlugin).use(wideTablePlugin).use(milestonePlugin)
+      md.use(fenceKindPlugin).use(foldPlugin).use(wideTablePlugin).use(milestonePlugin).use(lessonPlugin)
       md.use(xrefPlugin, {
         xref,
         versionsByChapter: xrefOptions.versionsByChapter,

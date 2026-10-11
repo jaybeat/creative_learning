@@ -2,12 +2,15 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from '@playwright/test'
+import { scanChapters } from '../../scripts/build-font'
 
 /**
  * HANDOFF M1 验收：在 diagram 块的字体环境下，这些字符各重复 20 次的渲染宽度两两相等；中文恰为 2 倍。
  * 中文样本取子集里实际存在的第一个全宽字符（书稿代码块里未必出现「中」字；不在子集里的字会回退到系统字体）。
+ * 窄字符同理：只测书稿里用到的（字体按书稿裁剪，书里不用的图示字符不在子集里）。
  */
-const NARROW = ['a', '─', '│', '┼', '╱', '►', '▼', '▲', '◄', '●']
+const USED = scanChapters()
+const NARROW = ['a', '─', '│', '┼', '╱', '►', '▼', '▲', '◄', '●'].filter((ch) => USED.has(ch))
 const TOLERANCE = 0.5
 const ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const fontMeta = JSON.parse(fs.readFileSync(path.join(ROOT, 'site/.vitepress/generated/font.json'), 'utf8')) as {
@@ -58,7 +61,7 @@ test('图示块里的字符宽度严格对齐', async ({ page }) => {
 })
 
 test('代码块内没有粗体、斜体和连字', async ({ page }) => {
-  await page.goto('ch02/2-8')
+  await page.goto('ch02/2-8#p4')
   await page.waitForSelector('.language-c code')
   const bad = await page.evaluate(() => {
     const spans = document.querySelectorAll('.vp-doc [class*="language-"] code span')

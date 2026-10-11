@@ -8,10 +8,15 @@ import HomeHero from './components/HomeHero.vue'
 import AdminComments from './comments/AdminComments.vue'
 import ProblemLayout from './problem/ProblemLayout.vue'
 import SampleCase from './problem/SampleCase.vue'
+import Lesson from './lesson/Lesson.vue'
+import Quiz from './lesson/Quiz.vue'
+import FillQuiz from './lesson/FillQuiz.vue'
+import QuizBlank from './lesson/QuizBlank.vue'
 import '../generated/font.css'
 import './custom.css'
 import './comments/comments.css'
 import './problem/problem.css'
+import './lesson/lesson.css'
 
 export default {
   extends: DefaultTheme,
@@ -24,5 +29,10 @@ export default {
     // 题目页：frontmatter.layout: problem 时由默认主题的 VPContent 渲染这个组件
     app.component('problem', ProblemLayout)
     app.component('SampleCase', SampleCase)
+    // 节内分页与练习题：由 lesson-plugin 从 `<!-- 分页 -->`、`::: quiz` 生成
+    app.component('Lesson', Lesson)
+    app.component('Quiz', Quiz)
+    app.component('FillQuiz', FillQuiz)
+    app.component('QuizBlank', QuizBlank)
   },
 } satisfies Theme

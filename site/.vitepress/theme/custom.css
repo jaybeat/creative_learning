@@ -143,6 +143,19 @@ html {
   border-left-color: var(--vp-c-warning-1);
   background: var(--vp-c-warning-soft);
 }
+/* 例题：题目卡片与练习题的题干卡片一致（浅底细边框），答案卡片用虚线框 */
+.vp-doc blockquote.milestone.milestone-problem {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+}
+.vp-doc blockquote.milestone.milestone-answer {
+  border: 1.5px dashed var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+}
+.vp-doc .ms-problem .ms-icon::before { content: '?'; color: var(--vp-c-brand-1); }
+.vp-doc .ms-answer .ms-icon::before { content: '✓'; color: var(--vp-c-green-1); }
 
 /* 独占一行的加粗段落提升成的小标题：比默认 h3 收敛，接近「加粗段落」的观感 */
 .vp-doc h3.para-title {
