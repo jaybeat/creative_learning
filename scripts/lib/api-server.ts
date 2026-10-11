@@ -10,6 +10,7 @@ import { pgliteDb } from '../../server/db-pglite.js'
 import { memoryMailer } from '../../server/mailer.js'
 import { migrate } from '../../server/migrate.js'
 import { readMigrations } from '../../server/migrations-fs.js'
+import { judgeFromEnv } from '../../server/judge.js'
 import { ROOT } from './paths.js'
 
 export const API_PORT = Number(process.env.API_PORT) || 8787
@@ -27,9 +28,11 @@ export async function startApiDev(opts: { dataDir?: string; port?: number; siteU
     INSECURE_COOKIE: '1',
   })
   const mailer = memoryMailer(true)
-  const app = createApp({ db, mailer, config })
+  // 评测机：环境变量里有 JUDGE_URL 与 JUDGE_SECRET 就连真的评测机，否则「运行」不可用、提交只保存
+  const judge = judgeFromEnv(process.env)
+  const app = createApp({ db, mailer, config, judge })
   const port = opts.port ?? API_PORT
   const server = serve({ fetch: app.fetch, port })
-  console.log(`[api] 本地 API http://localhost:${port}/api（管理员邮箱：${config.adminEmails.join(', ')}；验证码打印在终端）`)
+  console.log(`[api] 本地 API http://localhost:${port}/api（管理员邮箱：${config.adminEmails.join(', ')}；验证码打印在终端；评测机：${judge ? process.env.JUDGE_URL : '未配置'}）`)
   return { app, db, mailer, server }
 }

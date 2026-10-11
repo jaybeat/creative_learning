@@ -4,6 +4,7 @@ import { pgliteDb } from '../../../server/db-pglite'
 import { memoryMailer } from '../../../server/mailer'
 import { migrate } from '../../../server/migrate'
 import { readMigrations } from '../../../server/migrations-fs'
+import type { Judge } from '../../../server/judge'
 
 export const ADMIN = 'author@example.com'
 
@@ -16,11 +17,11 @@ async function freshDb() {
     return db
   })
   const db = await shared
-  await db.query('TRUNCATE users, email_codes, sessions, comments, mail_log, submissions RESTART IDENTITY CASCADE')
+  await db.query('TRUNCATE users, email_codes, sessions, comments, mail_log, submissions, judge_log RESTART IDENTITY CASCADE')
   return db
 }
 
-export async function setup(over: Partial<Config> = {}) {
+export async function setup(over: Partial<Config> = {}, opts: { judge?: Judge | null } = {}) {
   const db = await freshDb()
   const mailer = memoryMailer()
   const config: Config = {
@@ -28,7 +29,7 @@ export async function setup(over: Partial<Config> = {}) {
     secureCookie: false,
     ...over,
   }
-  const app = createApp({ db, mailer, config })
+  const app = createApp({ db, mailer, config, judge: opts.judge ?? null })
 
   /** 模拟一个浏览器：记住 Cookie，写请求自动带同源 Origin */
   function client(ip = '1.1.1.1') {

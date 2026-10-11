@@ -1,0 +1,20 @@
+[Unit]
+Description=Judge gateway (HMAC-verified entry, port 8443)
+After=network.target go-judge.service
+Requires=go-judge.service
+
+[Service]
+# 密钥文件只有 root 可读；systemd 以 root 读取后再切换到临时用户运行
+EnvironmentFile=/opt/judge/.env
+ExecStart=/usr/bin/node /opt/judge/gateway.mjs
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+MemoryMax=256M
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
