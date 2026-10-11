@@ -13,11 +13,11 @@ async function openSearch(page: Page) {
 }
 
 test.describe('搜索', () => {
-  // 期望值对应修订版（15 节）的节号
+  // 期望值对应修订版（17 节）的节号
   const cases: Array<[string, RegExp]> = [
-    ['头结点', /2\.11/],
+    ['头结点', /2\.13/],
     ['扩容', /2\.8/],
-    ['malloc', /2\.(8|9)/],
+    ['malloc', /2\.(8|9|1[0-2])/],
     ['值传递', /2\.5/],
   ]
   for (const [kw, expected] of cases) {
@@ -46,7 +46,14 @@ function pageWithFold(): string {
 test.describe('长代码折叠', () => {
   test('超过 40 行的 C 代码默认折叠，点击展开', async ({ page }) => {
     await page.goto(pageWithFold())
+    // 分页的节里，长代码可能在后面的页上：先翻到它所在的那一页
+    const n = await page.locator('[data-fold]').first().evaluate((el) => {
+      const pg = el.closest('.lesson-page')
+      return pg ? [...document.querySelectorAll('.lesson-page')].indexOf(pg) + 1 : 0
+    })
+    if (n > 0) await page.goto(`${pageWithFold()}#p${n}`)
     const box = page.locator('[data-fold]').first()
+    await expect(box).toBeVisible()
     await expect(box).toHaveClass(/is-folded/)
     const pre = box.locator('pre')
     const before = await pre.evaluate((el) => el.clientHeight)
@@ -68,7 +75,8 @@ test.describe('长代码折叠', () => {
 test.describe('阅读进度', () => {
   test('读到页底即已读；首页继续阅读；侧栏 ✓；清除', async ({ page }) => {
     page.on('dialog', (d) => d.accept())
-    await page.goto('ch02/2-8')
+    // 2.8 分页了：页底的上一节/下一节（已读标记就挂在那里）只在最后一页出现
+    await page.goto('ch02/2-8#p9')
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     await page.waitForFunction(() => {
       const raw = localStorage.getItem('ds-book:progress')
@@ -78,7 +86,7 @@ test.describe('阅读进度', () => {
     await page.goto('')
     const cont = page.locator('.continue-reading .cr-button')
     await expect(cont).toHaveText(/继续阅读：2\.8/)
-    await expect(page.locator('.book-chapters .cl-meta').filter({ hasText: '已读 1/15 节' })).toHaveCount(1)
+    await expect(page.locator('.book-chapters .cl-meta').filter({ hasText: '已读 1/17 节' })).toHaveCount(1)
 
     await page.reload()
     await expect(page.locator('.continue-reading .cr-button')).toHaveText(/继续阅读：2\.8/)
@@ -199,7 +207,8 @@ test.describe('字号调节', () => {
 
 test.describe('键盘翻节', () => {
   test('← → 翻节，焦点在搜索框时不触发', async ({ page }) => {
-    await page.goto('ch02/2-8')
+    // 分页的节里 ← → 先翻页，所以从 2.8 的最后一页开始
+    await page.goto('ch02/2-8#p9')
     await page.keyboard.press('ArrowRight')
     await expect(page).toHaveURL(/\/ch02\/2-9$/)
     await expect(page.locator('.vp-doc h1')).toHaveText(/^2\.9/)
@@ -235,11 +244,7 @@ test.describe('键盘翻节', () => {
 })
 
 test.describe('标题锚点', () => {
-  test('小节标题带 # 锚点链接', async ({ page }) => {
-    await page.goto('ch02/2-9')
-    const anchor = page.locator('h2 a.header-anchor').first()
-    await expect(anchor).toHaveAttribute('href', '#2-9-1')
-  })
+  // 「小节标题带 # 锚点链接」：第1、2章都没有 ### 小节了（2.17 改版后），等后面的章有小节时再加回来
 
   test('加粗段落标题进右侧大纲，锚点为纯 ASCII', async ({ page, viewport }) => {
     await page.goto('ch02/2-8')
@@ -250,7 +255,8 @@ test.describe('标题锚点', () => {
   })
 
   test('本节问题卡片与结尾卡片', async ({ page }) => {
-    await page.goto('ch02/2-8')
+    // 改版后的节删掉了练一练，这条用还没改版、仍有练一练的第1章
+    await page.goto('ch01/1-2')
     await expect(page.locator('blockquote.milestone-question .ms-question')).toHaveCount(1)
     await expect(page.locator('blockquote.milestone:not(.milestone-question) .ms-practice#practice')).toHaveCount(1)
   })

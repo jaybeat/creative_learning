@@ -76,6 +76,31 @@ describe('节首问题卡片与练一练', () => {
   })
 })
 
+describe('例题的题目卡片与答案卡片', () => {
+  const problem = ['> **题目**：下面两样东西，能不能看成线性表？', '> 手机里的通话记录。', '> 一个家族的家谱。', ''].join('\n')
+  const answer = '> **答案**：通话记录可以；家谱不能。\n'
+
+  test('题目 → 题目卡片；没有标签的行照常成行', () => {
+    const html = md.render(problem)
+    expect(html).toMatch(/^<blockquote class="milestone milestone-problem">/)
+    expect(html).toContain('<span class="ms-label">题目</span><div class="ms-body">下面两样东西')
+    expect(html.match(/<div class="ms-row ms-plain">/g)).toHaveLength(2)
+  })
+
+  test('答案 → 答案卡片', () => {
+    const html = md.render(answer)
+    expect(html).toMatch(/^<blockquote class="milestone milestone-answer">/)
+    expect(html).toContain('<div class="ms-row ms-answer">')
+  })
+
+  test('和问题卡片、节尾卡片同页互不影响', () => {
+    const html = md.render('> **本节问题**：问？\n\n' + problem + '\n分析。\n\n' + answer + '\n> **到这里你有了**：有了。\n')
+    for (const cls of ['milestone milestone-question', 'milestone milestone-problem', 'milestone milestone-answer', 'milestone']) {
+      expect(html.match(new RegExp(`<blockquote class="${cls}">`, 'g'))).toHaveLength(1)
+    }
+  })
+})
+
 describe('不受影响的引用块', () => {
   test('普通引用块原样', () => {
     expect(md.render('> 只是引用\n')).toBe('<blockquote>\n<p>只是引用</p>\n</blockquote>\n')
