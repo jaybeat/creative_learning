@@ -5,6 +5,9 @@ import Layout from './Layout.vue'
 import ChapterList from './components/ChapterList.vue'
 import ChapterIndex from './components/ChapterIndex.vue'
 import HomeHero from './components/HomeHero.vue'
+import RailYard from './components/RailYard.vue'
+import StackFigure from './components/StackFigure.vue'
+import LinkStackFigure from './components/LinkStackFigure.vue'
 import AdminComments from './comments/AdminComments.vue'
 import ProblemLayout from './problem/ProblemLayout.vue'
 import SampleCase from './problem/SampleCase.vue'
@@ -26,6 +29,10 @@ export default {
     app.component('ChapterIndex', ChapterIndex)
     app.component('HomeHero', HomeHero)
     app.component('AdminComments', AdminComments)
+    // 书稿里的图示组件（第3章栈）
+    app.component('RailYard', RailYard)
+    app.component('StackFigure', StackFigure)
+    app.component('LinkStackFigure', LinkStackFigure)
     // 题目页：frontmatter.layout: problem 时由默认主题的 VPContent 渲染这个组件
     app.component('problem', ProblemLayout)
     app.component('SampleCase', SampleCase)

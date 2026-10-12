@@ -705,3 +705,16 @@ html[data-font-size='l'] {
     animation: none !important;
   }
 }
+
+/* 书稿里并排放的两张图示（第3章：调度站对照栈示意图） */
+.figure-pair {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 16px 32px;
+  margin: 16px 0;
+}
+.figure-pair > * {
+  margin: 0;
+}
