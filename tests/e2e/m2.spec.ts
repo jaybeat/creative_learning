@@ -17,7 +17,8 @@ test.describe('搜索', () => {
   const cases: Array<[string, RegExp]> = [
     ['头结点', /2\.13/],
     ['扩容', /2\.8/],
-    ['malloc', /2\.(8|9|1[0-2])/],
+    // 第3章链栈的 Push 也讲 malloc
+    ['malloc', /2\.(8|9|1[0-2])|3\.4/],
     ['值传递', /2\.5/],
   ]
   for (const [kw, expected] of cases) {
@@ -236,10 +237,14 @@ test.describe('键盘翻节', () => {
     await page.keyboard.press('ArrowLeft')
     await page.waitForTimeout(300)
     await expect(page).toHaveURL(new RegExp(firstLink.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
+    // 最后一节可能分页：先翻到它的最后一页，再按 →
     await page.goto(lastLink.replace(/^\//, ''))
+    const pages = await page.locator('.lesson-page').count()
+    const lastPage = pages > 1 ? `${lastLink}#p${pages}` : lastLink
+    await page.goto(lastPage.replace(/^\//, ''))
     await page.keyboard.press('ArrowRight')
     await page.waitForTimeout(300)
-    await expect(page).toHaveURL(new RegExp(lastLink.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
+    await expect(page).toHaveURL(new RegExp(lastPage.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
   })
 })
 
