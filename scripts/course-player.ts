@@ -6,11 +6,12 @@
 // 3. 播放器：画面完全由时间 t 决定（render(t)），不用 CSS 过渡。网页里 t 跟着音频走；
 //    以后导出视频时，逐帧调用 window.__seek(t) 截图，再和配音合成即可。
 //
-// 输出 docs/course/player/<id>/ 下三个页面和 audio/ 目录，画面与分镜墙共用帧文件：
-//   index.html   工作台版（<id>.desk.frames.ts，scripts/lib/desk.ts）
-//   sticker.html 贴纸版（<id>.sticker.frames.ts，scripts/lib/sticker.ts，页面上可切色系）
-//   classic.html 原版线框（<id>.frames.ts）
-// 三套帧文件逐拍对应，配音和时间轴只算一次。加 --style desk|sticker|classic 只写其中一个页面。
+// 输出 docs/course/player/<id>/index.html（质感版，主推：<id>.clean.frames.ts，scripts/lib/clean.ts）和 audio/ 目录。
+// 备份风格只在显式指定时生成，写到 player/<id>/backup/（页面加 <base href="../">，音频路径照用）：
+//   --style desk    工作台版（<id>.desk.frames.ts，scripts/lib/desk.ts）
+//   --style sticker 贴纸版（<id>.sticker.frames.ts，scripts/lib/sticker.ts，页面上可切色系）
+//   --style classic 原版线框（<id>.frames.ts）
+// 各套帧文件逐拍对应，配音和时间轴只算一次；原版帧文件始终提供练习题来源、读音表和帧位基准。
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -20,13 +21,15 @@ import { pathToFileURL } from 'node:url'
 import { ROOT, md, parseScript, assemble, FRAME_CSS, type Beat, type Card, type Frame, type Screen } from './lib/course'
 import { stickerCss } from './lib/sticker'
 import { deskCss } from './lib/desk'
+import { cleanCss, CLEAN_SHELL_CSS } from './lib/clean'
 import { PALETTES, DEFAULT_PALETTE } from './lib/palettes'
 
-type Style = 'desk' | 'sticker' | 'classic'
+type Style = 'desk' | 'sticker' | 'classic' | 'clean'
 const STYLES: { style: Style; page: string; frames: string; label: string }[] = [
-  { style: 'desk', page: 'index.html', frames: '.desk.frames.ts', label: '工作台' },
-  { style: 'sticker', page: 'sticker.html', frames: '.sticker.frames.ts', label: '贴纸' },
-  { style: 'classic', page: 'classic.html', frames: '.frames.ts', label: '原版' },
+  { style: 'clean', page: 'index.html', frames: '.clean.frames.ts', label: '质感' },
+  { style: 'desk', page: 'backup/desk.html', frames: '.desk.frames.ts', label: '工作台' },
+  { style: 'sticker', page: 'backup/sticker.html', frames: '.sticker.frames.ts', label: '贴纸' },
+  { style: 'classic', page: 'backup/classic.html', frames: '.frames.ts', label: '原版' },
 ]
 
 // 配音引擎：fish（默认，s2.1-pro + 社区音色"科普"）或 edge（云希，离线兜底）
@@ -232,12 +235,12 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
   }
   const json = JSON.stringify(data).replace(/</g, '\\u003c')
   return `<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${style === 'clean' ? '' : '<base href="../">'}
 <title>${title}</title>
-<style>${FRAME_CSS}${PLAYER_CSS}${style === 'classic' ? '' : themeCss + SHELL_CSS}</style></head>
-<body class="player${style === 'classic' ? '' : ' themed st-' + style}">
+<style>${FRAME_CSS}${PLAYER_CSS}${style === 'classic' ? '' : themeCss + SHELL_CSS}${style === 'clean' ? CLEAN_SHELL_CSS : ''}</style></head>
+<body class="player${style === 'classic' ? '' : ' themed st-' + style}${style === 'clean' ? ' th-clean' : ''}">
 <main>
-  <div class="bar"><span id="scr"></span><nav class="sty">${STYLES.map((s) => `<a href="${s.page}"${s.style === style ? ' class="on"' : ''}>${s.label}</a>`).join('')}</nav><span id="clock"></span></div>
+  <div class="bar"><span id="scr"></span><span id="clock"></span></div>
   <div id="prog"></div>
   <div class="wrap" id="wrap">
     <div class="stage" id="stage"></div>
@@ -265,7 +268,6 @@ body{margin:0;background:#eceae4;font:14px/1.5 "Microsoft YaHei","PingFang SC",s
 main{max-width:980px;margin:0 auto;padding:16px}
 .bar{display:flex;justify-content:space-between;font-size:14px;color:#555;margin-bottom:6px}
 #scr{font-weight:700;color:#222}
-.sty{display:flex;gap:12px}.sty a{color:#1971c2;font-size:13px}.sty a.on{color:#222;font-weight:700;text-decoration:none}
 #prog{display:flex;gap:3px;margin-bottom:10px}
 .seg{height:7px;background:#d5d2ca;border-radius:4px;position:relative;cursor:pointer;overflow:hidden}
 .seg i{position:absolute;left:0;top:0;bottom:0;background:#1971c2}
@@ -322,10 +324,6 @@ body.st-sticker{--sf:"StickerSans","Microsoft YaHei",sans-serif;--tf:"StickerSan
 .themed #scr{font-family:var(--tf);font-size:16px;color:var(--ink)}
 .st-desk #scr{display:inline-block;background:var(--tape);padding:2px 12px;border:1.5px solid var(--ink);box-shadow:2px 3px 0 var(--shadow);transform:rotate(-1deg)}
 .st-sticker #scr{font-weight:900}.st-sticker #scr::before{content:"";display:inline-block;width:9px;height:9px;margin-right:8px;background:var(--acc);vertical-align:1px}
-.sty{display:flex;gap:6px}
-.sty a{font-size:13px;padding:2px 12px;border-radius:14px;color:var(--mute);text-decoration:none;background:var(--paper)}
-.st-desk .sty a{border:1.5px solid var(--ink);color:var(--ink)}.st-desk .sty a.on{background:var(--tape)}
-.st-sticker .sty a{box-shadow:0 1px 3px rgb(0 0 0/.12)}.st-sticker .sty a.on{background:var(--tile);color:var(--tile-ink)}
 .themed .seg{background:var(--off)}.themed .seg i{background:var(--acc)}
 .st-desk .wrap{background:var(--bg);border:2px solid var(--ink);border-radius:10px;box-shadow:5px 6px 0 var(--shadow)}
 .st-sticker .wrap{background:var(--bg);border:6px solid var(--paper);border-radius:16px;box-shadow:0 1px 1px rgb(0 0 0/.06),0 12px 28px -10px rgb(0 0 0/.3)}
@@ -569,7 +567,8 @@ async function main() {
   const skipTts = process.argv.includes('--no-tts')
   const { title, screens } = parseScript(path.join(ROOT, 'docs/course', `${id}.md`))
   const si = process.argv.indexOf('--style')
-  const only = si >= 0 ? process.argv[si + 1] : undefined
+  // 不指定风格时只生成质感版；备份风格要显式写 --style
+  const only = si >= 0 ? process.argv[si + 1] : 'clean'
   if (only && !STYLES.some((s) => s.style === only)) throw new Error(`没有风格 ${only}，可选：${STYLES.map((s) => s.style).join(' ')}`)
   type Mod = { frames: Frame[]; quizSource?: { file: string; section: string }; say?: Record<number, string> }
   const load = async (frames: string) => (await import(pathToFileURL(path.join(ROOT, 'docs/course/storyboard', `${id}${frames}`)).href)) as Mod
@@ -599,10 +598,11 @@ async function main() {
   const strip = (h: string) => h.replace(/<[^>]*>/g, '')
   const more = screens.flatMap((s) => s.beats.map((b) => b.text)).join('') + title + screens.map((s) => s.name).join('') +
     quizzes.map((q) => strip(q.stem + q.explain + q.options.map((o) => o.html + o.why).join(''))).join('') +
-    '第屏练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕色系工作台贴纸原版由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
+    '第屏练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
   for (const p of pages) {
     const htmls = p.cards.map((c) => c.html)
-    const themeCss = p.style === 'desk' ? (await deskCss(htmls, more)).css : p.style === 'sticker' ? (await stickerCss(htmls, DEFAULT_PALETTE, more)).css : ''
+    const themeCss = p.style === 'desk' ? (await deskCss(htmls, more)).css : p.style === 'sticker' ? (await stickerCss(htmls, DEFAULT_PALETTE, more)).css : p.style === 'clean' ? (await cleanCss(htmls, more)).css : ''
+    fs.mkdirSync(path.dirname(path.join(outDir, p.page)), { recursive: true })
     fs.writeFileSync(path.join(outDir, p.page), render(id, title, screens, p.cards, tl, quizzes, p.style, themeCss))
   }
   const speak = tl.steps.reduce((a, s) => a + (s.k === 'beat' ? s.dur : 0), 0)

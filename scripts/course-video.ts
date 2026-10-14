@@ -1,5 +1,5 @@
-// 把动画播放器导出成视频：npx tsx scripts/course-video.ts 2-1 [--style desk|sticker|classic]
-// 风格默认 desk（player/<id>/index.html）；sticker 读 sticker.html，classic 读 classic.html。
+// 把动画播放器导出成视频：npx tsx scripts/course-video.ts 2-1 [--style desk|sticker|classic|clean]
+// 风格默认 clean（质感版，player/<id>/index.html）；备份风格 desk/sticker/classic 读 player/<id>/backup/<风格>.html。
 // 先运行 scripts/course-player.ts 生成播放器和配音。
 //
 // 不录屏：Playwright 打开播放器，逐帧调用 window.__seek(t) 画出那一刻，截图后通过管道交给 ffmpeg 编码；
@@ -99,8 +99,8 @@ function ffmpeg(args: string[], cwd?: string) {
 async function main() {
   const id = process.argv.slice(2).find((a, i, all) => !a.startsWith('--') && all[i - 1] !== '--style') ?? '2-1'
   const si = process.argv.indexOf('--style')
-  const style = si >= 0 ? process.argv[si + 1] : 'desk'
-  const PAGES: Record<string, string> = { desk: 'index.html', sticker: 'sticker.html', classic: 'classic.html' }
+  const style = si >= 0 ? process.argv[si + 1] : 'clean'
+  const PAGES: Record<string, string> = { clean: 'index.html', desk: 'backup/desk.html', sticker: 'backup/sticker.html', classic: 'backup/classic.html' }
   if (!PAGES[style]) throw new Error(`没有风格 ${style}，可选：${Object.keys(PAGES).join(' ')}`)
   const playerDir = path.join(ROOT, 'docs/course/player', id)
   const playerFile = path.join(playerDir, PAGES[style])

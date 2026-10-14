@@ -112,7 +112,7 @@ export const frames: Frame[] = [
   { beat: 11, html: at(200, 60, editor('cat', { cursor: 2, cls: 'sm dim' })) + at(200, 150, cells(['c', 'a', 't'], { arrows: true, cls: ['new', 'new', 'new'] })) },
   { beat: 12, html: at(200, 60, editor('cat', { cursor: 2, cls: 'sm dim' })) + at(200, 150, cells(['c', 'a', 't'], { arrows: true })) + at(420, 158, tag('线性表', 'new big')) },
   { beat: 13, html: at(150, 120, card('<div class="goal">🎯 目标：用 C 亲手做出编辑器的第一版<br><b>编辑器1.0</b></div>', 'new', 'width:340px')) },
-  { beat: 15, html: at(140, 150, editor('cat', { cursor: 2, cls: 'big' })) + at(400, 140, `<div class="gear new">⚙<div>程序</div></div>`) },
+  { beat: 16, html: at(140, 150, editor('cat', { cursor: 2, cls: 'big' })) + at(400, 140, `<div class="gear new">⚙<div>程序</div></div>`) },
   { beat: 17, html: at(130, 90, qcard({ show: 1, cls: 'big', hi: 0 })) },
   { beat: 18, html: at(130, 90, qcard({ show: 2, cls: 'big', hi: 1 })) },
   { beat: 19, html: at(130, 90, qcard({ show: 3, cls: 'big', hi: 2 })) },

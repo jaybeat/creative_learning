@@ -150,7 +150,7 @@ export const frames: Frame[] = [
     html: darkTitle('编辑器 1.0', '目标：用 C 亲手做出编辑器的第一版'),
   },
   {
-    beat: 15,
+    beat: 16,
     pic: '切回纸面。编辑器旁一个"程序"齿轮转起来；手写"程序在背后干活"，箭头指向齿轮',
     html: at(140, 150, editor('cat', { cursor: 2, cls: 'big' })) + at(400, 140, `<div class="gear new">⚙<div>程序</div></div>`) + at(430, 240, ink('程序在背后干活', { to: [418, 196] })),
   },

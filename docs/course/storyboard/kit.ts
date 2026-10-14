@@ -23,6 +23,7 @@ type CellOpt = {
   top?: string[] // 格子上方的标签
   cls?: string[] // 每个格子的额外 class（new / hl / dim）
   arrows?: boolean // 格子之间画箭头
+  mem?: boolean // 存储画法（顺序表）：共边连续格子；质感层里不带 mem 的格子画成分开的方块（逻辑画法）
   size?: number
 }
 /** 一排格子 */
@@ -33,7 +34,7 @@ export function cells(items: string[], o: CellOpt = {}) {
     const idx = o.idx?.[i] !== undefined ? `<span class="ci">${o.idx[i]}</span>` : ''
     return `<div class="cell ${o.cls?.[i] ?? ''}" style="width:${s}px;height:${s}px">${top}${v}${idx}</div>`
   })
-  return `<div class="cells ${o.arrows ? 'gap' : ''}">${parts.join(o.arrows ? '<span class="arr">→</span>' : '')}</div>`
+  return `<div class="cells ${o.arrows ? 'gap' : ''}${o.mem ? ' mem' : ''}">${parts.join(o.arrows ? '<span class="arr">→</span>' : '')}</div>`
 }
 
 export const Q = ['程序要记住这一行字的什么？', '要对它做哪些事？', '怎么把它放进内存？']
@@ -360,3 +361,60 @@ function ddesk() {
 /** 一整帧：纸墙 + 桌面 + 内容 + 步骤标签。字幕不画在帧里（分镜墙和播放器各自叠字幕层） */
 export const dframe = (step: string, body: string, seed = 1) =>
   `<svg class="dk" viewBox="0 0 640 360" width="640" height="360"><rect width="640" height="360" ${paint({ fill: 'bg', stroke: 'none' })}/>${ddesk()}${body}${dstep(step, seed)}</svg>`
+
+// ───────── 质感层重排版元素（只在 <id>.clean.frames.ts 里用，样式在 scripts/lib/clean.ts） ─────────
+// Gauth 式：发丝框、胶囊、类别色标签、虚线占位。帧里不写色值。
+
+/** 标题上方的小标签（"问题 1 · …""练习 1 · 多选"） */
+export const ckick = (s: string, cls = '') => `<span class="c-kick ${cls}">${s}</span>`
+/** 宋体屏标题（对比页的开关可以切成黑体） */
+export const ctitle = (s: string) => `<div class="c-title">${s}</div>`
+/** 胶囊：一袋没有先后的东西里的一个；mono 用于字符元素，off 是错的（变灰加划线） */
+export const cchip = (s: string, cls = '') => `<span class="c-chip ${cls}">${s}</span>`
+/** 类别色标签：c1 蓝、c2 绿 */
+export const clabel = (s: string, c: 'c1' | 'c2' = 'c1') => `<span class="c-label ${c}">${s}</span>`
+/** 小徽章（"长度 3"） */
+export const cbadge = (s: string, cls = '') => `<span class="c-badge ${cls}">${s}</span>`
+/** 虚线占位：讲到之前先留好的空位 */
+export const cslot = (s: string, cls = '') => `<span class="c-slot ${cls}">${s}</span>`
+/** 定义表：rows 是 [行名, 内容]；open 是展开那一行的下标，展开行内容写在 body 里 */
+export function ctable(rows: [string, string][], o: { open?: number; body?: string; w?: number; cls?: Record<number, string> } = {}) {
+  const r = rows.map(([name, sum], i) => {
+    const c = o.cls?.[i] ?? ''
+    if (i === o.open) return `<div class="c-row open ${c}"><div class="rn">${name}</div>${o.body ?? ''}</div>`
+    return `<div class="c-row ${c}"><span class="rn">${name}</span>${sum ? `<span class="rs">${sum}</span>` : ''}</div>`
+  })
+  return `<div class="c-tbl" style="width:${o.w ?? 560}px">${r.join('')}</div>`
+}
+/** 练习选项行："字母 | 内容" */
+export const copt = (letter: string, s: string, cls = '') => `<div class="c-opt ${cls}"><b>${letter}</b>${s}</div>`
+/**
+ * 场景图"屏幕拼贴"（封面屏左边）：上面一条浏览器搜索栏，下面左边聊天、右边文件，各有一个单行输入框。
+ * 直接按 280×160 排版，不缩放，字号都是 12px 真字号。reveal 时三个输入框带 new，播放器逐个点亮。
+ */
+export function cscreen(o: { reveal?: boolean } = {}) {
+  const n = o.reveal ? ' new' : ''
+  const cur = '<span class="cur">|</span>'
+  return `<div class="c-scr">
+<div class="bar"><i></i><i></i><i></i></div>
+<div class="ui${n}" style="left:12px;top:22px"><div class="in" style="width:180px">🔍 搜索${cur}</div></div>
+<div class="ui pane" style="left:12px;top:52px;width:124px;height:100px">
+  <div class="ui hd" style="left:8px;top:3px">聊天</div>
+  <div class="ui bub" style="left:8px;top:24px">几点见？</div><div class="ui bub me" style="left:70px;top:48px">八点</div>
+  <div class="ui${n}" style="left:6px;top:72px"><div class="in" style="width:110px">说点什么…${cur}</div></div>
+</div>
+<div class="ui pane" style="left:144px;top:52px;width:124px;height:100px">
+  <div class="ui hd" style="left:8px;top:3px">文件</div>
+  <div class="ui doc" style="left:48px;top:22px"></div>
+  <div class="ui${n}" style="left:4px;top:72px"><div class="in sq" style="width:116px">新建文本文档${cur}.txt</div></div>
+</div>
+</div>`
+}
+/** 封面标题区（只用在封面屏）：居中的小字、宋体课程标题，sub 是"一个想法"副标题 */
+export const ccover = (kick: string, title: string, sub = '', subCls = '') =>
+  `<div class="c-cover"><span class="c-kick">${kick}</span><div class="c-title">${title}</div>${sub ? `<div class="c-sub ${subCls}">${sub}</div>` : ''}</div>`
+/** 历史条：一排小编辑器，每个是 [文字, 光标位置] */
+export const chist = (states: [string, number][], cls = '') =>
+  `<div class="c-hist">${states.map(([s, c]) => editor(s, { cursor: c, cls: `sm ${cls}` })).join('')}</div>`
+/** 挂在场景上的问题胶囊：编号 + 问题 */
+export const cqpill = (n: number, s: string, cls = '') => `<span class="c-qp ${cls}"><b>${n}</b>${s}</span>`
