@@ -1,0 +1,342 @@
+/* ===== 章首页：课程地图（components/ChapterMap.vue） =====
+   质感层的四条原理（docs/course/visual-spec.md "质感层"）：字黑线淡；层级靠字体不靠框；颜色只做标签、不填色块；留白统一。
+   色值全部来自 --cl-*（generated/brand.css，来源 scripts/lib/clean-tokens.ts），这里不写色值。 */
+
+.chapter-map-page {
+  --vp-c-bg: var(--cl-page);
+  --vp-nav-bg-color: var(--cl-page);
+}
+.chapter-map-page .VPContent {
+  background: var(--cl-page);
+}
+
+.cmap {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  gap: 40px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 40px 32px 96px;
+  color: var(--cl-ink);
+}
+
+/* ---- 左栏：各章 ---- */
+.cmap-chapters {
+  position: sticky;
+  top: calc(var(--vp-nav-height) + 24px);
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cmap-ch {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--cl-ink);
+  text-decoration: none;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.cmap-ch:hover {
+  background: var(--cl-paper);
+  border-color: var(--cl-line);
+}
+.cmap-ch.is-current {
+  background: var(--cl-c1-soft);
+  border-color: var(--cl-c1-line);
+}
+.cmap-ch-kick {
+  font-size: 12px;
+  color: var(--cl-mute);
+}
+.cmap-ch-name {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--cl-ink-strong);
+}
+.cmap-ch.is-current .cmap-ch-name {
+  color: var(--cl-c1);
+}
+.cmap-ch-meta {
+  font-size: 12px;
+  color: var(--cl-faint);
+  font-variant-numeric: tabular-nums;
+}
+/* 问题胶囊：课程里整课的问题线索都用它（kit.ts 的 cqpill） */
+.cmap-pill {
+  margin: 2px 0;
+  padding: 1px 10px;
+  border: 1px solid var(--cl-line-soft);
+  border-radius: 999px;
+  background: var(--cl-paper);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--cl-mute);
+}
+.cmap-ch.is-current .cmap-pill {
+  border-color: var(--cl-c1-line);
+  color: var(--cl-c1);
+}
+
+/* ---- 右栏：本章卡片 ---- */
+.cmap-card {
+  padding: 28px 32px;
+  border: 1px solid var(--cl-line);
+  border-radius: 16px;
+  background: var(--cl-paper);
+}
+.cmap-kick {
+  margin: 0;
+  font-size: 13px;
+  color: var(--cl-mute);
+}
+.cmap-title {
+  margin: 6px 0 18px;
+  font-family: var(--cl-serif);
+  font-size: 28px;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  color: var(--cl-ink-strong);
+}
+.cmap-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cmap-track {
+  display: block;
+  width: 220px;
+  max-width: 50%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--cl-track);
+  overflow: hidden;
+}
+.cmap-track > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--cl-ok);
+}
+.cmap-progress-text {
+  font-size: 13px;
+  color: var(--cl-mute);
+  font-variant-numeric: tabular-nums;
+}
+.cmap-card .ci-actions {
+  margin: 22px 0 0;
+}
+.cmap-card .cr-button {
+  display: inline-block;
+  padding: 10px 24px;
+  border-radius: 999px;
+  background: var(--cl-ink-strong);
+  color: var(--cl-paper);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.cmap-card .cr-button:hover {
+  opacity: 0.86;
+}
+
+/* ---- 本章引子（页面正文）：默认只露开头几行，向下渐隐 ---- */
+.cmap-intro {
+  margin: 24px 0 0;
+  padding: 0 4px;
+}
+.cmap-intro .vp-doc {
+  max-height: 9.5em;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+.cmap-intro.is-open .vp-doc {
+  max-height: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.cmap-intro .vp-doc h1 {
+  display: none; /* 章标题已经在卡片里 */
+}
+.cmap-intro .vp-doc > div > p:first-of-type {
+  margin-top: 0;
+}
+.cmap-intro-toggle {
+  margin-top: 4px;
+  padding: 3px 14px;
+  border: 1px solid var(--cl-line);
+  border-radius: 999px;
+  background: var(--cl-paper);
+  font-size: 13px;
+  color: var(--cl-mute);
+}
+.cmap-intro-toggle:hover {
+  color: var(--cl-ink);
+  border-color: var(--cl-line-cell);
+}
+
+/* ---- 节列表：竖线串起节号，不锁定 ---- */
+.cmap-h {
+  display: flex;
+  align-items: center;
+  margin: 36px 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cl-mute);
+}
+.cmap-tag {
+  margin-right: 10px;
+  padding: 1px 10px;
+  border-radius: 999px;
+  background: var(--cl-warm-soft);
+  color: var(--cl-warm);
+  font-size: 12px;
+}
+.cmap-path {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cmap-path > li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  margin: 0;
+  padding: 4px 16px 4px 10px;
+  border-radius: 12px;
+}
+/* 竖线穿过节号的中心（左内边距 10 + 节号宽 50 / 2） */
+.cmap-path > li::before {
+  content: '';
+  position: absolute;
+  left: 35px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--cl-line);
+}
+.cmap-path > li:first-child::before {
+  top: 50%;
+}
+.cmap-path > li:last-child::before {
+  bottom: 50%;
+}
+.cmap-path > li:only-child::before {
+  display: none;
+}
+.cmap-path a {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 8px 0;
+  color: var(--cl-ink);
+  text-decoration: none;
+}
+.cmap-dot {
+  position: relative;
+  flex: none;
+  width: 50px;
+  height: 26px;
+  border: 1px solid var(--cl-line-cell);
+  border-radius: 999px;
+  background: var(--cl-paper);
+  font-family: var(--book-mono);
+  font-size: 12px;
+  line-height: 24px;
+  text-align: center;
+  color: var(--cl-mute);
+}
+.cmap-name {
+  font-size: 15px;
+  line-height: 1.5;
+}
+.cmap-path a:hover .cmap-name {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--cl-line-cell);
+}
+.cmap-path > li.is-read .cmap-dot {
+  border-color: var(--cl-ok);
+  color: var(--cl-ok);
+}
+.cmap-path > li.is-read .cmap-name {
+  color: var(--cl-mute);
+}
+.cmap-path > li.is-current {
+  background: var(--cl-c1-soft);
+}
+.cmap-path > li.is-current .cmap-dot {
+  border-color: var(--cl-c1-line);
+  color: var(--cl-c1);
+}
+.cmap-path > li.is-current .cmap-name {
+  font-weight: 600;
+  color: var(--cl-c1);
+}
+.cmap-path .video-mark {
+  flex: none;
+  padding: 1px 10px;
+  border-radius: 999px;
+  background: var(--cl-c2-soft);
+  color: var(--cl-c2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cmap-path .read-mark {
+  flex: none;
+  width: 16px;
+  text-align: center;
+  color: var(--cl-ok);
+}
+
+/* ---- 窄屏：左栏变成顶部横向滑动的章标签 ---- */
+@media (max-width: 768px) {
+  .cmap {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 16px 16px 72px;
+  }
+  .cmap-chapters {
+    position: static;
+    flex-direction: row;
+    gap: 8px;
+    margin: 0 -16px;
+    padding: 0 16px 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .cmap-chapters::-webkit-scrollbar {
+    display: none;
+  }
+  .cmap-ch {
+    flex: none;
+    padding: 10px 14px;
+    border-color: var(--cl-line);
+    background: var(--cl-paper);
+  }
+  .cmap-ch .cmap-pill {
+    display: none;
+  }
+  .cmap-card {
+    padding: 20px;
+  }
+  .cmap-title {
+    font-size: 22px;
+  }
+  .cmap-path > li {
+    padding-right: 10px;
+  }
+}

@@ -37,7 +37,8 @@ test.describe('375px 视口无页面级横向滚动', () => {
   for (const link of links) {
     test(`页面 ${link}`, async ({ page }) => {
       await page.goto(rel(link))
-      await page.waitForSelector('.vp-doc')
+      // 章首页是课程地图，没有引子的章不渲染 .vp-doc，所以等内容区
+      await page.waitForSelector('.VPContent')
       const { scrollWidth, clientWidth } = await page.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,
         clientWidth: document.documentElement.clientWidth,

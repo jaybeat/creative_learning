@@ -92,10 +92,15 @@ test.describe('阅读进度', () => {
     await page.reload()
     await expect(page.locator('.continue-reading .cr-button')).toHaveText(/继续阅读：2\.8/)
 
+    // 章首页是课程地图（没有全书侧栏）：节列表上打 ✓、卡片上"继续"、左栏本章"已学 1/20"
     await page.goto('ch02/')
-    await expect(page.locator('.VPSidebar a.link.is-read[href*="2-8"]')).toHaveCount(1)
     await expect(page.locator('.ci-list li.is-read')).toHaveCount(1)
     await expect(page.locator('.chapter-index .cr-button')).toHaveText(/继续阅读：2\.8/)
+    await expect(page.locator('.cmap-ch.is-current .cmap-ch-meta')).toHaveText('已学 1/20')
+
+    // 节页的全书侧栏照常打 ✓（回到 2.8 本身，不改动"最近阅读"）
+    await page.goto('ch02/2-8')
+    await expect(page.locator('.VPSidebar a.link.is-read[href*="2-8"]')).toHaveCount(1)
 
     await page.goto('')
     await page.locator('.continue-reading .cr-button').click()
@@ -138,8 +143,9 @@ test.describe('阅读进度', () => {
     await page.reload()
     await expect(page.locator('.continue-reading .cr-button')).toHaveText('开始阅读')
     await page.goto('ch02/')
-    await expect(page.locator('.VPSidebar a.link.is-read')).toHaveCount(0)
     await expect(page.locator('.ci-list li.is-read')).toHaveCount(0)
+    await page.goto('ch02/2-9')
+    await expect(page.locator('.VPSidebar a.link.is-read')).toHaveCount(0)
     await page.evaluate(() => localStorage.removeItem('ds-book:progress'))
   })
 

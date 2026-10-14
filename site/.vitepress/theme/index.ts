@@ -3,7 +3,7 @@ import type { Theme } from 'vitepress'
 import DefaultTheme from 'vitepress/theme-without-fonts'
 import Layout from './Layout.vue'
 import ChapterList from './components/ChapterList.vue'
-import ChapterIndex from './components/ChapterIndex.vue'
+import ChapterMap from './components/ChapterMap.vue'
 import HomeHero from './components/HomeHero.vue'
 import RailYard from './components/RailYard.vue'
 import StackFigure from './components/StackFigure.vue'
@@ -16,7 +16,9 @@ import Quiz from './lesson/Quiz.vue'
 import FillQuiz from './lesson/FillQuiz.vue'
 import QuizBlank from './lesson/QuizBlank.vue'
 import '../generated/font.css'
+import '../generated/brand.css'
 import './custom.css'
+import './chapter-map.css'
 import './comments/comments.css'
 import './problem/problem.css'
 import './lesson/lesson.css'
@@ -26,7 +28,8 @@ export default {
   Layout,
   enhanceApp({ app }) {
     app.component('ChapterList', ChapterList)
-    app.component('ChapterIndex', ChapterIndex)
+    // 章首页：frontmatter.layout: chapter 时由默认主题的 VPContent 渲染课程地图
+    app.component('chapter', ChapterMap)
     app.component('HomeHero', HomeHero)
     app.component('AdminComments', AdminComments)
     // 书稿里的图示组件（第3章栈）

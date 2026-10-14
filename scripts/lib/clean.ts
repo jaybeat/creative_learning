@@ -12,6 +12,7 @@ import path from 'node:path'
 import subsetFont from 'subset-font'
 import { ROOT } from './course'
 import { visibleText } from './sketch'
+import { MONO, SANS, SERIF, TOKENS } from './clean-tokens'
 
 const FONTS = {
   serif: { file: 'tools/fonts/NotoSerifSC-wght.ttf', note: '思源宋体 Noto Serif SC 可变字重（OFL，tools/fonts/OFL-NotoSerifSC.txt）' },
@@ -19,32 +20,8 @@ const FONTS = {
   mono: { file: 'tools/fonts/SarasaFixedSC-Regular.ttf', note: '更纱等宽 Sarasa Fixed SC（OFL，tools/fonts/LICENSE-Sarasa.txt）' },
 }
 
-/** 色值只在这里。--ink-x 是对比页"正文颜色"开关切到纯黑时用的 */
-export const TOKENS: Record<string, string> = {
-  '--page': '#faf8f4', // 页面暖奶油
-  '--stage': '#fdfdfd', // 舞台
-  '--paper': '#ffffff', // 卡片、格子里面
-  '--ink-strong': '#0a0a0a', // 标题
-  '--ink': '#1f1f1f', // 正文
-  '--mute': '#5f5f5f', // 注释
-  '--faint': '#8a8a8a', // 下标、箭头
-  '--line': '#e0dfe2', // 卡片、行
-  '--line-soft': '#ececec', // 胶囊
-  '--line-cell': '#cfcfd3', // 格子、编辑器：数据结构的主图形，比卡片深一档
-  '--dash': '#d4d4d4', // 虚线占位
-  '--c1-soft': '#e4ecf6', '--c1': '#0e3061', '--c1-line': '#b9c9e2', // 蓝标签 / 正在讲的
-  '--c2-soft': '#e5f5f2', '--c2': '#0f6e5a', // 绿标签
-  '--warm-soft': '#fbebe3', '--warm': '#97412a', // 练习、问题小标签
-  '--ok': '#1d8a66', // 勾
-  '--off': '#9b9b9b', // 错：变灰加划线
-  '--caret': '#2f6bd8', // 编辑器光标
-  '--btn': '#ececee',
-  '--track': '#e9e5da', // 播放器进度条底轨（Gauth 的米色）
-}
-
-export const SERIF = `"CleanSerif","Songti SC","SimSun",serif`
-export const SANS = `"CleanSans","Microsoft YaHei","PingFang SC",sans-serif`
-export const MONO = `"CleanMono",Consolas,monospace`
+// 色值和字体栈在 clean-tokens.ts（网站外壳也用它们）
+export { MONO, SANS, SERIF, TOKENS }
 
 /** 字体子集 + 令牌 + 质感层样式。more 是页面上另外要显示的文字（也进字体子集） */
 export async function cleanCss(htmls: string[], more = ''): Promise<{ css: string; info: string }> {

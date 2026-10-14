@@ -87,7 +87,13 @@ export function runBuildContent(): void {
       }
     } else {
       fm.chapterIndex = true
-      fm.outline = false // 章首页只有一个「本章目录」标题，右栏大纲没有意义
+      // 课程地图版式（theme/components/ChapterMap.vue）：左栏各章、右栏本章节列表，自己画，不用全书侧栏和右栏大纲
+      fm.layout = 'chapter'
+      fm.sidebar = false
+      fm.aside = false
+      fm.outline = false
+      fm.pageClass = 'chapter-map-page'
+      fm.hasIntro = p.chapter.intro.trim() !== '' // 没有引子的章，地图上不放"本章引子"
       fm.srcLine = p.chapter.introStartLine - 1
     }
     fm.prev = p.prev

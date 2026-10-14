@@ -98,10 +98,10 @@ describe('加粗段落标题', () => {
 })
 
 describe('renderChapterIndex', () => {
-  test('无引言时只有章标题与目录组件', () => {
+  test('无引言时只有章标题', () => {
     const html = renderChapterIndex(ch02, { title: '第2章 线性表', chapter: 2, chapterIndex: true, prev: false, next: { text: '2.1 问题', link: '/ch02/2-1' } })
     expect(html).toContain('# 第2章 线性表')
-    expect(html).toContain('<ChapterIndex chapter="ch02" />')
+    expect(html).not.toContain('<ChapterIndex')
     expect(html).not.toContain('- [')
   })
 

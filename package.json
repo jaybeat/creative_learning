@@ -7,7 +7,8 @@
   "scripts": {
     "build:font": "tsx scripts/build-font.ts",
     "build:content": "tsx scripts/build-content.ts",
-    "build": "npm run build:font && npm run build:content && vitepress build site",
+    "build:brand": "tsx scripts/build-brand.ts",
+    "build": "npm run build:font && npm run build:content && npm run build:brand && vitepress build site",
     "dev": "tsx scripts/dev.ts",
     "preview": "vitepress preview site --port 4173",
     "test": "vitest run",

@@ -166,12 +166,11 @@ export function renderSectionPage(section: Section, fm: Record<string, Frontmatt
 }
 
 /**
- * 章首页：章标题 + 引言（若有）+ <ChapterIndex> 组件（本章目录、已读标记、开始/继续阅读）。
- * 组件在 SSR 时就渲染出完整目录；已读标记与「继续阅读」挂载后才出现。
+ * 章首页：章标题 + 引言（若有）。页面版式是课程地图（frontmatter.layout: chapter → theme/components/ChapterMap.vue），
+ * 左栏各章、右栏本章卡片 + 节列表，这里的正文作为"本章引子"放在卡片下面。
  */
 export function renderChapterIndex(chapter: Chapter, fm: Record<string, FrontmatterValue>): string {
   const parts: string[] = [renderFrontmatter(fm), `# 第${chapter.number}章 ${chapter.title}`, '']
   if (chapter.intro.trim()) parts.push(chapter.intro.trim(), '')
-  parts.push(`<ChapterIndex chapter="${chapter.slug}" />`)
   return parts.join('\n') + '\n'
 }
