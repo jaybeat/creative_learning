@@ -4,7 +4,8 @@
 // 加 --sketch 输出手绘版 <id>.sketch.html（scripts/lib/sketch.ts），加 --board 输出白板版 <id>.board.html（scripts/lib/board.ts），
 // --board2 / --board2-xiaolai 输出按 docs/course/visual-spec.md 修订的白板版（中文分别用漫黑、小赖），
 // --paper 读 <id>.paper.frames.ts 输出纸面版 <id>.paper.html（scripts/lib/paper.ts），
-// --sticker 读 <id>.sticker.frames.ts 输出贴纸版 <id>.sticker.html（scripts/lib/sticker.ts，--palette p0|p1|p3|n1|z1|m2 选默认色系），原分镜墙不受影响。
+// --sticker 读 <id>.sticker.frames.ts 输出贴纸版 <id>.sticker.html（scripts/lib/sticker.ts，--palette p0|p1|p3|n1|z1|m2 选默认色系），
+// --desk 读 <id>.desk.frames.ts 输出工作台版 <id>.desk.html（scripts/lib/desk.ts，色系 w1）。原分镜墙不受影响。
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -12,6 +13,7 @@ import { sketchTheme } from './lib/sketch'
 import { boardTheme } from './lib/board'
 import { paperTheme } from './lib/paper'
 import { stickerTheme } from './lib/sticker'
+import { deskTheme } from './lib/desk'
 import { ROOT, CHARS_PER_SEC, esc, md, parseScript, assemble, secs, fmt, FRAME_CSS, type Screen, type Card, type Frame } from './lib/course'
 
 function render(id: string, title: string, screens: Screen[], cards: Card[], theme?: { css: string; script: string }, framesName = `${id}.frames.ts`): string {
@@ -94,14 +96,14 @@ code{font-family:Consolas,monospace;background:#f1f1f1;padding:0 3px;border-radi
 
 async function main() {
   const args = process.argv.slice(2)
-  const VARIANTS = ['board2-xiaolai', 'board2', 'board', 'sketch', 'paper', 'sticker']
+  const VARIANTS = ['board2-xiaolai', 'board2', 'board', 'sketch', 'paper', 'sticker', 'desk']
   const variant = VARIANTS.find((v) => args.includes('--' + v)) ?? ''
   const pi = args.indexOf('--palette')
   const palette = pi >= 0 ? args[pi + 1] : undefined
   const id = args.find((a, i) => !a.startsWith('--') && i !== pi + 1) ?? '2-1'
   const scriptFile = path.join(ROOT, 'docs/course', `${id}.md`)
   // 纸面版、贴纸版有自己的帧文件，和原帧逐拍对应
-  const framesFile = path.join(ROOT, 'docs/course/storyboard', `${id}${variant === 'paper' || variant === 'sticker' ? '.' + variant : ''}.frames.ts`)
+  const framesFile = path.join(ROOT, 'docs/course/storyboard', `${id}${variant === 'paper' || variant === 'sticker' || variant === 'desk' ? '.' + variant : ''}.frames.ts`)
   const outFile = path.join(ROOT, 'docs/course/storyboard', `${id}${variant ? '.' + variant : ''}.html`)
   const { title, screens } = parseScript(scriptFile)
   const { frames } = (await import(pathToFileURL(framesFile).href)) as { frames: Frame[] }
@@ -114,6 +116,7 @@ async function main() {
   const theme =
     variant === 'paper' ? await paperTheme(htmls) :
     variant === 'sticker' ? await stickerTheme(htmls, palette) :
+    variant === 'desk' ? await deskTheme(htmls, cards.map((c) => c.beats[0]?.text ?? '')) :
     variant === 'board' ? await boardTheme(htmls)
     : variant === 'board2' ? await boardTheme(htmls, { latin: 'excalifont', cjk: 'marker', spec: true })
     : variant === 'board2-xiaolai' ? await boardTheme(htmls, { latin: 'excalifont', cjk: 'xiaolai', spec: true })

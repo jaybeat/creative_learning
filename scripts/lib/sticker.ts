@@ -18,12 +18,20 @@ const FONTS = {
 }
 
 export async function stickerTheme(htmls: string[], palette = DEFAULT_PALETTE): Promise<{ css: string; script: string; info: string }> {
+  const { css, info } = await stickerCss(htmls, palette)
+  const opts = Object.entries(PALETTES).map(([id, p]) => [id, p.name])
+  const script = `<script>(${PICKER_JS})(${JSON.stringify(opts)}, ${JSON.stringify(palette)})</script>`
+  return { css, script, info }
+}
+
+/** 字体子集 + 色系令牌 + 贴纸样式；分镜墙和播放器共用。more 是页面上另外要显示的文字（播放器的字幕、按钮），也要进字体子集 */
+export async function stickerCss(htmls: string[], palette = DEFAULT_PALETTE, more = ''): Promise<{ css: string; info: string }> {
   if (!PALETTES[palette]) throw new Error(`没有色系 ${palette}，可选：${Object.keys(PALETTES).join(' ')}`)
   for (const f of Object.values(FONTS)) if (!fs.existsSync(path.join(ROOT, f.file))) throw new Error(`找不到 ${f.file}（${f.note}）`)
   const ascii = Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)).join('')
   // 页面上的色系名、元信息行也要进子集
   const extra = Object.values(PALETTES).map((p) => p.name).join('') + '林小川说学习数据结构线性表发送✓✗…≠→←⌫₀₁ₙ₋−'
-  const chars = [...new Set(visibleText(htmls) + ascii + extra)].join('')
+  const chars = [...new Set(visibleText(htmls) + ascii + extra + more)].join('')
   const read = (f: string) => fs.readFileSync(path.join(ROOT, f))
   // 可变字重整个保留（wght 轴），标题 900、正文 400/700 都从这一个文件出
   const sans = await subsetFont(read(FONTS.sans.file), chars, { targetFormat: 'woff2' })
@@ -39,9 +47,7 @@ ${face('StickerMono', mono)}
 ${paletteCss(palette)}
 ${STICKER_CSS}`
   const kb = (b: Uint8Array) => (b.length / 1024).toFixed(0)
-  const opts = Object.entries(PALETTES).map(([id, p]) => [id, p.name])
-  const script = `<script>(${PICKER_JS})(${JSON.stringify(opts)}, ${JSON.stringify(palette)})</script>`
-  return { css, script, info: `色系 ${palette}，思源黑体 ${kb(sans)} KB + 更纱 ${kb(mono)} KB（${[...chars].length} 字）` }
+  return { css, info: `色系 ${palette}，思源黑体 ${kb(sans)} KB + 更纱 ${kb(mono)} KB（${[...chars].length} 字）` }
 }
 
 const SANS = `"StickerSans","Microsoft YaHei","PingFang SC",sans-serif`

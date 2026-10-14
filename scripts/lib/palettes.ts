@@ -30,6 +30,7 @@ export type Palette = {
   field: string // 编辑器、输入框的内底
   fieldLine: string
   ptr: string // 指针（紫）
+  extra?: Record<string, string> // 只有某个主题用的令牌（比如工作台版的桌面、软木板），原样输出成 CSS 变量
 }
 
 const PTR = '#7048e8'
@@ -85,6 +86,25 @@ export const PALETTES: Record<string, Palette> = {
     big: '#b96a2f', bigStroke: '#fffcf5', bigStrokeW: 9,
     field: '#faf6ee', fieldLine: '#e2d9c7', ptr: PTR,
   },
+  w1: {
+    // 工作台版（scripts/lib/desk.ts）的默认色系：暖纸墙、陶土桌面、软木板；红色只给圈和勾
+    name: 'W1 暖工作台 纸墙·陶土·红笔',
+    bg: '#f3eee4', dot: '#e8e1d4', ink: '#3a2e26', mute: '#6b6054', paper: '#fffdf8',
+    tile: '#fffdf8', tileInk: '#2e2a26', off: '#eee7da', offInk: '#6b6054',
+    acc: '#d8402f', accSoft: '#f9d9cb', accInk: '#ffffff', accLine: '#c8392a',
+    ok: '#d8402f', wrong: '#a8a096',
+    dark: '#3a3633', darkDot: '#4a4542', darkInk: '#ffffff', darkMute: '#d9d2c6',
+    big: '#d8402f', bigStroke: '#fffdf8', bigStrokeW: 9,
+    field: '#f7f3ea', fieldLine: '#3a2e26', ptr: PTR,
+    extra: {
+      '--shadow': '#e2d7c5', '--desk': '#c97b4f', '--desk-line': '#d99168',
+      '--cork': '#c9a26b', '--cork-frame': '#9a6a3e', '--sticky': '#f8e38a', '--tag': '#f2a68a', '--tape': '#f6d86b',
+      '--badge': '#4a6fa5', '--pin-1': '#d8513a', '--pin-2': '#5b7fb5', '--pin-3': '#e9c24a', '--pin-4': '#7fa36b',
+      '--win-1': '#e5826b', '--win-2': '#e9c24a', '--win-3': '#8db57a', '--plant': '#6e8f5a', '--pot': '#d77b52', '--cup': '#d9673e',
+      '--key': '#e9e2d4', '--note-line': '#dce5ee', '--margin-line': '#edb6a8', '--photo': '#dce4ea', '--photo-hill': '#b7c6d2',
+      '--sub-bg': '#3a3633', '--sub-key': '#f6d35b',
+    },
+  },
   m2: {
     name: 'M2 莫兰迪 灰蓝·芥末',
     bg: '#e5e7e5', dot: '#cdd2cf', ink: '#2f3539', mute: '#5d6467', paper: '#ffffff',
@@ -112,7 +132,7 @@ const VAR: Record<keyof Omit<Palette, 'name'>, string> = {
 /** 每套色系一个 [data-palette="id"] 块；def 那套同时挂在 :root 上作默认值 */
 export function paletteCss(def = DEFAULT_PALETTE): string {
   const block = (p: Palette) =>
-    (Object.keys(VAR) as (keyof typeof VAR)[]).map((k) => `${VAR[k]}:${k === 'bigStrokeW' ? p[k] + 'px' : p[k]}`).join(';')
+    [...(Object.keys(VAR) as (keyof typeof VAR)[]).map((k) => `${VAR[k]}:${k === 'bigStrokeW' ? p[k] + 'px' : p[k]}`), ...Object.entries(p.extra ?? {}).map(([k, v]) => `${k}:${v}`)].join(';')
   return [
     `:root{${block(PALETTES[def])}}`,
     ...Object.entries(PALETTES).map(([id, p]) => `[data-palette="${id}"]{${block(p)}}`),

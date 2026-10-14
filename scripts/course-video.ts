@@ -1,11 +1,12 @@
-// 把动画播放器导出成视频：npx tsx scripts/course-video.ts 2-1
+// 把动画播放器导出成视频：npx tsx scripts/course-video.ts 2-1 [--style desk|sticker|classic]
+// 风格默认 desk（player/<id>/index.html）；sticker 读 sticker.html，classic 读 classic.html。
 // 先运行 scripts/course-player.ts 生成播放器和配音。
 //
 // 不录屏：Playwright 打开播放器，逐帧调用 window.__seek(t) 画出那一刻，截图后通过管道交给 ffmpeg 编码；
 // 画面没变的帧（__seek 返回的签名相同）直接复用上一张截图。
 // 声音不从浏览器录：按时间轴把每拍的 mp3 放到各自的起点，拼成一条音轨。画面和声音来自同一份时间轴，不会错位。
 //
-// 输出 docs/course/video/<id>/：<id>.mp4（无字幕）、<id>.srt、<id>-sub.mp4（烧进字幕）。
+// 输出 docs/course/video/<id>/：<id>-<风格>.mp4（无字幕）、<id>-<风格>.srt、<id>-<风格>-sub.mp4（烧进字幕）。
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -96,9 +97,14 @@ function ffmpeg(args: string[], cwd?: string) {
 }
 
 async function main() {
-  const id = process.argv[2] ?? '2-1'
+  const id = process.argv.slice(2).find((a, i, all) => !a.startsWith('--') && all[i - 1] !== '--style') ?? '2-1'
+  const si = process.argv.indexOf('--style')
+  const style = si >= 0 ? process.argv[si + 1] : 'desk'
+  const PAGES: Record<string, string> = { desk: 'index.html', sticker: 'sticker.html', classic: 'classic.html' }
+  if (!PAGES[style]) throw new Error(`没有风格 ${style}，可选：${Object.keys(PAGES).join(' ')}`)
   const playerDir = path.join(ROOT, 'docs/course/player', id)
-  const playerFile = path.join(playerDir, 'index.html')
+  const playerFile = path.join(playerDir, PAGES[style])
+  const name = `${id}-${style}`
   if (!fs.existsSync(playerFile)) throw new Error(`没有播放器：先运行 npm run course:player -- ${id}`)
   const html = fs.readFileSync(playerFile, 'utf8')
   const data = JSON.parse(html.match(/const DATA = (.*?);<\/script>/s)![1]) as { total: number; steps: Step[] }
@@ -114,15 +120,15 @@ async function main() {
   buildAudio(playerDir, data.steps, data.total, audio)
   console.log('[video] 音轨已拼好，合成中…')
 
-  ffmpeg(['-i', videoOnly, '-i', audio, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest', `${id}.mp4`], outDir)
-  fs.writeFileSync(path.join(outDir, `${id}.srt`), srt(data.steps))
+  ffmpeg(['-i', videoOnly, '-i', audio, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest', `${name}.mp4`], outDir)
+  fs.writeFileSync(path.join(outDir, `${name}.srt`), srt(data.steps))
   // 烧字幕：在输出目录里用相对文件名，避开 subtitles 滤镜对 Windows 路径（盘符冒号）的转义
   // BorderStyle=3：字幕底下垫一块半透明黑底（颜色取 OutlineColour），压在画面内容上也看得清
-  const style = 'FontName=Microsoft YaHei,FontSize=16,PrimaryColour=&H00FFFFFF,OutlineColour=&H70000000,BorderStyle=3,Outline=5,Shadow=0,MarginV=8'
-  ffmpeg(['-i', `${id}.mp4`, '-vf', `subtitles=${id}.srt:force_style='${style}'`, '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-c:a', 'copy', `${id}-sub.mp4`], outDir)
+  const subStyle = 'FontName=Microsoft YaHei,FontSize=16,PrimaryColour=&H00FFFFFF,OutlineColour=&H70000000,BorderStyle=3,Outline=5,Shadow=0,MarginV=8'
+  ffmpeg(['-i', `${name}.mp4`, '-vf', `subtitles=${name}.srt:force_style='${subStyle}'`, '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-c:a', 'copy', `${name}-sub.mp4`], outDir)
   fs.rmSync(tmp, { recursive: true, force: true })
 
-  for (const f of [`${id}.mp4`, `${id}-sub.mp4`, `${id}.srt`]) {
+  for (const f of [`${name}.mp4`, `${name}-sub.mp4`, `${name}.srt`]) {
     const size = fs.statSync(path.join(outDir, f)).size
     console.log(`[video] ${path.relative(ROOT, path.join(outDir, f))}  ${(size / 1048576).toFixed(1)} MB`)
   }

@@ -51,6 +51,18 @@
         "docs/course"
       ],
       "port": 4190
+    },
+    {
+      "name": "course-alt",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4191",
+        "--directory",
+        "docs/course"
+      ],
+      "port": 4191
     }
   ]
 }
