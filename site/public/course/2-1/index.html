@@ -392,8 +392,15 @@ const $ = (id) => document.getElementById(id)
 const fmt = (s) => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0')
 const stage = $('stage'), wrap = $('wrap')
 const beats = DATA.steps.filter((s) => s.k === 'beat')
+// 配音所在目录：不能直接用相对路径。线上 Vercel（cleanUrls、trailingSlash: false）会把 /course/2-1/index.html 重定向到 /course/2-1，
+// 末尾没有 /，相对路径 audio/b001.mp3 会被解析成 /course/audio/b001.mp3（线上返回 200 的 404 页面，没有声音也不报错）。
+// 地址以 .html 结尾（本地直接打开、file://）照常按文件所在目录解析；否则把末尾补上 /
+const audioDir = new URL(location.href)
+audioDir.search = ''
+audioDir.hash = ''
+if (!/\.html$/.test(audioDir.pathname)) audioDir.pathname = audioDir.pathname.replace(/\/?$/, '/')
 // 配音按需加载：一开始都不下载，播到哪一拍再预先拉取这一拍和后面两拍（手机流量友好；网站上一节有几十段配音）
-const audios = new Map(beats.map((s) => { const a = new Audio(); a.preload = 'none'; a.dataset.src = s.audio; return [s.n, a] }))
+const audios = new Map(beats.map((s) => { const a = new Audio(); a.preload = 'none'; a.dataset.src = new URL(s.audio, audioDir).href; return [s.n, a] }))
 function warm(n) {
   const i = beats.findIndex((s) => s.n === n)
   for (const s of beats.slice(Math.max(0, i), i + 3)) { const a = audios.get(s.n); if (!a.src) { a.src = a.dataset.src; a.preload = 'auto' } }

@@ -60,3 +60,15 @@ test('看动画时打开页面不算已读，动画播完才算', async ({ page 
   await page.locator('.cs-player iframe').evaluate((f) => ((f as HTMLIFrameElement).contentWindow as unknown as { __onEnded: () => void }).__onEnded())
   await expect.poll(read).toContain('/ch02/2-1')
 })
+
+test('网址末尾没有 / 时配音也找得到（线上 Vercel 把 /course/2-1/index.html 重定向成 /course/2-1）', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'Playwright 的 WebKit 不带 mp3 解码，根本不发配音请求')
+  // 以前配音用相对路径，在 /course/2-1 下会去请求 /course/audio/b001.mp3：线上返回 200 的 404 页面，没有声音也不报错
+  await page.goto('course/2-1?embed')
+  const audio = page.waitForResponse((r) => /\/audio\/b001\.mp3$/.test(new URL(r.url()).pathname))
+  await page.locator('#start').click()
+  const r = await audio
+  expect(new URL(r.url()).pathname).toMatch(/\/course\/2-1\/audio\/b001\.mp3$/)
+  expect(r.status()).toBeLessThan(400)
+  expect(r.headers()['content-type']).toMatch(/^audio\//)
+})
