@@ -39,6 +39,7 @@ export const TOKENS: Record<string, string> = {
   '--off': '#9b9b9b', // 错：变灰加划线
   '--caret': '#2f6bd8', // 编辑器光标
   '--btn': '#ececee',
+  '--track': '#e9e5da', // 播放器进度条底轨（Gauth 的米色）
 }
 
 export const SERIF = `"CleanSerif","Songti SC","SimSun",serif`
@@ -81,12 +82,22 @@ body.st-clean{--sf:${SANS};--tf:${SERIF};--bg:var(--page);--acc:var(--ink-strong
   --field:var(--paper);--field-line:var(--line);--wrong:var(--off);background:var(--page)}
 body.st-clean .new{outline:none!important}
 body.st-clean .f .new{translate:none!important}
-body.st-clean #scr{font-weight:700}
-body.st-clean .seg{background:var(--btn);height:4px}
+body.st-clean main{max-width:1000px;padding:12px 20px 20px}
+body.st-clean #scr{font-family:var(--sf);font-size:13px;font-weight:400;color:var(--mute)}
+body.st-clean .seg{background:var(--track)}
 body.st-clean .seg i{background:var(--ink-strong)}
+body.st-clean .ib{color:var(--ink)}
+body.st-clean .ib:hover{background:var(--btn)}
+body.st-clean #capOn[aria-pressed=true]{background:var(--c1-soft);color:var(--c1)}
+body.st-clean #toc{background:var(--paper);border-color:var(--line)}
+body.st-clean #toc button:hover{background:var(--btn)}
+body.st-clean #tip{background:var(--ink-strong);color:var(--paper)}
 body.st-clean .wrap{background:var(--stage);border-radius:20px;box-shadow:none;border:1px solid var(--line-soft)}
-body.st-clean .ctl button,body.st-clean .ctl select,body.st-clean .qbar button{border:1px solid var(--line);border-radius:10px}
-body.st-clean .hint code{background:var(--btn)}
+body.st-clean .cover{background:color-mix(in srgb,var(--stage) 72%,transparent)}
+body.st-clean .cover button{background:none;color:var(--mute);font-family:var(--sf);border:0;box-shadow:none;border-radius:0}
+body.st-clean .cover .big{background:var(--ink-strong);color:var(--paper)}
+body.st-clean #cap{color:var(--ink);font-family:var(--sf);font-size:17px}
+body.st-clean .qbar button{border:1px solid var(--line);border-radius:10px}
 body.st-clean .quiz{border:1px solid var(--line);border-radius:12px}
 body.st-clean .quiz .qh{font-weight:700}
 body.st-clean .qopt{border-radius:10px}

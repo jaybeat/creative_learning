@@ -239,23 +239,26 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
 <title>${title}</title>
 <style>${FRAME_CSS}${PLAYER_CSS}${style === 'classic' ? '' : themeCss + SHELL_CSS}${style === 'clean' ? CLEAN_SHELL_CSS : ''}</style></head>
 <body class="player${style === 'classic' ? '' : ' themed st-' + style}${style === 'clean' ? ' th-clean' : ''}">
+<!-- 由 docs/course/${id}.md 和 docs/course/storyboard/${id}${STYLES.find((s) => s.style === style)!.frames} 生成，不要手改本文件。配音：${VOICE}。 -->
 <main>
-  <div class="bar"><span id="scr"></span><span id="clock"></span></div>
-  <div id="prog"></div>
+  <div class="bar">
+    <span id="scr"></span>
+    <div id="prog"></div>
+    <div class="tools">
+      <button id="play" class="ib" title="播放/暂停（空格）" aria-label="播放">${ICON.play}${ICON.pause}</button>
+      <button id="speed" class="ib txt" title="倍速">1×</button>
+      <button id="capOn" class="ib txt" title="字幕（C）" aria-pressed="true">字</button>
+      <button id="menu" class="ib" title="目录" aria-expanded="false">${ICON.list}</button>${style === 'sticker' ? `
+      <select id="pal" title="色系">${Object.entries(PALETTES).map(([k, p]) => `<option value="${k}"${k === DEFAULT_PALETTE ? ' selected' : ''}>${p.name}</option>`).join('')}</select>` : ''}
+      <div id="toc" hidden></div>
+    </div>
+    <div id="tip" hidden></div>
+  </div>
   <div class="wrap" id="wrap">
     <div class="stage" id="stage"></div>
-    <div class="cover" id="cover"><button id="start">▶ 开始播放</button></div>
+    <div class="cover" id="cover"><button id="start"><span class="big">${ICON.play}</span><span id="startLabel"></span></button></div>
   </div>
   <p id="cap"></p>
-  <div class="ctl">
-    <button id="prev" title="上一拍（←）">⏮</button>
-    <button id="play" title="播放/暂停（空格）">▶</button>
-    <button id="next" title="下一拍（→）">⏭</button>
-    <label>倍速 <select id="speed"><option>0.8</option><option selected>1</option><option>1.25</option><option>1.5</option></select></label>
-    <label><input type="checkbox" id="capOn" checked> 字幕（C）</label>${style === 'sticker' ? `
-    <label>色系 <select id="pal">${Object.entries(PALETTES).map(([k, p]) => `<option value="${k}"${k === DEFAULT_PALETTE ? ' selected' : ''}>${p.name}</option>`).join('')}</select></label>` : ''}
-  </div>
-  <p class="hint">由 <code>docs/course/${id}.md</code> 和 <code>docs/course/storyboard/${id}${STYLES.find((s) => s.style === style)!.frames}</code> 生成，不要手改本文件。配音：${VOICE}。</p>
 </main>
 <script>const DATA = ${json};</script>
 <script>${PLAYER_JS}</script>
@@ -263,14 +266,36 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
 `
 }
 
+// 外壳图标：细线 SVG，颜色跟着 currentColor
+const ICON = {
+  play: '<svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8c0 .8.9 1.3 1.6.8l10-6.4c.6-.4.6-1.2 0-1.6l-10-6.4C8.9 4.3 8 4.8 8 5.6z" fill="currentColor"/></svg>',
+  pause: '<svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.5v13M15.5 5.5v13" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+  list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.5" cy="6.5" r=".9" fill="currentColor"/><circle cx="4.5" cy="12" r=".9" fill="currentColor"/><circle cx="4.5" cy="17.5" r=".9" fill="currentColor"/></svg>',
+}
+
 const PLAYER_CSS = `
 body{margin:0;background:#eceae4;font:14px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;color:#333}
 main{max-width:980px;margin:0 auto;padding:16px}
-.bar{display:flex;justify-content:space-between;font-size:14px;color:#555;margin-bottom:6px}
-#scr{font-weight:700;color:#222}
-#prog{display:flex;gap:3px;margin-bottom:10px}
-.seg{height:7px;background:#d5d2ca;border-radius:4px;position:relative;cursor:pointer;overflow:hidden}
-.seg i{position:absolute;left:0;top:0;bottom:0;background:#1971c2}
+.bar{display:flex;align-items:center;gap:18px;height:40px;margin-bottom:8px;position:relative}
+#scr{flex:0 1 auto;max-width:32%;font-size:13px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#prog{flex:1;display:flex;gap:5px;align-items:center;height:16px}
+.seg{flex:0 0 18px;height:4px;border-radius:2px;background:#ddd;position:relative;cursor:pointer;overflow:hidden}
+.seg.cur{flex:1 1 auto}
+.seg i{position:absolute;left:0;top:0;bottom:0;background:#222}
+.tools{flex:none;display:flex;align-items:center;gap:2px;position:relative}
+.ib{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#333;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;font:600 13px/1 inherit}
+.ib:hover{background:rgba(0,0,0,.06)}
+.ib svg{width:20px;height:20px}
+.ib .i-pause,.ib.on .i-play{display:none}.ib.on .i-pause{display:block}
+.ib.txt{width:auto;min-width:32px;padding:0 6px}
+#capOn[aria-pressed=true]{background:#e4ecf6;color:#0e3061}
+#toc{position:absolute;right:0;top:38px;z-index:30;background:#fff;border:1px solid #ddd;border-radius:12px;padding:6px;min-width:240px;box-shadow:0 10px 30px -10px rgba(0,0,0,.25)}
+#toc[hidden],#tip[hidden]{display:none}
+#toc button{display:flex;width:100%;justify-content:space-between;gap:18px;border:0;background:none;padding:7px 10px;border-radius:8px;font:13px/1.4 inherit;cursor:pointer;color:inherit;text-align:left}
+#toc button:hover{background:rgba(0,0,0,.05)}#toc button.cur{font-weight:700}
+#toc em{font-style:normal;opacity:.55;font-variant-numeric:tabular-nums}
+#tip{position:absolute;top:34px;transform:translateX(-50%);background:#222;color:#fff;font-size:12px;line-height:1.5;padding:3px 9px;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:31}
+#pal{font:inherit;font-size:12px;margin-left:6px}
 .wrap{position:relative;width:100%;aspect-ratio:16/9;background:#fafaf8;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .stage{position:absolute;left:0;top:0;width:640px;height:360px;transform-origin:0 0}
 .stage .f{position:absolute;left:0;top:0}
@@ -278,12 +303,11 @@ main{max-width:980px;margin:0 auto;padding:16px}
 .f .pause{display:none}
 .cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(250,250,248,.85);z-index:20}
 .cover[hidden]{display:none}
-.cover button{font-size:22px;padding:10px 28px;border-radius:30px;border:0;background:#1971c2;color:#fff;cursor:pointer}
-#cap{min-height:2.6em;font-size:18px;text-align:center;margin:10px 0 4px;color:#222}
+.cover button{display:flex;flex-direction:column;align-items:center;gap:12px;border:0;background:none;cursor:pointer;color:#555;font:14px/1.4 inherit;padding:0}
+.cover .big{width:64px;height:64px;border-radius:50%;background:#222;color:#fff;display:flex;align-items:center;justify-content:center}
+.cover .big svg{width:28px;height:28px;margin-left:3px}
+#cap{min-height:3.2em;max-width:80%;margin:14px auto 0;font-size:17px;line-height:1.6;text-align:center;color:#222}
 #cap.off{visibility:hidden}
-.ctl{display:flex;gap:10px;align-items:center;justify-content:center}
-.ctl button{font-size:18px;width:44px;height:36px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer}
-.hint{color:#999;font-size:12px;text-align:center}
 .quiz{position:absolute;inset:12px;background:#fff;border:1.5px solid #bbb;border-radius:10px;padding:10px 16px;overflow:auto;font-size:13px;z-index:5}
 .quiz .qh{font-weight:700;color:#1971c2}
 .quiz .qs{margin:2px 0 6px;color:#444}
@@ -367,6 +391,7 @@ body.st-sticker{--sf:"StickerSans","Microsoft YaHei",sans-serif;--tf:"StickerSan
 const PLAYER_JS = String.raw`
 const FADE = 0.3, POP = 0.45
 const $ = (id) => document.getElementById(id)
+const fmt = (s) => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0')
 const stage = $('stage'), wrap = $('wrap')
 const beats = DATA.steps.filter((s) => s.k === 'beat')
 const audios = new Map(beats.map((s) => { const a = new Audio(s.audio); a.preload = 'auto'; return [s.n, a] }))
@@ -374,12 +399,30 @@ const audios = new Map(beats.map((s) => { const a = new Audio(s.audio); a.preloa
 let t = 0, playing = false, speed = 1, curAudio = null, waitingQuiz = -1
 const quizState = DATA.quizzes.map(() => ({ sel: new Set(), checked: false, shown: false }))
 
-// —— 进度条 ——
+// —— 进度条：当前这一屏展开成长条，其余屏缩成短横（照 Gauth）；悬停显示屏名和时间 ——
+const tip = $('tip')
+const segAt = (s, el, e) => {
+  if (!el.classList.contains('cur')) return s.start
+  const r = el.getBoundingClientRect(); return s.start + (s.end - s.start) * Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
+}
 const segs = DATA.screens.map((s) => {
-  const el = document.createElement('div'); el.className = 'seg'; el.style.flex = String(s.end - s.start)
-  el.title = '第' + s.n + '屏　' + s.name; el.innerHTML = '<i></i>'
-  el.onclick = (e) => { const r = el.getBoundingClientRect(); seek(s.start + (s.end - s.start) * (e.clientX - r.left) / r.width, true) }
+  const el = document.createElement('div'); el.className = 'seg'; el.innerHTML = '<i></i>'
+  el.onclick = (e) => seek(segAt(s, el, e), true)
+  el.onmousemove = (e) => {
+    const bar = tip.parentElement.getBoundingClientRect()
+    tip.textContent = s.name + '　' + fmt(segAt(s, el, e)) + ' / ' + fmt(DATA.total)
+    tip.style.left = (e.clientX - bar.left) + 'px'; tip.hidden = false
+  }
+  el.onmouseleave = () => { tip.hidden = true }
   $('prog').appendChild(el); return el
+})
+// —— 目录：列出各屏，点哪屏跳到哪屏 ——
+const toc = $('toc')
+DATA.screens.forEach((s) => {
+  const b = document.createElement('button')
+  b.innerHTML = '<span>' + s.name + '</span><em>' + fmt(s.end - s.start) + '</em>'
+  b.onclick = () => { toc.hidden = true; $('menu').setAttribute('aria-expanded', 'false'); $('cover').hidden = true; seek(s.start, true) }
+  toc.appendChild(b)
 })
 
 // —— 画面层：每帧一个 .f，只在第一次用到时创建 ——
@@ -427,9 +470,12 @@ function render(time) {
   // 字幕、进度、标题
   $('cap').textContent = step.k === 'beat' ? step.text : ''
   const sc = DATA.screens.find((s) => time >= s.start && time < s.end) || DATA.screens.at(-1)
-  $('scr').textContent = '第' + sc.n + '屏　' + sc.name
-  $('clock').textContent = fmt(time) + ' / ' + fmt(DATA.total)
-  DATA.screens.forEach((s, i) => { segs[i].firstChild.style.width = Math.max(0, Math.min(1, (time - s.start) / (s.end - s.start))) * 100 + '%' })
+  $('scr').textContent = $('scr').title = sc.name
+  DATA.screens.forEach((s, i) => {
+    segs[i].classList.toggle('cur', s === sc)
+    segs[i].firstChild.style.width = Math.max(0, Math.min(1, (time - s.start) / (s.end - s.start))) * 100 + '%'
+  })
+  toc.querySelectorAll('button').forEach((b, i) => b.classList.toggle('cur', DATA.screens[i] === sc))
   return sig.join(',')
 }
 
@@ -445,7 +491,6 @@ function videoQuiz(step, local) {
   quizEl.classList.toggle('done', revealed)
   return revealed ? 'r' : String(left)
 }
-const fmt = (s) => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0')
 
 // —— 练习题（网页里可作答；导出视频时只显示题面）——
 let quizShown = -1, quizEl = null
@@ -507,13 +552,13 @@ function tick(now) {
       // 以音频为准：服务器不支持分段请求时，中途跳转会从这一拍开头放起，画面也跟着回到拍首
       if (curAudio === a && !a.paused && !a.ended) { const at = step.start + a.currentTime; if (at > t || t - at > 0.3) t = at }
       else t += dt * speed
-      if (t >= DATA.total) { t = DATA.total - 0.001; setPlaying(false); $('cover').hidden = false; $('start').textContent = '↻ 重新播放' }
+      if (t >= DATA.total) { t = DATA.total - 0.001; setPlaying(false); $('cover').hidden = false; $('startLabel').textContent = '↻ 重新播放' }
     }
     render(t)
   }
   requestAnimationFrame(tick)
 }
-function setPlaying(p) { playing = p; $('play').textContent = p ? '⏸' : '▶'; if (!p) stopAudio() }
+function setPlaying(p) { playing = p; $('play').classList.toggle('on', p); $('play').setAttribute('aria-label', p ? '暂停' : '播放'); if (!p) stopAudio() }
 function seek(time, keepPlaying) {
   stopAudio(); t = Math.max(0, Math.min(DATA.total - 0.001, time)); render(t)
   if (keepPlaying !== undefined) setPlaying(keepPlaying)
@@ -527,16 +572,27 @@ function jumpBeat(dir) {
 
 $('start').onclick = () => { $('cover').hidden = true; if (t >= DATA.total - 0.01) t = 0; setPlaying(true) }
 $('play').onclick = () => { $('cover').hidden = true; setPlaying(!playing) }
-$('prev').onclick = () => jumpBeat(-1)
-$('next').onclick = () => jumpBeat(1)
-$('speed').onchange = (e) => { speed = parseFloat(e.target.value); if (curAudio) curAudio.playbackRate = speed }
-$('capOn').onchange = (e) => $('cap').classList.toggle('off', !e.target.checked)
+// 倍速：点一下换下一档
+const SPEEDS = [0.8, 1, 1.25, 1.5]
+$('speed').onclick = () => {
+  speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]; $('speed').textContent = speed + '×'
+  if (curAudio) curAudio.playbackRate = speed
+}
+const toggleCap = () => {
+  const on = $('capOn').getAttribute('aria-pressed') !== 'true'
+  $('capOn').setAttribute('aria-pressed', String(on)); $('cap').classList.toggle('off', !on)
+}
+$('capOn').onclick = toggleCap
+$('menu').onclick = (e) => { e.stopPropagation(); toc.hidden = !toc.hidden; $('menu').setAttribute('aria-expanded', String(!toc.hidden)) }
+document.addEventListener('click', (e) => { if (!toc.hidden && !toc.contains(e.target)) { toc.hidden = true; $('menu').setAttribute('aria-expanded', 'false') } })
+$('startLabel').textContent = '开始播放 · ' + fmt(DATA.total)
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return
   if (e.key === ' ') { e.preventDefault(); $('cover').hidden = true; setPlaying(!playing) }
   else if (e.key === 'ArrowLeft') jumpBeat(-1)
   else if (e.key === 'ArrowRight') jumpBeat(1)
-  else if (e.key === 'c' || e.key === 'C') { const c = $('capOn'); c.checked = !c.checked; c.onchange({ target: c }) }
+  else if (e.key === 'c' || e.key === 'C') toggleCap()
+  else if (e.key === 'Escape') { toc.hidden = true; $('menu').setAttribute('aria-expanded', 'false') }
 })
 
 // —— 画布缩放 ——
