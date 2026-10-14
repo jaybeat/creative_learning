@@ -27,6 +27,30 @@
         "scripts/serve-e2e.ts"
       ],
       "port": 4174
+    },
+    {
+      "name": "preview-alt",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vitepress",
+        "preview",
+        "site",
+        "--port",
+        "4180"
+      ],
+      "port": 4180
+    },
+    {
+      "name": "course",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4190",
+        "--directory",
+        "docs/course"
+      ],
+      "port": 4190
     }
   ]
 }

@@ -12,3 +12,22 @@ SarasaFixedSC-TTF-Unhinted-*/
 site/index.md
 
 .env.local
+
+# 课程导出的视频（scripts/course-video.ts 生成，体积大，不进仓库）
+docs/course/video/
+
+# 小赖字体源文件 21 MB，只在生成手绘分镜墙时子集化（scripts/lib/sketch.ts），不进仓库
+tools/fonts/Xiaolai-*.ttf
+tools/fonts/LXGWMarkerGothic-*.ttf
+tools/fonts/Caveat-*.ttf
+tools/fonts/Excalifont-*.woff2
+tools/fonts/NotoSansSC-*.ttf
+
+.env
+docs/course/tts-ab/
+
+# 课程生成物：播放器（含配音 mp3）和分镜墙 html 都能用脚本重新生成，不进仓库
+docs/course/player/
+docs/course/storyboard/*.html
+# flat 版不是脚本生成的，保留
+!docs/course/storyboard/2-1.flat.html
