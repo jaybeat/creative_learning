@@ -1,34 +1,34 @@
 import { expect, test } from '@playwright/test'
 
-// 节内分页与练习题：用 2.1（五页：问题 / 概念 / 例题 / 练习1 / 练习2）
+// 节内分页与练习题：用 2.1（四页：概念 / 例题 / 练习1 / 练习2；问题在章首引言里）
 const PAGE = 'ch02/2-1'
 const pages = '.lesson-page'
 const next = '.lesson-nav .lesson-btn.primary'
 
-test('翻页：继续 → #p2…#p5，刷新后停在原页；页底上一节/下一节只在最后一页出现', async ({ page }) => {
+test('翻页：继续 → #p2…#p4，刷新后停在原页；页底上一节/下一节只在最后一页出现', async ({ page }) => {
   await page.goto(PAGE)
-  await expect(page.locator(pages)).toHaveCount(5)
+  await expect(page.locator(pages)).toHaveCount(4)
   await expect(page.locator(pages).nth(0)).toBeVisible()
   await expect(page.locator(pages).nth(1)).toBeHidden()
   await expect(page.locator('.VPDocFooter')).toBeHidden()
 
-  for (const n of [2, 3, 4]) {
+  for (const n of [2, 3]) {
     await page.locator(next).click()
     await expect(page).toHaveURL(new RegExp(`/ch02/2-1#p${n}$`))
     await expect(page.locator(pages).nth(n - 1)).toBeVisible()
     await expect(page.locator('.VPDocFooter')).toBeHidden()
   }
   await page.locator(next).click()
-  await expect(page).toHaveURL(/\/ch02\/2-1#p5$/)
+  await expect(page).toHaveURL(/\/ch02\/2-1#p4$/)
   await expect(page.locator(next)).toHaveCount(0)
   await expect(page.locator('.VPDocFooter')).toBeVisible()
 
   await page.reload()
-  await expect(page.locator(pages).nth(4)).toBeVisible()
+  await expect(page.locator(pages).nth(3)).toBeVisible()
 
   await page.locator('.lesson-nav .lesson-btn', { hasText: '上一页' }).click()
-  await expect(page).toHaveURL(/#p4$/)
-  await expect(page.locator(pages).nth(3)).toBeVisible()
+  await expect(page).toHaveURL(/#p3$/)
+  await expect(page.locator(pages).nth(2)).toBeVisible()
 })
 
 test('← → 先翻页，翻到最后一页再翻节', async ({ page }) => {
@@ -38,8 +38,8 @@ test('← → 先翻页，翻到最后一页再翻节', async ({ page }) => {
   await page.keyboard.press('ArrowLeft')
   await expect(page.locator(pages).nth(0)).toBeVisible()
   await expect(page).toHaveURL(/\/ch02\/2-1$/)
-  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight')
-  await expect(page).toHaveURL(/#p5$/)
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight')
+  await expect(page).toHaveURL(/#p4$/)
   await page.keyboard.press('ArrowRight')
   await expect(page).toHaveURL(/\/ch02\/2-2$/)
 })
@@ -48,7 +48,7 @@ test('每页一个标题，进右栏目录；地址是 #p3 或指向某页标题
   await page.goto(`${PAGE}#p3`)
   await expect(page.locator(pages).nth(2)).toBeVisible()
 
-  for (let i = 0; i < 5; i++) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toHaveCount(1)
+  for (let i = 0; i < 4; i++) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toHaveCount(1)
   const id = await page.locator(pages).nth(1).locator('h3.para-title').getAttribute('id')
   await page.goto(`${PAGE}#${id}`)
   await expect(page.locator(pages).nth(1)).toBeVisible()
@@ -75,8 +75,8 @@ test('分页的节不显示节名，页标题做大标题；没分页的节照�
 })
 
 test('例题页：题目卡片 → 分析 → 答案卡片', async ({ page }) => {
-  await page.goto(`${PAGE}#p3`)
-  const ex = page.locator(pages).nth(2)
+  await page.goto(`${PAGE}#p2`)
+  const ex = page.locator(pages).nth(1)
   await expect(ex.locator('blockquote.milestone-problem')).toHaveCount(1)
   await expect(ex.locator('blockquote.milestone-answer')).toHaveCount(1)
   await expect(ex.locator('blockquote.milestone-answer')).toBeVisible()
@@ -85,8 +85,8 @@ test('例题页：题目卡片 → 分析 → 答案卡片', async ({ page }) =>
 })
 
 test('多选题：选错 → 只标出选错的并给解析；看答案 → 标出全部正确选项和整题解析', async ({ page }) => {
-  await page.goto(`${PAGE}#p4`)
-  const quiz = page.locator(pages).nth(3).locator('.quiz')
+  await page.goto(`${PAGE}#p3`)
+  const quiz = page.locator(pages).nth(2).locator('.quiz')
   const opts = quiz.locator('.quiz-option')
   await expect(quiz.locator('.quiz-badge')).toHaveText('多选')
   await expect(quiz.locator('.lesson-btn', { hasText: '检查' })).toBeDisabled()
@@ -107,14 +107,14 @@ test('多选题：选错 → 只标出选错的并给解析；看答案 → 标�
 })
 
 test('单选题：答对后记住，刷新仍显示答对', async ({ page }) => {
-  await page.goto(`${PAGE}#p5`)
-  const quiz = page.locator(pages).nth(4).locator('.quiz')
+  await page.goto(`${PAGE}#p4`)
+  const quiz = page.locator(pages).nth(3).locator('.quiz')
   await expect(quiz.locator('.quiz-badge')).toHaveText('单选')
   await quiz.locator('.quiz-option').nth(1).click()
   await quiz.locator('.lesson-btn', { hasText: '检查' }).click()
   await expect(quiz.locator('.quiz-feedback')).toHaveText('答对了。')
   await page.reload()
-  await expect(page.locator(pages).nth(4).locator('.quiz')).toHaveClass(/is-right/)
+  await expect(page.locator(pages).nth(3).locator('.quiz')).toHaveClass(/is-right/)
 })
 
 test('2.2：六页，节名隐藏；例题有题目卡片和答案卡片，第5、6页各一道题', async ({ page }) => {
