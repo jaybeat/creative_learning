@@ -345,6 +345,16 @@ html[data-font-size='l'] {
 .vp-doc .ci-list li.is-read a {
   color: var(--vp-c-text-2);
 }
+.vp-doc .video-mark {
+  margin-left: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--vp-c-default-soft);
+  color: var(--vp-c-text-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .vp-doc .read-mark {
   margin-left: 8px;
   color: var(--vp-c-brand-1);

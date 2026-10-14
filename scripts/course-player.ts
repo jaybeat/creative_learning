@@ -296,7 +296,9 @@ main{max-width:980px;margin:0 auto;padding:16px}
 #toc em{font-style:normal;opacity:.55;font-variant-numeric:tabular-nums}
 #tip{position:absolute;top:34px;transform:translateX(-50%);background:#222;color:#fff;font-size:12px;line-height:1.5;padding:3px 9px;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:31}
 #pal{font:inherit;font-size:12px;margin-left:6px}
-.wrap{position:relative;width:100%;aspect-ratio:16/9;background:#fafaf8;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+body.embed{background:transparent!important;overflow:hidden}
+body.embed main{max-width:none!important;padding:0!important}
+.wrap{position:relative;box-sizing:border-box;width:100%;aspect-ratio:16/9;background:#fafaf8;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .stage{position:absolute;left:0;top:0;width:640px;height:360px;transform-origin:0 0}
 .stage .f{position:absolute;left:0;top:0}
 .player .new{outline:none!important}
@@ -394,7 +396,12 @@ const $ = (id) => document.getElementById(id)
 const fmt = (s) => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0')
 const stage = $('stage'), wrap = $('wrap')
 const beats = DATA.steps.filter((s) => s.k === 'beat')
-const audios = new Map(beats.map((s) => { const a = new Audio(s.audio); a.preload = 'auto'; return [s.n, a] }))
+// 配音按需加载：一开始都不下载，播到哪一拍再预先拉取这一拍和后面两拍（手机流量友好；网站上一节有几十段配音）
+const audios = new Map(beats.map((s) => { const a = new Audio(); a.preload = 'none'; a.dataset.src = s.audio; return [s.n, a] }))
+function warm(n) {
+  const i = beats.findIndex((s) => s.n === n)
+  for (const s of beats.slice(Math.max(0, i), i + 3)) { const a = audios.get(s.n); if (!a.src) { a.src = a.dataset.src; a.preload = 'auto' } }
+}
 
 let t = 0, playing = false, speed = 1, curAudio = null, waitingQuiz = -1
 const quizState = DATA.quizzes.map(() => ({ sel: new Set(), checked: false, shown: false }))
@@ -548,11 +555,11 @@ function tick(now) {
       stopAudio(); t = step.start; waitingQuiz = step.quiz
     } else {
       const a = audios.get(step.n), local = t - step.start
-      if (curAudio !== a) { stopAudio(); if (local < step.dur) { curAudio = a; a.currentTime = local; a.playbackRate = speed; a.play().catch(() => {}) } }
+      if (curAudio !== a) { stopAudio(); warm(step.n); if (local < step.dur) { curAudio = a; a.currentTime = local; a.playbackRate = speed; a.play().catch(() => {}) } }
       // 以音频为准：服务器不支持分段请求时，中途跳转会从这一拍开头放起，画面也跟着回到拍首
       if (curAudio === a && !a.paused && !a.ended) { const at = step.start + a.currentTime; if (at > t || t - at > 0.3) t = at }
       else t += dt * speed
-      if (t >= DATA.total) { t = DATA.total - 0.001; setPlaying(false); $('cover').hidden = false; $('startLabel').textContent = '↻ 重新播放' }
+      if (t >= DATA.total) { t = DATA.total - 0.001; setPlaying(false); $('cover').hidden = false; $('startLabel').textContent = '↻ 重新播放'; if (window.__onEnded) window.__onEnded() }
     }
     render(t)
   }
@@ -613,8 +620,18 @@ if (pal) {
   pal.onchange = () => { set(pal.value); localStorage.setItem('course-palette', pal.value) }
 }
 
-const t0 = parseFloat(new URLSearchParams(location.search).get('t'))
-if (t0 > 0 && t0 < DATA.total) { t = t0; $('start').textContent = '▶ 接着播放' }
+const params = new URLSearchParams(location.search)
+const t0 = parseFloat(params.get('t'))
+if (t0 > 0 && t0 < DATA.total) { t = t0; $('startLabel').textContent = '接着播放 · ' + fmt(t) + ' / ' + fmt(DATA.total) }
+// —— 嵌入网站节页（?embed）：背景透明、去掉外边距；把页面高度、播完这两件事告诉外层页面 ——
+if (params.has('embed') && window.parent !== window) {
+  document.body.classList.add('embed')
+  const post = (msg) => window.parent.postMessage(Object.assign({ source: 'ds-course' }, msg), '*')
+  // 量 main 的实际高度（body 被 iframe 撑满，量它只会越来越高）
+  const main = document.querySelector('main')
+  new ResizeObserver(() => post({ type: 'height', h: Math.ceil(main.getBoundingClientRect().height) })).observe(main)
+  window.__onEnded = () => post({ type: 'ended' })
+}
 render(t); requestAnimationFrame(tick)
 `
 

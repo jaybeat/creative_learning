@@ -2,6 +2,7 @@
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useData } from 'vitepress'
 import { RESTORE_KEY, pagePath, useProgress } from '../progress'
+import { courseMode, readMode } from '../course-mode'
 
 /**
  * 放在 doc-footer-before 插槽：页底导航进入视口即视为本节已读；
@@ -29,6 +30,8 @@ function onScroll(): void {
 function observe(): void {
   io?.disconnect()
   if (!isSection() || !el.value || typeof IntersectionObserver === 'undefined') return
+  // 看动画时正文是隐藏的，页底一打开就在视口里，不能算读完；改由动画播完时记已读（CourseSwitch）
+  if (frontmatter.value.video && readMode() === 'video') return
   io = new IntersectionObserver((entries) => {
     if (entries.some((e) => e.isIntersecting)) {
       const c = current()
@@ -67,6 +70,9 @@ watch(
     })
   },
 )
+
+// 从"看动画"切到"读文字"后，正文出现了，重新开始观察页底
+watch(courseMode, () => void nextTick(observe))
 
 onUnmounted(() => {
   io?.disconnect()

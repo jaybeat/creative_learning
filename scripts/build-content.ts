@@ -26,6 +26,14 @@ export function warnDiagrams(src: string, file: string): number {
   return count
 }
 
+/** 这一节有没有发布的课程动画：site/public/course/<节 slug>/meta.json（npm run course:publish 生成） */
+export function courseOf(slug: string): { video: string; duration: string } | null {
+  const meta = path.join(SITE_DIR, 'public/course', slug, 'meta.json')
+  if (!fs.existsSync(meta)) return null
+  const { duration } = JSON.parse(fs.readFileSync(meta, 'utf8')) as { duration: string }
+  return { video: `/course/${slug}/`, duration }
+}
+
 export function runBuildContent(): void {
   const book = loadBookConfig()
 
@@ -70,6 +78,13 @@ export function runBuildContent(): void {
     } else if (p.section) {
       fm.section = p.section.number
       fm.srcLine = p.section.startLine + 1
+      // 有课程动画的节：顶部"看动画 | 读文字"切换，默认看动画（theme/components/CourseSwitch.vue）
+      const course = courseOf(p.section.slug)
+      if (course) {
+        fm.video = course.video
+        fm.videoDuration = course.duration
+        fm.pageClass = 'has-video'
+      }
     } else {
       fm.chapterIndex = true
       fm.outline = false // 章首页只有一个「本章目录」标题，右栏大纲没有意义
@@ -128,7 +143,8 @@ export function runBuildContent(): void {
         question,
         slug: chapter.slug,
         firstSection: chapter.sections[0] ? `/${chapter.slug}/${chapter.sections[0].slug}` : null,
-        sections: chapter.sections.map((s) => ({ number: s.number, title: s.title, link: `/${chapter.slug}/${s.slug}` })),
+        // video：这一节课程动画的时长（"4:10"），章首目录显示"▶ 4:10"；没有动画就是 null
+        sections: chapter.sections.map((s) => ({ number: s.number, title: s.title, link: `/${chapter.slug}/${s.slug}`, video: courseOf(s.slug)?.duration ?? null })),
         // 本章练习：题目页的切换条、章首页目录、已提交 ✓ 都用它
         problems: problems
           ? {

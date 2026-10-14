@@ -18,7 +18,8 @@
 4. **体检**：`npm run storyboard:audit -- <id> --shots <目录>`。看版面数和稳定率，再人眼看联系表（规则见"分镜检查清单"）。
 5. **作者按帧编号审**，比如 1-07、2-14。
 6. **生成播放器**：`npm run course:player -- <id>`，输出 `player/<id>/index.html`，配音用 fish 整屏合成后切成每拍；只改画面时加 `--no-tts`。
-7. **导出视频**（需要时）：`npm run course:video -- <id>`。
+7. **发布到网站**：`npm run course:publish -- <id>`，把播放器和配音复制到 `site/public/course/<id>/`（进仓库），再 `npm run build`。这一节的页面会默认显示动画，顶部有"看动画 | 读文字"切换；章首目录在这一节后面标出"▶ 时长"。
+8. **导出视频**（需要时）：`npm run course:video -- <id>`。
 
 想同时看几种改法时，先挑几帧做三栏对比页：`npx tsx scripts/style-compare.ts <id>`。
 

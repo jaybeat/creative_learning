@@ -36,12 +36,13 @@ function go(path: string): void {
   <div v-if="ch" class="chapter-index">
     <p class="ci-actions">
       <a v-if="resume" class="cr-button" :href="withBase(resume.path)" @click.prevent="go(resume.path)">继续阅读：{{ resume.title }}</a>
-      <a v-else-if="ch.firstSection" class="cr-button" :href="withBase(ch.firstSection)">开始阅读</a>
+      <a v-else-if="ch.firstSection" class="cr-button" :href="withBase(ch.firstSection)">{{ ch.sections[0]?.video ? '开始学习' : '开始阅读' }}</a>
     </p>
     <h2>本章目录</h2>
     <ul class="ci-list">
       <li v-for="s in ch.sections" :key="s.link" :class="{ 'is-read': readLinks.has(s.link) }">
         <a :href="withBase(s.link)">{{ s.number }} {{ s.title }}</a>
+        <span v-if="s.video" class="video-mark" title="这一节有课程动画">▶ {{ s.video }}</span>
         <span v-if="readLinks.has(s.link)" class="read-mark" title="已读">✓</span>
       </li>
     </ul>

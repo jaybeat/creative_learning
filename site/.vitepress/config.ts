@@ -30,6 +30,8 @@ export default defineConfig({
     ['link', { rel: 'preload', href: `${base}fonts/${font.file}`, as: 'font', type: 'font/woff2', crossorigin: '' }],
     // 首屏前恢复字号档位（改的是 <html> 属性，Vue 不管理它，不会造成 hydration 不一致）
     ['script', {}, "try{var s=localStorage.getItem('ds-book:font-size');if(s)document.documentElement.setAttribute('data-font-size',s)}catch(e){}"],
+    // 首屏前恢复"看动画 / 读文字"的选择（theme/course-mode.ts）：读文字时给 <html> 加 data-course-mode="text"
+    ['script', {}, "try{if(localStorage.getItem('ds-book:course-mode')==='text')document.documentElement.setAttribute('data-course-mode','text')}catch(e){}"],
   ],
 
   // 本地开发：评论与登录接口由 scripts/lib/api-server.ts 提供（npm run dev 会一起启动）

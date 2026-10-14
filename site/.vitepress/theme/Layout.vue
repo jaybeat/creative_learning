@@ -6,6 +6,7 @@ import ReadTracker from './components/ReadTracker.vue'
 import SidebarReadMarks from './components/SidebarReadMarks.vue'
 import KeyNav from './components/KeyNav.vue'
 import FontSizeSwitch from './components/FontSizeSwitch.vue'
+import CourseSwitch from './components/CourseSwitch.vue'
 import { setupFolding } from './fold'
 import NavUser from './comments/NavUser.vue'
 import LoginDialog from './comments/LoginDialog.vue'
@@ -19,6 +20,7 @@ onContentUpdated(() => setupFolding())
 <template>
   <DefaultTheme.Layout>
     <template #nav-bar-content-after><FontSizeSwitch /><NavUser /></template>
+    <template #doc-before><CourseSwitch /></template>
     <template #doc-footer-before><ReadTracker /></template>
     <template #doc-after><PageComments /><Feedback /></template>
     <template #layout-bottom>

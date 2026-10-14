@@ -17,6 +17,7 @@
     "storyboard": "tsx scripts/storyboard.ts",
     "storyboard:audit": "tsx scripts/storyboard-audit.ts",
     "course:player": "tsx scripts/course-player.ts",
+    "course:publish": "tsx scripts/course-publish.ts",
     "course:video": "tsx scripts/course-video.ts"
   },
   "engines": {

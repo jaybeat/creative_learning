@@ -5,6 +5,11 @@ const PAGE = 'ch02/2-1'
 const pages = '.lesson-page'
 const next = '.lesson-nav .lesson-btn.primary'
 
+// 2.1 有课程动画，默认看动画、正文隐藏；本文件测的是正文的分页与练习题，先切到"读文字"（course.spec.ts 测动画）
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ds-book:course-mode', 'text'))
+})
+
 test('翻页：继续 → #p2…#p4，刷新后停在原页；页底上一节/下一节只在最后一页出现', async ({ page }) => {
   await page.goto(PAGE)
   await expect(page.locator(pages)).toHaveCount(4)
