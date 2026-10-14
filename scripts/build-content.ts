@@ -78,12 +78,16 @@ export function runBuildContent(): void {
     } else if (p.section) {
       fm.section = p.section.number
       fm.srcLine = p.section.startLine + 1
+      // 专注学习页（theme/components/LessonBar.vue）：不要默认主题的全书侧栏和右栏大纲，改成顶栏按钮浮出的两个抽屉
+      fm.sidebar = false
+      fm.aside = false
+      fm.pageClass = 'focus-page'
       // 有课程动画的节：顶部"看动画 | 读文字"切换，默认看动画（theme/components/CourseSwitch.vue）
       const course = courseOf(p.section.slug)
       if (course) {
         fm.video = course.video
         fm.videoDuration = course.duration
-        fm.pageClass = 'has-video'
+        fm.pageClass = 'focus-page has-video'
       }
     } else {
       fm.chapterIndex = true

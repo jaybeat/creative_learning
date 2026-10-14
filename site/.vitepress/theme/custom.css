@@ -291,13 +291,6 @@ html[data-font-size='l'] {
 .font-size-switch button:nth-child(1) { font-size: 12px; }
 .font-size-switch button:nth-child(3) { font-size: 15px; }
 
-/* ===== 侧栏已读标记（由 SidebarReadMarks 加 class） ===== */
-.VPSidebar a.link.is-read .text::after {
-  content: ' ✓';
-  color: var(--vp-c-brand-1);
-  font-size: 12px;
-}
-
 /* ===== 继续阅读（章首页的课程地图样式在 chapter-map.css） ===== */
 .continue-reading {
   display: flex;

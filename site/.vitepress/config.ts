@@ -32,6 +32,8 @@ export default defineConfig({
     ['script', {}, "try{var s=localStorage.getItem('ds-book:font-size');if(s)document.documentElement.setAttribute('data-font-size',s)}catch(e){}"],
     // 首屏前恢复"看动画 / 读文字"的选择（theme/course-mode.ts）：读文字时给 <html> 加 data-course-mode="text"
     ['script', {}, "try{if(localStorage.getItem('ds-book:course-mode')==='text')document.documentElement.setAttribute('data-course-mode','text')}catch(e){}"],
+    // 首屏前恢复节页左右两栏的"固定"状态（theme/focus.ts）：默认收起，固定过的一直展开
+    ['script', {}, "try{var d=document.documentElement;if(localStorage.getItem('ds-book:pin-toc'))d.setAttribute('data-pin-toc','');if(localStorage.getItem('ds-book:pin-outline'))d.setAttribute('data-pin-outline','')}catch(e){}"],
   ],
 
   // 本地开发：评论与登录接口由 scripts/lib/api-server.ts 提供（npm run dev 会一起启动）
