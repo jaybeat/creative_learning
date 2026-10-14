@@ -291,16 +291,8 @@ html[data-font-size='l'] {
 .font-size-switch button:nth-child(1) { font-size: 12px; }
 .font-size-switch button:nth-child(3) { font-size: 15px; }
 
-/* ===== 侧栏已读标记（由 SidebarReadMarks 加 class） ===== */
-.VPSidebar a.link.is-read .text::after {
-  content: ' ✓';
-  color: var(--vp-c-brand-1);
-  font-size: 12px;
-}
-
-/* ===== 继续阅读 / 章首页目录 ===== */
-.continue-reading,
-.ci-actions {
+/* ===== 继续阅读（章首页的课程地图样式在 chapter-map.css） ===== */
+.continue-reading {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -331,24 +323,6 @@ html[data-font-size='l'] {
 }
 .cr-clear:hover {
   color: var(--vp-c-text-1);
-}
-.vp-doc .ci-list {
-  list-style: none;
-  padding: 0;
-  margin: 12px 0;
-}
-.vp-doc .ci-list li {
-  padding: 8px 0;
-  margin: 0;
-  border-bottom: 1px solid var(--vp-c-divider);
-}
-.vp-doc .ci-list li.is-read a {
-  color: var(--vp-c-text-2);
-}
-.vp-doc .read-mark {
-  margin-left: 8px;
-  color: var(--vp-c-brand-1);
-  font-size: 13px;
 }
 
 /* ===== 首页（layout: page，全宽，无侧栏） ===== */

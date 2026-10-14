@@ -5,6 +5,7 @@ import chokidar from 'chokidar'
 import { BOOK_DIR, GENERATED_DIR, ROOT, SITE_DIR } from './lib/paths'
 import { runBuildFont } from './build-font'
 import { runBuildContent } from './build-content'
+import { runBuildBrand } from './build-brand'
 import { startApiDev } from './lib/api-server'
 
 const CONFIG_FILE = path.join(SITE_DIR, '.vitepress', 'config.ts')
@@ -39,6 +40,7 @@ async function rebuild(reason: string): Promise<void> {
   try {
     await runBuildFont()
     runBuildContent()
+    await runBuildBrand()
     console.log(`[dev] 重新生成完成（${reason}，${Date.now() - t0} ms）`)
   } catch (err) {
     console.error(`[dev] 生成失败：${err instanceof Error ? err.message : err}`)
@@ -50,6 +52,7 @@ async function main(): Promise<void> {
   // 首次必须成功，否则 VitePress 缺少 generated/ 会起不来
   await runBuildFont()
   runBuildContent()
+  await runBuildBrand()
 
   let timer: NodeJS.Timeout | undefined
   chokidar.watch(BOOK_DIR, { ignoreInitial: true }).on('all', (event, file) => {

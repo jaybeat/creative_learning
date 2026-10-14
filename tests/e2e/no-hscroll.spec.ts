@@ -29,11 +29,16 @@ const rel = (link: string) => link.replace(/^\//, '')
 
 test.describe('375px 视口无页面级横向滚动', () => {
   test.skip(({ viewport }) => (viewport?.width ?? 1280) > 500, '只在手机视口检查')
+  // 有课程动画的节默认隐藏正文；这里要检查正文，先切到"读文字"（动画模式另在 course.spec.ts 里查）
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('ds-book:course-mode', 'text'))
+  })
 
   for (const link of links) {
     test(`页面 ${link}`, async ({ page }) => {
       await page.goto(rel(link))
-      await page.waitForSelector('.vp-doc')
+      // 章首页是课程地图，没有引子的章不渲染 .vp-doc，所以等内容区
+      await page.waitForSelector('.VPContent')
       const { scrollWidth, clientWidth } = await page.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,
         clientWidth: document.documentElement.clientWidth,

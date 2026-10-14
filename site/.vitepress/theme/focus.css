@@ -1,0 +1,364 @@
+/* ===== 节页专注模式：顶栏 + 左右两个抽屉（components/LessonBar.vue、theme/focus.ts） =====
+   节页不要默认主题的全书侧栏和右栏大纲（frontmatter sidebar/aside: false，pageClass: focus-page）。
+   抽屉默认收起，浮出时盖在正文上面；宽屏（≥1280px）可固定，固定后正文让出位置。
+   颜色只用 --cl-*（generated/brand.css），和课程地图、播放器同一套。 */
+
+.focus-page {
+  --lb-toc-w: 340px;
+  --lb-outline-w: 280px;
+}
+/* 默认主题窄屏下的"目录 / 本页目录"条：节页由顶栏代替 */
+.focus-page .VPLocalNav {
+  display: none;
+}
+
+/* ---- 顶栏 ---- */
+.lesson-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: -12px 0 20px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--cl-line-soft);
+  background: var(--vp-c-bg);
+}
+@media (min-width: 960px) {
+  .lesson-bar {
+    top: var(--vp-nav-height);
+    margin-top: -20px;
+  }
+}
+.lb-left,
+.lb-right {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 6px;
+}
+.lb-right {
+  justify-content: flex-end;
+}
+.lb-back,
+.lb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 14px;
+  color: var(--cl-mute);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
+}
+.lb-back:hover,
+.lb-btn:hover,
+.lb-btn[aria-expanded='true'] {
+  background: var(--cl-btn);
+  color: var(--cl-ink);
+}
+.lb-btn {
+  border-color: var(--cl-line);
+  background: var(--cl-paper);
+  color: var(--cl-ink);
+}
+.lb-pos {
+  color: var(--cl-faint);
+  font-variant-numeric: tabular-nums;
+}
+.lb-icon {
+  font-size: 13px;
+  color: var(--cl-faint);
+}
+
+/* 看动画 | 读文字 */
+.cs-tabs {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--cl-line);
+  border-radius: 999px;
+  background: var(--cl-btn);
+}
+.cs-tab {
+  border: 0;
+  background: none;
+  padding: 3px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--cl-mute);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cs-dur {
+  margin-left: 6px;
+  font-size: 12px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+/* 当前模式的标签：用 <html> 上的属性判断，首屏前就对（不等 Vue 挂载） */
+html:not([data-course-mode='text']) .cs-video,
+html[data-course-mode='text'] .cs-text {
+  background: var(--cl-paper);
+  color: var(--cl-ink-strong);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+/* 看动画时没有正文，"本节目录"没有意义 */
+html:not([data-course-mode='text']) .has-video :is(.lb-outline-btn, .lb-outline) {
+  display: none;
+}
+
+/* ---- 抽屉 ---- */
+.lb-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 69;
+  background: rgb(0 0 0 / 0.18);
+}
+.lb-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  background: var(--cl-page);
+  visibility: hidden;
+  transition: transform 0.25s ease, visibility 0.25s;
+}
+.lb-toc {
+  left: 0;
+  width: min(var(--lb-toc-w), 88vw);
+  border-right: 1px solid var(--cl-line);
+  transform: translateX(-100%);
+}
+.lb-outline {
+  right: 0;
+  width: min(var(--lb-outline-w), 85vw);
+  border-left: 1px solid var(--cl-line);
+  transform: translateX(100%);
+}
+.lb-drawer.is-open {
+  visibility: visible;
+  transform: none;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.12);
+}
+@media (min-width: 960px) {
+  .lb-backdrop,
+  .lb-drawer {
+    top: var(--vp-nav-height);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lb-drawer {
+    transition: none;
+  }
+}
+
+.lb-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 12px 16px;
+  border-bottom: 1px solid var(--cl-line-soft);
+}
+.lb-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cl-ink);
+}
+.lb-scope {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--cl-btn);
+}
+.lb-scope button {
+  padding: 2px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--cl-mute);
+}
+.lb-scope button[aria-selected='true'] {
+  background: var(--cl-paper);
+  color: var(--cl-ink-strong);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+.lb-pin {
+  display: none;
+  margin-left: auto;
+  padding: 2px 10px;
+  border: 1px solid var(--cl-line);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--cl-mute);
+}
+.lb-pin:hover {
+  color: var(--cl-ink);
+}
+.lb-pin[aria-pressed='true'] {
+  border-color: var(--cl-c1-line);
+  background: var(--cl-c1-soft);
+  color: var(--cl-c1);
+}
+.lb-close {
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  border-radius: 8px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--cl-faint);
+}
+.lb-pin + .lb-close {
+  margin-left: 0;
+}
+.lb-close:hover {
+  background: var(--cl-btn);
+  color: var(--cl-ink);
+}
+.lb-body {
+  position: relative; /* 当前节的 offsetTop 相对它算 */
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 12px 48px;
+}
+
+/* 左抽屉：节列表沿用课程地图的 .cmap-path，稍紧凑 */
+.lb-ch {
+  display: block;
+  margin: 14px 4px 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cl-ink-strong);
+  text-decoration: none;
+}
+.lb-ch:hover {
+  color: var(--cl-c1);
+}
+.lb-ch-kick {
+  margin-right: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--cl-mute);
+}
+.lb-path > li {
+  min-height: 42px;
+  padding: 0 10px 0 6px;
+  gap: 6px;
+}
+.lb-path > li::before {
+  left: 31px;
+}
+.lb-path a {
+  gap: 10px;
+  padding: 6px 0;
+}
+.lb-path .cmap-name {
+  font-size: 14px;
+}
+.lb-path .video-mark {
+  padding: 0 7px;
+  font-size: 11px;
+}
+
+/* 右抽屉：本节目录 */
+.lb-outline-link {
+  display: block;
+  padding: 6px 12px;
+  border-left: 2px solid transparent;
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--cl-mute);
+  text-decoration: none;
+}
+.lb-outline-link.is-sub {
+  padding-left: 26px;
+  font-size: 13px;
+}
+.lb-outline-link:hover {
+  color: var(--cl-ink);
+}
+.lb-outline-link.is-active {
+  border-left-color: var(--cl-c1);
+  background: var(--cl-c1-soft);
+  color: var(--cl-c1);
+}
+
+/* ---- 宽屏可固定：固定的抽屉一直展开，正文让出位置 ---- */
+@media (min-width: 1280px) {
+  .lb-pin {
+    display: inline-flex;
+  }
+  html[data-pin-toc] .lb-toc,
+  html[data-pin-outline] .lb-outline {
+    visibility: visible;
+    transform: none;
+    box-shadow: none;
+    transition: none;
+  }
+  html[data-pin-toc] :is(.lb-toc .lb-close, .lb-toc-btn),
+  html[data-pin-outline] :is(.lb-outline .lb-close, .lb-outline-btn) {
+    display: none;
+  }
+  html[data-pin-toc] .focus-page .VPContent {
+    padding-left: var(--lb-toc-w);
+  }
+  html[data-pin-outline] .focus-page:not(.has-video) .VPContent,
+  html[data-pin-outline][data-course-mode='text'] .focus-page .VPContent {
+    padding-right: var(--lb-outline-w);
+  }
+}
+
+/* ---- 窄屏：顶栏只留图标和短字 ---- */
+@media (max-width: 640px) {
+  .lesson-bar {
+    margin-top: -16px;
+    gap: 6px;
+  }
+  .lb-back-text,
+  .lb-toc-text,
+  .lb-outline-btn {
+    font-size: 0;
+  }
+  .lb-toc-btn {
+    gap: 6px;
+  }
+  .lb-outline-btn .lb-icon {
+    font-size: 16px;
+  }
+  .lb-back,
+  .lb-btn {
+    padding: 0 10px;
+  }
+  .cs-tab {
+    padding: 3px 10px;
+    font-size: 13px;
+  }
+  .cs-dur {
+    display: none;
+  }
+}
+
+/* ---- 看动画时没有侧栏和正文，播放器可以比正文栏宽（正文栏 688px，播放器放到 896px） ---- */
+@media (min-width: 960px) {
+  html:not([data-course-mode='text']) .has-video .VPDoc:not(.has-sidebar) .container {
+    max-width: 1024px;
+  }
+  html:not([data-course-mode='text']) .has-video .VPDoc:not(.has-sidebar) .content {
+    max-width: 960px;
+  }
+}

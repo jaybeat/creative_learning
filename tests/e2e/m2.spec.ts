@@ -92,10 +92,15 @@ test.describe('阅读进度', () => {
     await page.reload()
     await expect(page.locator('.continue-reading .cr-button')).toHaveText(/继续阅读：2\.8/)
 
+    // 章首页是课程地图（没有全书侧栏）：节列表上打 ✓、卡片上"继续"、左栏本章"已学 1/20"
     await page.goto('ch02/')
-    await expect(page.locator('.VPSidebar a.link.is-read[href*="2-8"]')).toHaveCount(1)
     await expect(page.locator('.ci-list li.is-read')).toHaveCount(1)
     await expect(page.locator('.chapter-index .cr-button')).toHaveText(/继续阅读：2\.8/)
+    await expect(page.locator('.cmap-ch.is-current .cmap-ch-meta')).toHaveText('已学 1/20')
+
+    // 节页左抽屉"目录"里照常打 ✓（回到 2.8 本身，不改动"最近阅读"）
+    await page.goto('ch02/2-8')
+    await expect(page.locator('.lb-toc li.is-read a[href*="2-8"]')).toHaveCount(1)
 
     await page.goto('')
     await page.locator('.continue-reading .cr-button').click()
@@ -117,6 +122,9 @@ test.describe('阅读进度', () => {
     await expect(hero.locator('.home-title-en')).toHaveText(/From Problems to Representations/i)
     await expect(hero.locator('.home-tagline')).toHaveText('把复杂概念简化为能自己动手解决的问题')
     await expect(hero.locator('svg.cover-figure')).toHaveCount(1)
+    // 封面样式真的生效（2026-10 改课程地图时误删过整段首页 CSS，元素都在、样式全没，上面几条查不出来）
+    await expect(hero.locator('.home-cover')).toHaveCSS('display', 'grid')
+    await expect(hero.locator('.cover-figure .cf-node').first()).not.toHaveCSS('stroke', 'none')
     await expect(hero.locator('a, button')).toHaveCount(1)
     await expect(page.locator('.home-idea')).toHaveCount(0)
     await expect(page.locator('.home-chapters a[href*="/ch01/"]')).toHaveCount(1)
@@ -138,8 +146,9 @@ test.describe('阅读进度', () => {
     await page.reload()
     await expect(page.locator('.continue-reading .cr-button')).toHaveText('开始阅读')
     await page.goto('ch02/')
-    await expect(page.locator('.VPSidebar a.link.is-read')).toHaveCount(0)
     await expect(page.locator('.ci-list li.is-read')).toHaveCount(0)
+    await page.goto('ch02/2-9')
+    await expect(page.locator('.lb-toc li.is-read')).toHaveCount(0)
     await page.evaluate(() => localStorage.removeItem('ds-book:progress'))
   })
 
@@ -251,12 +260,10 @@ test.describe('键盘翻节', () => {
 test.describe('标题锚点', () => {
   // 「小节标题带 # 锚点链接」：第1、2章都没有 ### 小节了（2.17 改版后），等后面的章有小节时再加回来
 
-  test('加粗段落标题进右侧大纲，锚点为纯 ASCII', async ({ page, viewport }) => {
+  test('加粗段落标题进"本节目录"，锚点为纯 ASCII', async ({ page }) => {
     await page.goto('ch02/2-8')
     await expect(page.locator('h3.para-title').first()).toHaveAttribute('id', '2-8-p1')
-    if ((viewport?.width ?? 1280) >= 1280) {
-      await expect(page.locator('.VPDocAsideOutline a.outline-link[href="#2-8-p1"]')).toHaveCount(1)
-    }
+    await expect(page.locator('.lb-outline a.lb-outline-link[href="#2-8-p1"]')).toHaveCount(1)
   })
 
   test('本节问题卡片与结尾卡片', async ({ page }) => {
