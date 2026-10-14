@@ -122,6 +122,9 @@ test.describe('阅读进度', () => {
     await expect(hero.locator('.home-title-en')).toHaveText(/From Problems to Representations/i)
     await expect(hero.locator('.home-tagline')).toHaveText('把复杂概念简化为能自己动手解决的问题')
     await expect(hero.locator('svg.cover-figure')).toHaveCount(1)
+    // 封面样式真的生效（2026-10 改课程地图时误删过整段首页 CSS，元素都在、样式全没，上面几条查不出来）
+    await expect(hero.locator('.home-cover')).toHaveCSS('display', 'grid')
+    await expect(hero.locator('.cover-figure .cf-node').first()).not.toHaveCSS('stroke', 'none')
     await expect(hero.locator('a, button')).toHaveCount(1)
     await expect(page.locator('.home-idea')).toHaveCount(0)
     await expect(page.locator('.home-chapters a[href*="/ch01/"]')).toHaveCount(1)
