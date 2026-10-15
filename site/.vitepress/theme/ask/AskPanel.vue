@@ -118,7 +118,7 @@ function send(text = input.value): void {
     requireLogin(q ? () => send(q) : undefined)
     return
   }
-  if (!q || busy.value) return
+  if (!q || busy.value || unconfigured.value) return
   void run(q)
 }
 
@@ -146,6 +146,13 @@ async function run(q: string): Promise<void> {
     left.value = r.left
   } catch (e) {
     if (mine.signal.aborted) return
+    // 服务端没配 key：只在输入框上方提示一次（unconfigured），撤掉这一问，问题放回输入框
+    if (e instanceof ApiError && e.code === 'ask_unconfigured') {
+      unconfigured.value = true
+      messages.value.splice(-2)
+      input.value = q
+      return
+    }
     reply.error = e instanceof ApiError ? e.message : '出错了，请稍后再试'
     if (e instanceof ApiError && e.code === 'login_required') me.value = null
     if (e instanceof ApiError && e.code === 'ask_daily_limit') left.value = 0
@@ -246,7 +253,7 @@ onUnmounted(() => {
         <div class="ask-actions">
           <span class="ask-note">AI 回答仅供参考，以书为准</span>
           <button v-if="busy" type="button" class="ask-btn" @click="stop">停止</button>
-          <button v-else type="submit" class="ask-btn ask-btn-primary" :disabled="!!me && !input.trim()">{{ me ? '发送' : '登录后提问' }}</button>
+          <button v-else type="submit" class="ask-btn ask-btn-primary" :disabled="!!me && (unconfigured || !input.trim())">{{ me ? '发送' : '登录后提问' }}</button>
         </div>
       </form>
     </aside>
