@@ -13,6 +13,7 @@ import { memoryMailer } from '../server/mailer.js'
 import { migrate } from '../server/migrate.js'
 import { readMigrations } from '../server/migrations-fs.js'
 import { fakeJudge } from '../server/judge.js'
+import { fakeModel } from '../server/ask-model.js'
 import { SOLVERS } from './lib/poly-ref.js'
 import { ROOT } from './lib/paths.js'
 
@@ -46,7 +47,8 @@ async function main() {
     if (code.includes('TLE')) return { status: 'time_limit' }
     return 'wrong answer\n'
   })
-  const api = createApp({ db, mailer, config, judge })
+  // 问 AI 用假模型：把问题复述回来，不连 DeepSeek
+  const api = createApp({ db, mailer, config, judge, ai: fakeModel() })
 
   const app = new Hono()
   app.get('/__test/last-code', (c) => {

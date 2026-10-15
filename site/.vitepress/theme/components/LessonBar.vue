@@ -7,10 +7,13 @@ import { titleOf } from '../book-data'
 import { courseMode, readMode, setMode, type CourseMode } from '../course-mode'
 import { pinned, readPins, setPin, type Panel } from '../focus'
 import { isRead, pagePath, useProgress } from '../progress'
+import { claimRight, releaseRight, rightOpen } from '../right-rail'
+import { ask, closeAsk, openAsk } from '../ask/store'
 
 /**
  * 节页顶栏（doc-before 插槽，frontmatter.section 存在时显示）：
- *   左：← 第N章（回课程地图）、"目录 · 3/20"（左抽屉）　中：▶ 看动画 | 读文字（有动画的节）　右：本节目录（右抽屉，看动画时隐藏）
+ *   左：← 第N章（回课程地图）、"目录 · 3/20"（左抽屉）　中：▶ 看动画 | 读文字（有动画的节）　右：问 AI、本节目录（右抽屉，看动画时隐藏）
+ * 本节目录、评论、问 AI 共用右侧一栏，同一时间只开一个（theme/right-rail.ts）。
  * 两个抽屉默认收起，浮出时盖在正文上面，Esc / 点空白处 / 换页关闭；宽屏可"固定"（theme/focus.ts）。
  * 左抽屉的样式和课程地图的节列表一样（chapter-map.css 的 .cmap-path），可切到"全书"。
  */
@@ -47,6 +50,17 @@ function onKey(e: KeyboardEvent): void {
   if (e.key === 'Escape' && open.value) close()
 }
 watch(() => route.path, close)
+watch(open, (p, was) => {
+  if (p === 'outline') claimRight('outline')
+  else if (was === 'outline') releaseRight('outline')
+})
+watch(rightOpen, (r) => {
+  if (r !== 'outline' && open.value === 'outline') close()
+})
+function toggleAsk(): void {
+  if (ask.open) closeAsk()
+  else openAsk()
+}
 // 打开左抽屉时把当前节滚到中间
 watch(open, (p) => {
   if (p !== 'toc') return
@@ -122,6 +136,9 @@ const outlineLabel = computed(() => {
         <button type="button" role="tab" class="cs-tab cs-text" :aria-selected="courseMode === 'text'" @click="choose('text')">读文字</button>
       </div>
       <div class="lb-right">
+        <button type="button" class="lb-btn lb-ask-btn" :aria-expanded="ask.open" title="边读边问：右侧打开问 AI 面板" @click="toggleAsk">
+          <span class="lb-icon" aria-hidden="true">✦</span> 问 AI
+        </button>
         <button
           v-if="outline.length"
           type="button"

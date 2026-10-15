@@ -5,6 +5,7 @@ import { loadConfig } from '../server/config.js'
 import { neonDb } from '../server/db.js'
 import { judgeFromEnv } from '../server/judge.js'
 import { mailerFromEnv } from '../server/mailer.js'
+import { askModelFromEnv } from '../server/ask-model.js'
 
 const config = loadConfig(process.env)
 const app = createApp({
@@ -12,6 +13,7 @@ const app = createApp({
   mailer: mailerFromEnv(process.env, config.brand),
   config,
   judge: judgeFromEnv(process.env),
+  ai: askModelFromEnv(process.env),
 })
 
 const handler = handle(app)

@@ -331,21 +331,29 @@ html:not([data-course-mode='text']) .has-video :is(.lb-outline-btn, .lb-outline)
   }
   .lb-back-text,
   .lb-toc-text,
-  .lb-outline-btn {
+  .lb-outline-btn,
+  .lb-ask-btn {
     font-size: 0;
   }
   .lb-toc-btn {
     gap: 6px;
   }
-  .lb-outline-btn .lb-icon {
+  .lb-outline-btn .lb-icon,
+  .lb-ask-btn .lb-icon {
     font-size: 16px;
+  }
+  /* 有动画的节顶栏最挤：目录、看动画 | 读文字、问 AI、本节目录，要在 375px 里放下 */
+  .lesson-bar,
+  .lb-left,
+  .lb-right {
+    gap: 4px;
   }
   .lb-back,
   .lb-btn {
-    padding: 0 10px;
+    padding: 0 8px;
   }
   .cs-tab {
-    padding: 3px 10px;
+    padding: 3px 8px;
     font-size: 13px;
   }
   .cs-dur {

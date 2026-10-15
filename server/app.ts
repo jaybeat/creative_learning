@@ -10,6 +10,8 @@ import { adminRoutes } from './admin.js'
 import { submissionRoutes } from './submissions.js'
 import { runRoutes } from './run.js'
 import type { Judge } from './judge.js'
+import { askRoutes } from './ask.js'
+import type { AskModel } from './ask-model.js'
 
 export interface Deps {
   db: Db
@@ -17,9 +19,11 @@ export interface Deps {
   config: Config
   /** 评测机；没配置时为 null（提交只保存、「运行」不可用） */
   judge: Judge | null
+  /** 问 AI 的模型；没配置 DEEPSEEK_API 时为 null（面板提示暂不可用） */
+  ai: AskModel | null
 }
 
-export type DepsInput = Omit<Deps, 'judge'> & Partial<Pick<Deps, 'judge'>>
+export type DepsInput = Omit<Deps, 'judge' | 'ai'> & Partial<Pick<Deps, 'judge' | 'ai'>>
 
 export interface SessionUser {
   id: string
@@ -35,7 +39,7 @@ export type AppEnv = { Variables: { user: SessionUser | null; tokenHash: string 
 const RENEW_BELOW_DAYS = 15
 
 export function createApp(input: DepsInput) {
-  const deps: Deps = { judge: null, ...input }
+  const deps: Deps = { judge: null, ai: null, ...input }
   const { db, config } = deps
   const app = new Hono<AppEnv>().basePath('/api')
 
@@ -80,6 +84,7 @@ export function createApp(input: DepsInput) {
   adminRoutes(app, deps)
   submissionRoutes(app, deps)
   runRoutes(app, deps)
+  askRoutes(app, deps)
 
   app.notFound((c) => fail(c, 404, 'not_found'))
   app.onError((err, c) => {

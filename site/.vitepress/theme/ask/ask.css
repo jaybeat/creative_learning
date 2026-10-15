@@ -1,0 +1,293 @@
+/* ===== 问 AI 面板（ask/AskPanel.vue）=====
+   桌面：右侧一栏，和评论面板（.cl-panel）同一位置、同一宽度，同一时间只开一个（theme/right-rail.ts）。
+   看动画时在全屏学习层里：顶到屏幕最上面，播放器让出右边这一栏（舞台按新宽度重新缩放）。
+   手机：底部弹层；看动画时播放器缩到上半屏。颜色只用 --cl-*，看动画时加 .cl-light 固定浅色。 */
+
+:root {
+  --ask-w: 400px;
+  --ask-sheet-h: 62dvh;
+}
+
+.ask-panel {
+  position: fixed;
+  top: var(--vp-nav-height);
+  right: 0;
+  bottom: 0;
+  /* 固定住的本节目录（.lb-outline 70）也在右边：问 AI 盖在它上面 */
+  z-index: 75;
+  display: flex;
+  flex-direction: column;
+  width: var(--ask-w);
+  max-width: 100vw;
+  border-left: 1px solid var(--cl-line);
+  background: var(--cl-paper);
+  box-shadow: var(--vp-shadow-3);
+  color: var(--cl-ink);
+}
+.ask-panel.ask-in-video {
+  top: 0;
+  z-index: 210;
+  box-shadow: none;
+}
+@media (min-width: 768px) {
+  html[data-ask-open]:not([data-course-mode='text']) .cs-full {
+    right: var(--ask-w);
+  }
+}
+/* 宽屏读文字时正文让出位置，边读边问（和固定本节目录一样，focus.css） */
+@media (min-width: 1280px) {
+  html[data-ask-open] .focus-page:not(.has-video) .VPContent,
+  html[data-ask-open][data-course-mode='text'] .focus-page .VPContent {
+    padding-right: var(--ask-w);
+  }
+}
+@media (max-width: 767px) {
+  .ask-panel,
+  .ask-panel.ask-in-video {
+    top: auto;
+    left: 0;
+    width: auto;
+    height: var(--ask-sheet-h);
+    border-left: none;
+    border-top: 1px solid var(--cl-line);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 32px -12px rgb(0 0 0 / 0.2);
+  }
+  html[data-ask-open]:not([data-course-mode='text']) .cs-full {
+    bottom: var(--ask-sheet-h);
+  }
+}
+
+/* ---- 头 ---- */
+.ask-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 12px 18px;
+  border-bottom: 1px solid var(--cl-line-soft);
+}
+.ask-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--cl-ink-strong);
+}
+.ask-left {
+  font-size: 12px;
+  color: var(--cl-faint);
+}
+.ask-spacer {
+  flex: 1;
+}
+.ask-link {
+  font-size: 13px;
+  color: var(--cl-mute);
+}
+.ask-link:hover {
+  color: var(--cl-ink-strong);
+}
+.ask-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--cl-mute);
+}
+.ask-close:hover {
+  background: var(--cl-btn);
+  color: var(--cl-ink-strong);
+}
+
+/* ---- 对话 ---- */
+.ask-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 18px;
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+.ask-hello {
+  margin: 0 0 16px;
+  color: var(--cl-mute);
+}
+.ask-try {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--cl-faint);
+}
+.ask-chip {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 9px 14px;
+  border: 1px solid var(--cl-line);
+  border-radius: 12px;
+  background: var(--cl-page);
+  text-align: left;
+  font-size: 14px;
+  color: var(--cl-ink);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.ask-chip:hover {
+  border-color: var(--cl-line-cell);
+}
+.ask-q {
+  width: fit-content;
+  max-width: 88%;
+  margin: 0 0 14px auto;
+  padding: 8px 14px;
+  border-radius: 16px 16px 4px 16px;
+  background: var(--cl-c1-soft);
+  color: var(--cl-ink-strong);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ask-a {
+  margin: 0 0 20px;
+  overflow-wrap: anywhere;
+}
+.ask-md > :first-child {
+  margin-top: 0;
+}
+.ask-md p,
+.ask-md ul,
+.ask-md ol {
+  margin: 0 0 10px;
+}
+.ask-md ul,
+.ask-md ol {
+  padding-left: 20px;
+}
+.ask-md ul {
+  list-style: disc;
+}
+.ask-md ol {
+  list-style: decimal;
+}
+.ask-md code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--cl-btn);
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.88em;
+}
+.ask-md pre {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: var(--cl-page);
+  border: 1px solid var(--cl-line-soft);
+  line-height: 1.55;
+}
+.ask-md pre code {
+  padding: 0;
+  background: none;
+  font-size: 13px;
+  white-space: pre;
+}
+.ask-err {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--cl-warm);
+}
+.ask-typing {
+  display: inline-flex;
+  gap: 4px;
+  padding: 6px 0;
+}
+.ask-typing i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cl-faint);
+  animation: ask-dot 1s infinite ease-in-out;
+}
+.ask-typing i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.ask-typing i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes ask-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* ---- 输入 ---- */
+.ask-form {
+  flex: none;
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--cl-line-soft);
+}
+.ask-form > .ask-err {
+  margin: 0 0 6px;
+}
+.ask-input {
+  display: block;
+  width: 100%;
+  max-height: 160px;
+  padding: 9px 12px;
+  border: 1px solid var(--cl-line);
+  border-radius: 12px;
+  background: var(--cl-page);
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--cl-ink-strong);
+  resize: vertical;
+}
+.ask-input:focus {
+  outline: none;
+  border-color: var(--cl-line-cell);
+}
+.ask-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ask-note {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--cl-faint);
+}
+.ask-btn {
+  height: 32px;
+  padding: 0 16px;
+  border: 1px solid var(--cl-line);
+  border-radius: 999px;
+  font-size: 14px;
+  color: var(--cl-ink);
+}
+.ask-btn-primary {
+  border-color: transparent;
+  background: var(--cl-ink-strong);
+  color: var(--cl-paper);
+  font-weight: 600;
+}
+.ask-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---- 顶栏入口（LessonBar.vue） ---- */
+.lb-ask-btn[aria-expanded='true'] {
+  border-color: var(--cl-line);
+  color: var(--cl-ink-strong);
+}
+
+/* ---- 划词问 AI（comments/CommentLayer.vue，挨着"评论"按钮） ---- */
+.cl-sel-btn.cl-sel-ask {
+  background: var(--cl-ink-strong);
+  color: var(--cl-paper);
+}

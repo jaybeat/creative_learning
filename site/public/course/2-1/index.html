@@ -92,7 +92,7 @@ body.embed main{max-width:none!important;box-sizing:border-box;height:100vh;heig
 body.embed .bar{flex:none}
 body.embed .wrap{flex:none;margin:auto auto 0}
 body.embed #cap{flex:none;margin:14px auto auto}
-@media (max-width:640px){body.embed main{padding:6px 10px 10px!important}body.embed .bar{gap:8px}body.embed #scr{display:none}}
+@media (max-width:640px){body.embed main{padding:6px 10px 10px!important}body.embed .bar{gap:8px}body.embed #scr{display:none}body.embed #speed{display:none}}
 .wrap{position:relative;box-sizing:border-box;width:100%;aspect-ratio:16/9;background:#fafaf8;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .stage{position:absolute;left:0;top:0;width:640px;height:360px;transform-origin:0 0}
 .stage .f{position:absolute;left:0;top:0}
@@ -383,6 +383,7 @@ body.st-clean .qopt{border-radius:10px}
       <button id="play" class="ib" title="播放/暂停（空格）" aria-label="播放"><svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8c0 .8.9 1.3 1.6.8l10-6.4c.6-.4.6-1.2 0-1.6l-10-6.4C8.9 4.3 8 4.8 8 5.6z" fill="currentColor"/></svg><svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.5v13M15.5 5.5v13" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
       <button id="speed" class="ib txt" title="倍速">1×</button>
       <button id="capOn" class="ib txt" title="字幕（C）" aria-pressed="true">字</button>
+      <button id="ask" class="ib txt emb" title="边看边问：右侧打开问 AI 面板（动画会暂停）">问 AI</button>
       <button id="toText" class="ib txt emb" title="改读文字详细版">读文字</button>
       <button id="menu" class="ib" title="目录" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.5" cy="6.5" r=".9" fill="currentColor"/><circle cx="4.5" cy="12" r=".9" fill="currentColor"/><circle cx="4.5" cy="17.5" r=".9" fill="currentColor"/></svg></button>
       <div id="toc" hidden></div>
@@ -646,13 +647,14 @@ if (pal) {
 const params = new URLSearchParams(location.search)
 const t0 = parseFloat(params.get('t'))
 if (t0 > 0 && t0 < DATA.total) { t = t0; $('startLabel').textContent = '接着播放 · ' + fmt(t) + ' / ' + fmt(DATA.total) }
-// —— 嵌入网站节页（?embed）：全屏学习层。告诉外层页面：播完了、要退出、要改读文字；外层可以让它重新播放 ——
+// —— 嵌入网站节页（?embed）：全屏学习层。告诉外层页面：播完了、要退出、要改读文字、要问 AI；外层可以让它重新播放、暂停 ——
 if (params.has('embed') && window.parent !== window) {
   document.body.classList.add('embed')
   const post = (msg) => window.parent.postMessage(Object.assign({ source: 'ds-course' }, msg), '*')
   window.__onEnded = () => post({ type: 'ended' })
   $('exit').onclick = () => post({ type: 'exit' })
   $('toText').onclick = () => { setPlaying(false); post({ type: 'text' }) }
+  $('ask').onclick = () => { setPlaying(false); post({ type: 'ask' }) }
   // Esc：目录开着先关目录，否则退出
   // 捕获阶段先于上面关目录的那个监听器，才能看到按下时目录是不是开着
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && toc.hidden) post({ type: 'exit' }) }, true)
@@ -660,6 +662,7 @@ if (params.has('embed') && window.parent !== window) {
     const d = e.data
     if (e.source !== window.parent || !d || d.source !== 'ds-site') return
     if (d.type === 'replay') { t = 0; $('start').click() }
+    else if (d.type === 'pause') setPlaying(false)
   })
   addEventListener('resize', fitWrap); fitWrap()
 }

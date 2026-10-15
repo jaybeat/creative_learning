@@ -91,6 +91,11 @@ const MESSAGES: Record<string, string> = {
   judge_unconfigured: '评测机还没有配置好',
   judge_unavailable: '评测机暂时连不上，请稍后再试',
   judge_error: '评测出错了，请稍后再试',
+  bad_question: '问题不能为空，最多 1000 字',
+  ask_unconfigured: '问 AI 还没有配置好',
+  ask_daily_limit: '今天的提问次数用完了，明天再来',
+  ask_site_limit: '今天全站的提问次数用完了，明天再来',
+  ask_unavailable: 'AI 暂时连不上，请稍后再试',
 }
 
 export class ApiError extends Error {
@@ -120,6 +125,57 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return data as T
 }
 
+export interface AskTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+/**
+ * 问 AI：服务端按 NDJSON 流式返回（server/ask.ts）。每收到一段文字调用 onDelta；
+ * 正常结束返回今天剩余次数，出错抛 ApiError（流到一半出错时，已收到的文字保留在 onDelta 里）。
+ */
+export async function askStream(
+  body: { page: string; question: string; history: AskTurn[] },
+  onDelta: (text: string) => void,
+  signal?: AbortSignal,
+): Promise<{ left: number }> {
+  let res: Response
+  try {
+    res = await fetch(`${import.meta.env.BASE_URL}api/ask`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal,
+    })
+  } catch (e) {
+    if (signal?.aborted) throw e
+    throw new ApiError('network', 0)
+  }
+  if (!res.ok || !res.body) {
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
+    throw new ApiError(String(data.error ?? 'unknown'), res.status, data)
+  }
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
+  let buf = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += value
+    let nl: number
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl)
+      buf = buf.slice(nl + 1)
+      if (!line.trim()) continue
+      const m = JSON.parse(line) as { d?: string; done?: boolean; left?: number; error?: string }
+      if (m.d) onDelta(m.d)
+      else if (m.error) throw new ApiError(m.error, 503)
+      else if (m.done) return { left: m.left ?? 0 }
+    }
+  }
+  throw new ApiError('ask_unavailable', 503)
+}
+
 export const api = {
   me: () => request<{ user: Me | null }>('GET', '/me'),
   sendCode: (email: string) => request<{ ok: true; resendAfter: number }>('POST', '/auth/code', { email }),
@@ -139,6 +195,7 @@ export const api = {
     request<{ submissions: Submission[] }>('GET', `/submissions?problem=${encodeURIComponent(problemId)}`),
   submission: (id: string) => request<Submission>('GET', `/submissions/${id}`),
   run: (problemId: string, code: string, inputs: string[]) => request<RunResponse>('POST', '/run', { problemId, code, inputs }),
+  askQuota: () => request<{ enabled: boolean; left: number; limit: number }>('GET', '/ask/quota'),
   pendingNotify: () =>
     request<{ users: { userId: string; name: string; count: number; notifyReplies: boolean }[] }>('GET', '/admin/pending-notify'),
   sendPendingNotify: (userId: string) => request<{ ok: true; sent: boolean }>('POST', `/admin/pending-notify/${userId}/send`, {}),

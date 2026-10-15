@@ -11,7 +11,7 @@
   ],
   "functions": {
     "api/index.ts": {
-      "includeFiles": "book/problems/tests/**",
+      "includeFiles": "book/**",
       "maxDuration": 300
     }
   },

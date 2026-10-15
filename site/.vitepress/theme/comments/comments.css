@@ -206,10 +206,11 @@
 }
 
 /* ---------- 登录框 ---------- */
+/* 盖在全屏学习层（.cs-full 200）和问 AI 面板（210）上面：看动画时点"问 AI"也可能要先登录 */
 .cl-modal {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 260;
   display: flex;
   align-items: center;
   justify-content: center;

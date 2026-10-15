@@ -12,6 +12,7 @@ import NavUser from './comments/NavUser.vue'
 import LoginDialog from './comments/LoginDialog.vue'
 import CommentLayer from './comments/CommentLayer.vue'
 import PageComments from './comments/PageComments.vue'
+import AskPanel from './ask/AskPanel.vue'
 
 // 每次正文更新（首屏与站内跳转）后做一次 DOM 增强：长代码折叠
 onContentUpdated(() => setupFolding())
@@ -26,6 +27,7 @@ onContentUpdated(() => setupFolding())
     <template #layout-bottom>
       <KeyNav />
       <CommentLayer />
+      <AskPanel />
       <LoginDialog />
     </template>
   </DefaultTheme.Layout>
