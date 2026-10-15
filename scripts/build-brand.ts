@@ -18,13 +18,14 @@ const SERIF_SRC = path.join(ROOT, 'tools/fonts/NotoSerifSC-wght.ttf')
 const CHARS_FILE = path.join(ROOT, 'tools/fonts/brand-serif.chars.txt')
 const OUT_DIR = path.join(SITE_DIR, 'public', 'brand')
 
-/** 用宋体显示的文字：章名、章的问题（课程地图卡片标题"线性表：做一个单行编辑器"），再加数字和几个标点 */
+/** 用宋体显示的文字：章名、章的问题（课程地图卡片标题"线性表：做一个单行编辑器"）、节名（首页"继续学习"卡、动画结束卡片），再加数字和几个标点 */
 function serifText(): string {
   const book = JSON.parse(fs.readFileSync(path.join(GENERATED_DIR, 'book.json'), 'utf8')) as {
     title: string
-    chapters: { title: string; question: string }[]
+    chapters: { title: string; question: string; sections: { title: string }[]; problems: { items: { title: string }[] } | null }[]
   }
-  return book.title + book.chapters.map((c) => c.title + c.question).join('') + '第章0123456789：·'
+  const text = book.chapters.map((c) => c.title + c.question + c.sections.map((s) => s.title).join('') + (c.problems?.items.map((p) => p.title).join('') ?? ''))
+  return book.title + text.join('') + '第章0123456789.：·'
 }
 
 const uniq = (s: string) => [...new Set([...s].filter((c) => c.trim()))].sort().join('')
@@ -61,6 +62,8 @@ export async function runBuildBrand(): Promise<void> {
       : '',
     `:root {\n${vars(TOKENS)}\n  --cl-serif: BrandSerif, "Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, serif;\n}`,
     `.dark {\n${vars(DARK_TOKENS)}\n}`,
+    // 课程动画只有浅色：全屏学习层（CourseSwitch.vue）在深色模式下也用浅色令牌
+    `.cl-light {\n${vars(TOKENS)}\n}`,
     '',
   ]
     .filter((x) => x !== '')

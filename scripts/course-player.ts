@@ -242,12 +242,14 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
 <!-- 由 docs/course/${id}.md 和 docs/course/storyboard/${id}${STYLES.find((s) => s.style === style)!.frames} 生成，不要手改本文件。配音：${VOICE}。 -->
 <main>
   <div class="bar">
+    <button id="exit" class="ib emb" title="退出动画，回到本章（Esc）" aria-label="退出">${ICON.close}</button>
     <span id="scr"></span>
     <div id="prog"></div>
     <div class="tools">
       <button id="play" class="ib" title="播放/暂停（空格）" aria-label="播放">${ICON.play}${ICON.pause}</button>
       <button id="speed" class="ib txt" title="倍速">1×</button>
       <button id="capOn" class="ib txt" title="字幕（C）" aria-pressed="true">字</button>
+      <button id="toText" class="ib txt emb" title="改读文字详细版">读文字</button>
       <button id="menu" class="ib" title="目录" aria-expanded="false">${ICON.list}</button>${style === 'sticker' ? `
       <select id="pal" title="色系">${Object.entries(PALETTES).map(([k, p]) => `<option value="${k}"${k === DEFAULT_PALETTE ? ' selected' : ''}>${p.name}</option>`).join('')}</select>` : ''}
       <div id="toc" hidden></div>
@@ -270,6 +272,7 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
 const ICON = {
   play: '<svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8c0 .8.9 1.3 1.6.8l10-6.4c.6-.4.6-1.2 0-1.6l-10-6.4C8.9 4.3 8 4.8 8 5.6z" fill="currentColor"/></svg>',
   pause: '<svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.5v13M15.5 5.5v13" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.5" cy="6.5" r=".9" fill="currentColor"/><circle cx="4.5" cy="12" r=".9" fill="currentColor"/><circle cx="4.5" cy="17.5" r=".9" fill="currentColor"/></svg>',
 }
 
@@ -296,8 +299,16 @@ main{max-width:980px;margin:0 auto;padding:16px}
 #toc em{font-style:normal;opacity:.55;font-variant-numeric:tabular-nums}
 #tip{position:absolute;top:34px;transform:translateX(-50%);background:#222;color:#fff;font-size:12px;line-height:1.5;padding:3px 9px;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:31}
 #pal{font:inherit;font-size:12px;margin-left:6px}
+/* 嵌入网站节页：全屏学习层（网站 CourseSwitch.vue 把 iframe 铺满视口）。只有一条控制条 + 舞台 + 字幕，舞台按宽高两个方向缩放（fit） */
+.emb{display:none!important}
+body.embed .emb{display:inline-flex!important}
 body.embed{background:transparent!important;overflow:hidden}
-body.embed main{max-width:none!important;padding:0!important}
+body.embed.th-clean{background:var(--page)!important}
+body.embed main{max-width:none!important;box-sizing:border-box;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:10px 24px 12px!important}
+body.embed .bar{flex:none}
+body.embed .wrap{flex:none;margin:auto auto 0}
+body.embed #cap{flex:none;margin:14px auto auto}
+@media (max-width:640px){body.embed main{padding:6px 10px 10px!important}body.embed .bar{gap:8px}body.embed #scr{display:none}}
 .wrap{position:relative;box-sizing:border-box;width:100%;aspect-ratio:16/9;background:#fafaf8;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .stage{position:absolute;left:0;top:0;width:640px;height:360px;transform-origin:0 0}
 .stage .f{position:absolute;left:0;top:0}
@@ -610,6 +621,16 @@ document.addEventListener('keydown', (e) => {
 })
 
 // —— 画布缩放 ——
+// 嵌入网站时整屏只有这一页：先按宽、高两个方向算出舞台最大能多大（扣掉控制条、字幕和留白），再按舞台宽度缩放画布
+const fullscreen = () => document.body.classList.contains('embed')
+function fitWrap() {
+  if (!fullscreen()) { wrap.style.width = ''; return }
+  const main = document.querySelector('main'), cs = getComputedStyle(main), bar = document.querySelector('.bar'), cap = $('cap')
+  const px = (v) => parseFloat(v) || 0
+  const w = main.clientWidth - px(cs.paddingLeft) - px(cs.paddingRight)
+  const h = innerHeight - px(cs.paddingTop) - px(cs.paddingBottom) - bar.offsetHeight - px(getComputedStyle(bar).marginBottom) - cap.offsetHeight - px(getComputedStyle(cap).marginTop)
+  wrap.style.width = Math.max(160, Math.floor(Math.min(w, (h * 16) / 9))) + 'px'
+}
 const fit = () => { stage.style.transform = 'scale(' + wrap.clientWidth / 640 + ')' }
 new ResizeObserver(fit).observe(wrap); fit()
 
@@ -630,14 +651,22 @@ if (pal) {
 const params = new URLSearchParams(location.search)
 const t0 = parseFloat(params.get('t'))
 if (t0 > 0 && t0 < DATA.total) { t = t0; $('startLabel').textContent = '接着播放 · ' + fmt(t) + ' / ' + fmt(DATA.total) }
-// —— 嵌入网站节页（?embed）：背景透明、去掉外边距；把页面高度、播完这两件事告诉外层页面 ——
+// —— 嵌入网站节页（?embed）：全屏学习层。告诉外层页面：播完了、要退出、要改读文字；外层可以让它重新播放 ——
 if (params.has('embed') && window.parent !== window) {
   document.body.classList.add('embed')
   const post = (msg) => window.parent.postMessage(Object.assign({ source: 'ds-course' }, msg), '*')
-  // 量 main 的实际高度（body 被 iframe 撑满，量它只会越来越高）
-  const main = document.querySelector('main')
-  new ResizeObserver(() => post({ type: 'height', h: Math.ceil(main.getBoundingClientRect().height) })).observe(main)
   window.__onEnded = () => post({ type: 'ended' })
+  $('exit').onclick = () => post({ type: 'exit' })
+  $('toText').onclick = () => { setPlaying(false); post({ type: 'text' }) }
+  // Esc：目录开着先关目录，否则退出
+  // 捕获阶段先于上面关目录的那个监听器，才能看到按下时目录是不是开着
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && toc.hidden) post({ type: 'exit' }) }, true)
+  window.addEventListener('message', (e) => {
+    const d = e.data
+    if (e.source !== window.parent || !d || d.source !== 'ds-site') return
+    if (d.type === 'replay') { t = 0; $('start').click() }
+  })
+  addEventListener('resize', fitWrap); fitWrap()
 }
 render(t); requestAnimationFrame(tick)
 `
@@ -678,7 +707,7 @@ async function main() {
   const strip = (h: string) => h.replace(/<[^>]*>/g, '')
   const more = screens.flatMap((s) => s.beats.map((b) => b.text)).join('') + title + screens.map((s) => s.name).join('') +
     quizzes.map((q) => strip(q.stem + q.explain + q.options.map((o) => o.html + o.why).join(''))).join('') +
-    '第屏练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
+    '第屏练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕读文字退出色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
   for (const p of pages) {
     const htmls = p.cards.map((c) => c.html)
     const themeCss = p.style === 'desk' ? (await deskCss(htmls, more)).css : p.style === 'sticker' ? (await stickerCss(htmls, DEFAULT_PALETTE, more)).css : p.style === 'clean' ? (await cleanCss(htmls, more)).css : ''

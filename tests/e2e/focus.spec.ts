@@ -49,7 +49,8 @@ test('本节目录抽屉：列出本节标题；看动画时不出现', async ({
   await page.goto(VIDEO)
   await expect(page.locator('.cs-video')).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('.lb-outline-btn')).toBeHidden()
-  await page.locator('.cs-text').click()
+  // 看动画时是全屏学习层，"读文字"在播放器的控制条上
+  await page.frameLocator('.cs-player iframe').locator('#toText').click()
   await expect(page.locator('.lb-outline-btn')).toBeVisible()
 })
 

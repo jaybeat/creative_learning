@@ -352,13 +352,3 @@ html:not([data-course-mode='text']) .has-video :is(.lb-outline-btn, .lb-outline)
     display: none;
   }
 }
-
-/* ---- 看动画时没有侧栏和正文，播放器可以比正文栏宽（正文栏 688px，播放器放到 896px） ---- */
-@media (min-width: 960px) {
-  html:not([data-course-mode='text']) .has-video .VPDoc:not(.has-sidebar) .container {
-    max-width: 1024px;
-  }
-  html:not([data-course-mode='text']) .has-video .VPDoc:not(.has-sidebar) .content {
-    max-width: 960px;
-  }
-}

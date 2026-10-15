@@ -23,7 +23,8 @@ test.describe('搜索', () => {
   ]
   for (const [kw, expected] of cases) {
     test(`搜「${kw}」命中正确的节`, async ({ page }) => {
-      await page.goto('ch02/2-1')
+      // 从没有动画的节开始：有动画的节默认是全屏学习层，盖住了网站导航（搜索在读文字时用）
+      await page.goto('ch02/2-2')
       await openSearch(page)
       await page.fill('#localsearch-input', kw)
       const first = page.locator('.results li a').first()
@@ -88,6 +89,9 @@ test.describe('阅读进度', () => {
     const cont = page.locator('.continue-reading .cr-button')
     await expect(cont).toHaveText(/继续阅读：2\.8/)
     await expect(page.locator('.book-chapters .cl-meta').filter({ hasText: '已读 1/20 节' })).toHaveCount(1)
+    // 目录上方的"继续学习"卡：节名、本章进度
+    await expect(page.locator('.cl-resume .cl-resume-title')).toHaveText(/^2\.8/)
+    await expect(page.locator('.cl-resume .cl-resume-progress')).toContainText('已学 1/20')
 
     await page.reload()
     await expect(page.locator('.continue-reading .cr-button')).toHaveText(/继续阅读：2\.8/)
@@ -112,6 +116,7 @@ test.describe('阅读进度', () => {
     await expect(page.locator('.continue-reading .cr-button')).toHaveText('开始阅读')
     await expect(page.locator('.book-chapters .cl-meta').filter({ hasText: '已读' })).toHaveCount(0)
     await expect(page.locator('.home-chapters .cr-clear')).toHaveCount(0)
+    await expect(page.locator('.cl-resume')).toHaveCount(0)
   })
 
   test('首页：封面（书名、副标题、图、一个按钮）与目录', async ({ page }) => {

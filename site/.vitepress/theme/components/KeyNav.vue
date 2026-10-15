@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { useData, useRouter, withBase } from 'vitepress'
+import { courseMode } from '../course-mode'
 
 /**
  * ← → 翻节。焦点在输入框、搜索框打开、带修饰键、输入法组合中时不触发。
@@ -17,6 +18,8 @@ function onKey(e: KeyboardEvent): void {
   const t = e.target as HTMLElement | null
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
   if (document.querySelector('.VPLocalSearchBox')) return
+  // 看动画的全屏学习层里，←/→ 归播放器（跳拍），不翻节
+  if (frontmatter.value.video && courseMode.value === 'video') return
   if (navigating) return
   const target = e.key === 'ArrowLeft' ? frontmatter.value.prev : frontmatter.value.next
   const link = target && typeof target === 'object' ? (target as { link?: string }).link : undefined
