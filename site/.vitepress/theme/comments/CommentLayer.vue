@@ -29,6 +29,8 @@ import {
   threadsPage,
 } from './store'
 import ThreadView from './ThreadView.vue'
+import { claimRight, releaseRight, rightOpen } from '../right-rail'
+import { openAsk } from '../ask/store'
 
 /**
  * 划词评论层（挂在 layout-bottom）：
@@ -38,6 +40,17 @@ import ThreadView from './ThreadView.vue'
  */
 const { page, frontmatter } = useData()
 const enabled = computed(() => Boolean(frontmatter.value.chapter))
+/** 节页才有问 AI（ask/AskPanel.vue） */
+const askable = computed(() => Boolean(frontmatter.value.section))
+
+// 评论面板和本节目录、问 AI 共用右侧一栏，同一时间只开一个（theme/right-rail.ts）
+watch(
+  () => panel.open,
+  (open) => (open ? claimRight('comments') : releaseRight('comments')),
+)
+watch(rightOpen, (r) => {
+  if (r !== 'comments' && panel.open) closePanel()
+})
 const MAX_QUOTE = 500
 
 let index: TextIndex | null = null
@@ -164,7 +177,7 @@ function updateSelection(): void {
     selOffsets = off
     const rects = range.getClientRects()
     const last = rects[rects.length - 1] ?? range.getBoundingClientRect()
-    const left = Math.min(Math.max(8, last.left + last.width / 2 - 40), document.documentElement.clientWidth - 100)
+    const left = Math.min(Math.max(8, last.left + last.width / 2 - 40), document.documentElement.clientWidth - (askable.value ? 190 : 100))
     selBtn.value = { top: window.scrollY + last.bottom + 8, left: window.scrollX + left, tooLong: off.end - off.start > MAX_QUOTE }
   }, 120)
 }
@@ -173,6 +186,16 @@ function startComment(): void {
   if (!index || !selOffsets || selBtn.value?.tooLong) return
   const q = quoteAt(index.text, selOffsets.start, selOffsets.end)
   openNew(q, headingAt(index, selOffsets.start))
+  selBtn.value = null
+  window.getSelection()?.removeAllRanges()
+}
+
+/** 划词问 AI：把选中的话预填进问题，读者可以接着改 */
+function startAsk(): void {
+  if (!index || !selOffsets) return
+  const text = index.text.slice(selOffsets.start, selOffsets.end).replace(/\s+/g, ' ').trim()
+  const clipped = text.length > 300 ? `${text.slice(0, 300)}…` : text
+  openAsk(`「${clipped}」这句话是什么意思？`)
   selBtn.value = null
   window.getSelection()?.removeAllRanges()
 }
@@ -284,6 +307,17 @@ onUnmounted(() => {
       @click="startComment"
     >
       {{ selBtn.tooLong ? '选中的文字太长了' : '💬 评论' }}
+    </button>
+    <button
+      v-if="selBtn && askable && !selBtn.tooLong"
+      type="button"
+      class="cl-sel-btn cl-sel-ask"
+      :style="{ top: selBtn.top + 'px', left: selBtn.left + 88 + 'px' }"
+      data-comment-ignore
+      @mousedown.prevent
+      @click="startAsk"
+    >
+      ✦ 问 AI
     </button>
 
     <aside v-if="panel.open" class="cl-panel" aria-label="评论" data-comment-ignore>

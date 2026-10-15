@@ -26,7 +26,7 @@ async function selectText(page: Page, text: string) {
     }
     throw new Error(`正文里找不到：${t}`)
   }, text)
-  await expect(page.locator('.cl-sel-btn')).toBeVisible()
+  await expect(page.locator('.cl-sel-btn:not(.cl-sel-ask)')).toBeVisible()
 }
 
 const uid = () => Math.random().toString(36).slice(2, 8)
@@ -35,7 +35,7 @@ test('未登录：能看评论入口，划词后提示登录', async ({ page }) 
   await page.goto(PAGE)
   await expect(page.locator('.cl-page-comments')).toContainText('本页评论')
   await selectText(page, QUOTE)
-  await page.locator('.cl-sel-btn').click()
+  await page.locator('.cl-sel-btn:not(.cl-sel-ask)').click()
   await expect(page.locator('.cl-panel')).toContainText('登录后才能发表评论')
 })
 
@@ -49,7 +49,7 @@ test('登录 → 划词评论 → 刷新后高亮仍在 → 回复 → 删除', 
   await login(page, email, name)
 
   await selectText(page, quote)
-  await page.locator('.cl-sel-btn').click()
+  await page.locator('.cl-sel-btn:not(.cl-sel-ask)').click()
   const body = `这里没看懂 ${uid()}`
   await page.locator('.cl-panel textarea').fill(body)
   await page.locator('.cl-panel button[type=submit]').click()

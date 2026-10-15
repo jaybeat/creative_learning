@@ -21,6 +21,7 @@ import './custom.css'
 import './chapter-map.css'
 import './focus.css'
 import './comments/comments.css'
+import './ask/ask.css'
 import './problem/problem.css'
 import './lesson/lesson.css'
 

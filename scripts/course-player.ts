@@ -249,6 +249,7 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
       <button id="play" class="ib" title="播放/暂停（空格）" aria-label="播放">${ICON.play}${ICON.pause}</button>
       <button id="speed" class="ib txt" title="倍速">1×</button>
       <button id="capOn" class="ib txt" title="字幕（C）" aria-pressed="true">字</button>
+      <button id="ask" class="ib txt emb" title="边看边问：右侧打开问 AI 面板（动画会暂停）">问 AI</button>
       <button id="toText" class="ib txt emb" title="改读文字详细版">读文字</button>
       <button id="menu" class="ib" title="目录" aria-expanded="false">${ICON.list}</button>${style === 'sticker' ? `
       <select id="pal" title="色系">${Object.entries(PALETTES).map(([k, p]) => `<option value="${k}"${k === DEFAULT_PALETTE ? ' selected' : ''}>${p.name}</option>`).join('')}</select>` : ''}
@@ -308,7 +309,7 @@ body.embed main{max-width:none!important;box-sizing:border-box;height:100vh;heig
 body.embed .bar{flex:none}
 body.embed .wrap{flex:none;margin:auto auto 0}
 body.embed #cap{flex:none;margin:14px auto auto}
-@media (max-width:640px){body.embed main{padding:6px 10px 10px!important}body.embed .bar{gap:8px}body.embed #scr{display:none}}
+@media (max-width:640px){body.embed main{padding:6px 10px 10px!important}body.embed .bar{gap:8px}body.embed #scr{display:none}body.embed #speed{display:none}}
 .wrap{position:relative;box-sizing:border-box;width:100%;aspect-ratio:16/9;background:#fafaf8;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .stage{position:absolute;left:0;top:0;width:640px;height:360px;transform-origin:0 0}
 .stage .f{position:absolute;left:0;top:0}
@@ -651,13 +652,14 @@ if (pal) {
 const params = new URLSearchParams(location.search)
 const t0 = parseFloat(params.get('t'))
 if (t0 > 0 && t0 < DATA.total) { t = t0; $('startLabel').textContent = '接着播放 · ' + fmt(t) + ' / ' + fmt(DATA.total) }
-// —— 嵌入网站节页（?embed）：全屏学习层。告诉外层页面：播完了、要退出、要改读文字；外层可以让它重新播放 ——
+// —— 嵌入网站节页（?embed）：全屏学习层。告诉外层页面：播完了、要退出、要改读文字、要问 AI；外层可以让它重新播放、暂停 ——
 if (params.has('embed') && window.parent !== window) {
   document.body.classList.add('embed')
   const post = (msg) => window.parent.postMessage(Object.assign({ source: 'ds-course' }, msg), '*')
   window.__onEnded = () => post({ type: 'ended' })
   $('exit').onclick = () => post({ type: 'exit' })
   $('toText').onclick = () => { setPlaying(false); post({ type: 'text' }) }
+  $('ask').onclick = () => { setPlaying(false); post({ type: 'ask' }) }
   // Esc：目录开着先关目录，否则退出
   // 捕获阶段先于上面关目录的那个监听器，才能看到按下时目录是不是开着
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && toc.hidden) post({ type: 'exit' }) }, true)
@@ -665,6 +667,7 @@ if (params.has('embed') && window.parent !== window) {
     const d = e.data
     if (e.source !== window.parent || !d || d.source !== 'ds-site') return
     if (d.type === 'replay') { t = 0; $('start').click() }
+    else if (d.type === 'pause') setPlaying(false)
   })
   addEventListener('resize', fitWrap); fitWrap()
 }
@@ -707,7 +710,7 @@ async function main() {
   const strip = (h: string) => h.replace(/<[^>]*>/g, '')
   const more = screens.flatMap((s) => s.beats.map((b) => b.text)).join('') + title + screens.map((s) => s.name).join('') +
     quizzes.map((q) => strip(q.stem + q.explain + q.options.map((o) => o.html + o.why).join(''))).join('') +
-    '第屏练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕读文字退出色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
+    '第屏练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕读文字问AI退出色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
   for (const p of pages) {
     const htmls = p.cards.map((c) => c.html)
     const themeCss = p.style === 'desk' ? (await deskCss(htmls, more)).css : p.style === 'sticker' ? (await stickerCss(htmls, DEFAULT_PALETTE, more)).css : p.style === 'clean' ? (await cleanCss(htmls, more)).css : ''

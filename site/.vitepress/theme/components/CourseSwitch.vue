@@ -4,12 +4,14 @@ import { useData, useRouter, withBase } from 'vitepress'
 import book from '../../generated/book.json'
 import { courseMode, readMode, setMode } from '../course-mode'
 import { pagePath, useProgress } from '../progress'
+import { ask, openAsk } from '../ask/store'
 
 /**
  * 有课程动画的节（frontmatter.video）看动画时的全屏学习层：盖住整页（网站导航、顶栏、页脚、评论都在下面），
  * 里面只有播放器 iframe（site/public/course/<节>/index.html?embed），播放器自己的控制条就是唯一的顶栏。
  * 正文仍在页面 HTML 里（搜索、已读记录不变）；选"读文字"就去掉这一层，回到专注阅读页（LessonBar.vue）。
- * 播放器发来的消息：ended（记已读、弹结束卡片）、exit（回本章课程地图）、text（改读文字）。
+ * 播放器发来的消息：ended（记已读、弹结束卡片）、exit（回本章课程地图）、text（改读文字）、ask（打开问 AI 面板）。
+ * 问 AI 面板打开时播放器让出右边一栏（ask/ask.css），并发 pause 让它暂停。
  * 全屏层在 SSR 就有（只是没有 iframe），由 <html data-course-mode> 决定显示与否，首屏不闪出下面的页面。
  */
 const { frontmatter, page } = useData()
@@ -47,7 +49,14 @@ function onMessage(e: MessageEvent): void {
     ended.value = true
   } else if (d.type === 'exit') exit()
   else if (d.type === 'text') toText()
+  else if (d.type === 'ask') openAsk()
 }
+watch(
+  () => ask.open,
+  (open) => {
+    if (open) frame.value?.contentWindow?.postMessage({ source: 'ds-site', type: 'pause' }, '*')
+  },
+)
 /** 焦点不在 iframe 里时（比如刚打开、点了结束卡片），Esc 同样退出 */
 function onKey(e: KeyboardEvent): void {
   if (e.key !== 'Escape' || !video.value || courseMode.value !== 'video') return

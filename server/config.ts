@@ -11,6 +11,10 @@ export interface Config {
   dailyMailLimit: number
   unsubscribeSecret: string
   cronSecret: string
+  /** 问 AI：每人 24 小时内最多问几次 */
+  askPerUserDaily: number
+  /** 问 AI：全站 24 小时内最多问几次，保护 DeepSeek 费用 */
+  askSiteDaily: number
 }
 
 type Env = Record<string, string | undefined>
@@ -34,5 +38,7 @@ export function loadConfig(env: Env): Config {
     dailyMailLimit: Number(env.DAILY_MAIL_LIMIT) || 300,
     unsubscribeSecret: env.UNSUBSCRIBE_SECRET ?? '',
     cronSecret: env.CRON_SECRET ?? '',
+    askPerUserDaily: Number(env.ASK_PER_USER_DAILY) || 30,
+    askSiteDaily: Number(env.ASK_SITE_DAILY) || 2000,
   }
 }

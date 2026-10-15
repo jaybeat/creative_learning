@@ -5,6 +5,7 @@ import { memoryMailer } from '../../../server/mailer'
 import { migrate } from '../../../server/migrate'
 import { readMigrations } from '../../../server/migrations-fs'
 import type { Judge } from '../../../server/judge'
+import type { AskModel } from '../../../server/ask-model'
 
 export const ADMIN = 'author@example.com'
 
@@ -17,11 +18,11 @@ async function freshDb() {
     return db
   })
   const db = await shared
-  await db.query('TRUNCATE users, email_codes, sessions, comments, mail_log, submissions, judge_log RESTART IDENTITY CASCADE')
+  await db.query('TRUNCATE users, email_codes, sessions, comments, mail_log, submissions, judge_log, ask_log RESTART IDENTITY CASCADE')
   return db
 }
 
-export async function setup(over: Partial<Config> = {}, opts: { judge?: Judge | null } = {}) {
+export async function setup(over: Partial<Config> = {}, opts: { judge?: Judge | null; ai?: AskModel | null } = {}) {
   const db = await freshDb()
   const mailer = memoryMailer()
   const config: Config = {
@@ -29,7 +30,7 @@ export async function setup(over: Partial<Config> = {}, opts: { judge?: Judge | 
     secureCookie: false,
     ...over,
   }
-  const app = createApp({ db, mailer, config, judge: opts.judge ?? null })
+  const app = createApp({ db, mailer, config, judge: opts.judge ?? null, ai: opts.ai ?? null })
 
   /** 模拟一个浏览器：记住 Cookie，写请求自动带同源 Origin */
   function client(ip = '1.1.1.1') {
