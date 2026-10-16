@@ -241,7 +241,6 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
 <body class="player${style === 'classic' ? '' : ' themed st-' + style}${style === 'clean' ? ' th-clean' : ''}">
 <!-- 由 docs/course/${id}.md 和 docs/course/storyboard/${id}${STYLES.find((s) => s.style === style)!.frames} 生成，不要手改本文件。配音：${VOICE}。 -->
 <main>
-  <button id="exit" class="ib emb" title="退出动画，回到本章（Esc）" aria-label="退出">${ICON.close}</button>
   <div class="wrap" id="wrap">
     <div class="stage" id="stage"></div>
     <div class="cover" id="cover"><button id="start"><span class="big">${ICON.play}</span><span id="startLabel"></span></button></div>
@@ -250,6 +249,7 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
   <div class="dock" id="dock">
     <div id="prog"></div>
     <div class="bar">
+      <button id="exit" class="ib emb" title="退出动画，回到本章（Esc）" aria-label="退出">${ICON.close}</button>
       <button id="play" class="ib" title="播放/暂停（空格）" aria-label="播放">${ICON.play}${ICON.pause}</button>
       <span id="time"></span>
       <div class="nav">
@@ -261,7 +261,8 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
         <button id="speed" class="ib txt" title="倍速">1×</button>
         <button id="capOn" class="ib txt" title="字幕（C）" aria-pressed="true">字</button>
         <button id="ask" class="ib txt emb" title="边看边问：右侧打开问 AI 面板（动画会暂停）">问 AI</button>
-        <button id="toText" class="ib txt emb" title="改读文字详细版">读文字</button>${style === 'sticker' ? `
+        <button id="toText" class="ib txt emb" title="改读文字详细版">读文字</button>
+        <button id="fs" class="ib" title="全屏（F）" aria-label="全屏" hidden>${ICON.fsOn}${ICON.fsOff}</button>${style === 'sticker' ? `
         <select id="pal" title="色系">${Object.entries(PALETTES).map(([k, p]) => `<option value="${k}"${k === DEFAULT_PALETTE ? ' selected' : ''}>${p.name}</option>`).join('')}</select>` : ''}
       </div>
     </div>
@@ -279,6 +280,8 @@ const ICON = {
   play: '<svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8c0 .8.9 1.3 1.6.8l10-6.4c.6-.4.6-1.2 0-1.6l-10-6.4C8.9 4.3 8 4.8 8 5.6z" fill="currentColor"/></svg>',
   pause: '<svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.5v13M15.5 5.5v13" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  fsOn: '<svg class="i-fs-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  fsOff: '<svg class="i-fs-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>',
   list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.5" cy="6.5" r=".9" fill="currentColor"/><circle cx="4.5" cy="12" r=".9" fill="currentColor"/><circle cx="4.5" cy="17.5" r=".9" fill="currentColor"/></svg>',
 }
 
@@ -323,12 +326,22 @@ main{max-width:980px;margin:0 auto;padding:16px}
 body.embed .emb{display:inline-flex!important}
 body.embed{background:transparent!important;overflow:hidden}
 body.embed.th-clean{background:var(--page)!important}
-body.embed main{max-width:none!important;box-sizing:border-box;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:52px 24px 6px!important}
-body.embed #exit{position:fixed;top:10px;left:14px;z-index:40}
+body.embed main{max-width:none!important;box-sizing:border-box;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:12px 24px 6px!important}
 body.embed .wrap{flex:none;margin:auto auto 0}
 body.embed #cap{flex:none;margin:14px auto auto}
-body.embed .dock{flex:none}
-@media (max-width:640px){body.embed main{padding:48px 10px 4px!important}.bar{gap:6px}#scr,.caret,#speed{display:none}}
+body.embed .dock{flex:none;box-sizing:border-box;margin-left:auto;margin-right:auto;max-width:100%}
+#fs .i-fs-off,body.fs #fs .i-fs-on{display:none}body.fs #fs .i-fs-off{display:block}
+#fs[hidden]{display:none}
+/* 真全屏（浏览器全屏接口）：四周不留白，控制区叠在画面底边上（bottom 由 fitWrap 算），播放时鼠标不动 2.5 秒就淡出；字幕仍在画面下方，不被压住 */
+body.fs main{max-width:none!important;box-sizing:border-box;height:100vh;display:flex;flex-direction:column;padding:0 0 4px!important}
+body.fs .wrap{flex:none;margin:auto auto 0;border-radius:0!important;border:0!important}
+body.fs #cap{flex:none;margin:10px auto auto}
+body.fs .dock{position:fixed;left:0;right:0;bottom:0;width:auto!important;margin:0;padding:22px 24px 2px;z-index:35;transition:opacity .25s;
+  background:linear-gradient(transparent,color-mix(in srgb,var(--stage,#fafaf8) 92%,transparent) 40%)}
+body.fs.idle .dock{opacity:0;pointer-events:none}
+body.fs.idle{cursor:none}
+body.fs #exit{display:none!important}
+@media (max-width:640px){body.embed main{padding:8px 10px 4px!important}.bar{gap:6px}#scr,.caret,#speed{display:none}}
 @media (max-width:400px){#time{display:none}}
 .wrap{position:relative;box-sizing:border-box;width:100%;aspect-ratio:16/9;background:#fafaf8;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .stage{position:absolute;left:0;top:0;width:640px;height:360px;transform-origin:0 0}
@@ -613,7 +626,7 @@ function tick(now) {
   }
   requestAnimationFrame(tick)
 }
-function setPlaying(p) { playing = p; $('play').classList.toggle('on', p); $('play').setAttribute('aria-label', p ? '暂停' : '播放'); if (!p) stopAudio() }
+function setPlaying(p) { playing = p; if (typeof wake === 'function') wake(); $('play').classList.toggle('on', p); $('play').setAttribute('aria-label', p ? '暂停' : '播放'); if (!p) stopAudio() }
 function seek(time, keepPlaying) {
   stopAudio(); t = Math.max(0, Math.min(DATA.total - 0.001, time)); render(t)
   if (keepPlaying !== undefined) setPlaying(keepPlaying)
@@ -647,20 +660,49 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowLeft') jumpBeat(-1)
   else if (e.key === 'ArrowRight') jumpBeat(1)
   else if (e.key === 'c' || e.key === 'C') toggleCap()
+  else if ((e.key === 'f' || e.key === 'F') && !$('fs').hidden) toggleFs()
   else if (e.key === 'Escape') closeToc()
 })
 
+// —— 真全屏（浏览器全屏接口，网站的 iframe 带 allow="fullscreen"）；不支持的浏览器（iPhone）不显示按钮 ——
+const isFs = () => Boolean(document.fullscreenElement)
+const toggleFs = () => (isFs() ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {})
+if (document.fullscreenEnabled) $('fs').hidden = false
+$('fs').onclick = toggleFs
+let fsLeftAt = -Infinity
+document.addEventListener('fullscreenchange', () => {
+  document.body.classList.toggle('fs', isFs())
+  $('fs').setAttribute('aria-label', isFs() ? '退出全屏' : '全屏'); $('fs').title = isFs() ? '退出全屏（F / Esc）' : '全屏（F）'
+  if (!isFs()) fsLeftAt = performance.now()
+  wake(); fitWrap()
+})
+// 全屏里播放时鼠标 2.5 秒不动，控制区淡出；动一下、按键、暂停、目录开着时都显示
+let idleTimer = 0
+function wake() {
+  document.body.classList.remove('idle'); clearTimeout(idleTimer)
+  idleTimer = setTimeout(() => { if (isFs() && playing && toc.hidden) document.body.classList.add('idle') }, 2500)
+}
+for (const ev of ['mousemove', 'pointerdown', 'keydown']) document.addEventListener(ev, wake, { passive: true })
+
 // —— 画布缩放 ——
-// 嵌入网站时整屏只有这一页：先按宽、高两个方向算出舞台最大能多大（扣掉控制条、字幕和留白），再按舞台宽度缩放画布
-const fullscreen = () => document.body.classList.contains('embed')
+// 嵌入网站、或真全屏时整屏只有这一页：先按宽、高两个方向算出舞台最大能多大（扣掉控制区、字幕和留白），再按舞台宽度缩放画布。
+// 控制区和字幕跟画面同宽，看起来是一台播放器；真全屏时控制区叠在画面上，不扣它的高度
 function fitWrap() {
-  if (!fullscreen()) { wrap.style.width = ''; return }
-  const main = document.querySelector('main'), cs = getComputedStyle(main), dock = $('dock'), cap = $('cap')
+  const dock = $('dock'), cap = $('cap')
+  if (!document.body.classList.contains('embed') && !isFs()) { wrap.style.width = dock.style.width = cap.style.maxWidth = ''; return }
+  const main = document.querySelector('main'), cs = getComputedStyle(main)
   const px = (v) => parseFloat(v) || 0
   const w = main.clientWidth - px(cs.paddingLeft) - px(cs.paddingRight)
-  const h = innerHeight - px(cs.paddingTop) - px(cs.paddingBottom) - dock.offsetHeight - px(getComputedStyle(dock).marginTop) - cap.offsetHeight - px(getComputedStyle(cap).marginTop)
-  wrap.style.width = Math.max(160, Math.floor(Math.min(w, (h * 16) / 9))) + 'px'
+  const under = isFs() ? 0 : dock.offsetHeight + px(getComputedStyle(dock).marginTop)
+  const h = innerHeight - px(cs.paddingTop) - px(cs.paddingBottom) - under - cap.offsetHeight - px(getComputedStyle(cap).marginTop)
+  const width = Math.max(160, Math.floor(Math.min(w, (h * 16) / 9)))
+  wrap.style.width = width + 'px'
+  dock.style.width = isFs() ? '' : width + 'px'
+  cap.style.maxWidth = Math.floor(width * 0.9) + 'px'
+  // 真全屏：控制区叠在画面底边上（照 YouTube），不压住下面的字幕
+  dock.style.bottom = isFs() ? Math.max(0, innerHeight - wrap.getBoundingClientRect().bottom) + 'px' : ''
 }
+addEventListener('resize', fitWrap)
 const fit = () => { stage.style.transform = 'scale(' + wrap.clientWidth / 640 + ')' }
 new ResizeObserver(fit).observe(wrap); fit()
 
@@ -688,17 +730,20 @@ if (params.has('embed') && window.parent !== window) {
   window.__onEnded = () => post({ type: 'ended' })
   $('exit').onclick = () => post({ type: 'exit' })
   $('toText').onclick = () => { setPlaying(false); post({ type: 'text' }) }
-  $('ask').onclick = () => { setPlaying(false); post({ type: 'ask' }) }
-  // Esc：目录开着先关目录，否则退出
+  // 全屏里问 AI：先退出全屏，侧栏才看得见
+  $('ask').onclick = () => { setPlaying(false); (isFs() ? document.exitFullscreen().catch(() => {}) : Promise.resolve()).then(() => post({ type: 'ask' })) }
+  // Esc：目录开着先关目录，否则退出。全屏时 Esc 归浏览器退出全屏，不连带退出动画
   // 捕获阶段先于上面关目录的那个监听器，才能看到按下时目录是不是开着
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && toc.hidden) post({ type: 'exit' }) }, true)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && toc.hidden && !isFs() && performance.now() - fsLeftAt > 500) post({ type: 'exit' })
+  }, true)
   window.addEventListener('message', (e) => {
     const d = e.data
     if (e.source !== window.parent || !d || d.source !== 'ds-site') return
     if (d.type === 'replay') { t = 0; $('start').click() }
     else if (d.type === 'pause') setPlaying(false)
   })
-  addEventListener('resize', fitWrap); fitWrap()
+  fitWrap()
 }
 render(t); requestAnimationFrame(tick)
 `
@@ -739,7 +784,7 @@ async function main() {
   const strip = (h: string) => h.replace(/<[^>]*>/g, '')
   const more = screens.flatMap((s) => s.beats.map((b) => b.text)).join('') + title + screens.map((s) => s.name).join('') +
     quizzes.map((q) => strip(q.stem + q.explain + q.options.map((o) => o.html + o.why).join(''))).join('') +
-    '第屏下一›▾0123456789:/练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕读文字问AI退出色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
+    '第屏下一›▾全退出0123456789:/练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕读文字问AI退出色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
   for (const p of pages) {
     const htmls = p.cards.map((c) => c.html)
     const themeCss = p.style === 'desk' ? (await deskCss(htmls, more)).css : p.style === 'sticker' ? (await stickerCss(htmls, DEFAULT_PALETTE, more)).css : p.style === 'clean' ? (await cleanCss(htmls, more)).css : ''
