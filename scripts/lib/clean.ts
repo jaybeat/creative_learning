@@ -60,8 +60,9 @@ body.st-clean{--sf:${SANS};--tf:${SERIF};--bg:var(--page);--acc:var(--ink-strong
 body.st-clean .new{outline:none!important}
 body.st-clean .f .new{translate:none!important}
 body.st-clean main{max-width:1000px;padding:12px 20px 20px}
-body.st-clean #scr{font-family:var(--sf);font-size:13px;font-weight:400;color:var(--mute)}
-body.st-clean .seg{background:var(--track)}
+body.st-clean #scr{font-family:var(--sf);font-size:13px;font-weight:400;color:var(--ink)}
+body.st-clean #time{color:var(--mute)}
+body.st-clean .seg b{background:var(--track)}
 body.st-clean .seg i{background:var(--ink-strong)}
 body.st-clean .ib{color:var(--ink)}
 body.st-clean .ib:hover{background:var(--btn)}

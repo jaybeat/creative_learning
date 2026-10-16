@@ -28,7 +28,7 @@ async function renderFrames(playerFile: string, total: number, outFile: string) 
   // 只留画布：去掉标题栏、进度条、字幕、按钮，画布铺满 640×360
   await page.addStyleTag({
     content: `body{margin:0;background:#fafaf8} main{padding:0;max-width:none}
-      .bar,#prog,#cap,.ctl,.hint{display:none!important}
+      .dock,#exit,.bar,#prog,#cap,.ctl,.hint{display:none!important}
       .wrap{width:640px;border-radius:0;box-shadow:none}`,
   })
   await page.evaluate(() => document.fonts.ready)

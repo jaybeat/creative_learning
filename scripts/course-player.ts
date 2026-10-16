@@ -241,27 +241,32 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
 <body class="player${style === 'classic' ? '' : ' themed st-' + style}${style === 'clean' ? ' th-clean' : ''}">
 <!-- 由 docs/course/${id}.md 和 docs/course/storyboard/${id}${STYLES.find((s) => s.style === style)!.frames} 生成，不要手改本文件。配音：${VOICE}。 -->
 <main>
-  <div class="bar">
-    <button id="exit" class="ib emb" title="退出动画，回到本章（Esc）" aria-label="退出">${ICON.close}</button>
-    <span id="scr"></span>
-    <div id="prog"></div>
-    <div class="tools">
-      <button id="play" class="ib" title="播放/暂停（空格）" aria-label="播放">${ICON.play}${ICON.pause}</button>
-      <button id="speed" class="ib txt" title="倍速">1×</button>
-      <button id="capOn" class="ib txt" title="字幕（C）" aria-pressed="true">字</button>
-      <button id="ask" class="ib txt emb" title="边看边问：右侧打开问 AI 面板（动画会暂停）">问 AI</button>
-      <button id="toText" class="ib txt emb" title="改读文字详细版">读文字</button>
-      <button id="menu" class="ib" title="目录" aria-expanded="false">${ICON.list}</button>${style === 'sticker' ? `
-      <select id="pal" title="色系">${Object.entries(PALETTES).map(([k, p]) => `<option value="${k}"${k === DEFAULT_PALETTE ? ' selected' : ''}>${p.name}</option>`).join('')}</select>` : ''}
-      <div id="toc" hidden></div>
-    </div>
-    <div id="tip" hidden></div>
-  </div>
+  <button id="exit" class="ib emb" title="退出动画，回到本章（Esc）" aria-label="退出">${ICON.close}</button>
   <div class="wrap" id="wrap">
     <div class="stage" id="stage"></div>
     <div class="cover" id="cover"><button id="start"><span class="big">${ICON.play}</span><span id="startLabel"></span></button></div>
   </div>
   <p id="cap"></p>
+  <div class="dock" id="dock">
+    <div id="prog"></div>
+    <div class="bar">
+      <button id="play" class="ib" title="播放/暂停（空格）" aria-label="播放">${ICON.play}${ICON.pause}</button>
+      <span id="time"></span>
+      <div class="nav">
+        <button id="menu" class="ib txt" title="目录：看全部屏、点哪屏跳哪屏" aria-expanded="false">${ICON.list}<span id="scr"></span><span class="caret">▾</span></button>
+        <div id="toc" hidden></div>
+      </div>
+      <button id="next" class="ib txt" title="跳到下一屏">下一屏 ›</button>
+      <div class="tools">
+        <button id="speed" class="ib txt" title="倍速">1×</button>
+        <button id="capOn" class="ib txt" title="字幕（C）" aria-pressed="true">字</button>
+        <button id="ask" class="ib txt emb" title="边看边问：右侧打开问 AI 面板（动画会暂停）">问 AI</button>
+        <button id="toText" class="ib txt emb" title="改读文字详细版">读文字</button>${style === 'sticker' ? `
+        <select id="pal" title="色系">${Object.entries(PALETTES).map(([k, p]) => `<option value="${k}"${k === DEFAULT_PALETTE ? ' selected' : ''}>${p.name}</option>`).join('')}</select>` : ''}
+      </div>
+    </div>
+    <div id="tip" hidden></div>
+  </div>
 </main>
 <script>const DATA = ${json};</script>
 <script>${PLAYER_JS}</script>
@@ -280,36 +285,51 @@ const ICON = {
 const PLAYER_CSS = `
 body{margin:0;background:#eceae4;font:14px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;color:#333}
 main{max-width:980px;margin:0 auto;padding:16px}
-.bar{display:flex;align-items:center;gap:18px;height:40px;margin-bottom:8px;position:relative}
-#scr{flex:0 1 auto;max-width:32%;font-size:13px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#prog{flex:1;display:flex;gap:5px;align-items:center;height:16px}
-.seg{flex:0 0 18px;height:4px;border-radius:2px;background:#ddd;position:relative;cursor:pointer;overflow:hidden}
-.seg.cur{flex:1 1 auto}
+/* 底部控制区（照抖音/B站）：上面一条按每屏时长分段的进度线，下面一行按钮 */
+.dock{position:relative;margin-top:6px}
+.bar{display:flex;align-items:center;gap:10px;height:40px}
+#time{flex:none;font-size:13px;color:#666;font-variant-numeric:tabular-nums}
+/* 屏名就是目录按钮（照 YouTube 章节名）：☰ 屏名 ▾，点开从左下往上弹出全部屏 */
+.nav{flex:0 1 auto;min-width:0;position:relative}
+#menu{max-width:100%;gap:6px;padding:0 8px 0 6px;font-weight:400}
+#scr{min-width:0;font-size:13px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.caret{flex:none;font-size:10px;opacity:.55}
+#next{flex:none;font-weight:400}
+#next[hidden]{display:none}
+#prog{display:flex;gap:3px;align-items:center;height:16px}
+.seg{min-width:6px;height:16px;display:flex;align-items:center;cursor:pointer}
+.seg b{display:block;position:relative;width:100%;height:4px;border-radius:2px;background:#ddd;overflow:hidden;transition:height .12s}
+#prog:hover .seg b{height:6px}
 .seg i{position:absolute;left:0;top:0;bottom:0;background:#222}
-.tools{flex:none;display:flex;align-items:center;gap:2px;position:relative}
+.tools{flex:none;display:flex;align-items:center;gap:2px;position:relative;margin-left:auto}
 .ib{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#333;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;font:600 13px/1 inherit}
 .ib:hover{background:rgba(0,0,0,.06)}
 .ib svg{width:20px;height:20px}
 .ib .i-pause,.ib.on .i-play{display:none}.ib.on .i-pause{display:block}
 .ib.txt{width:auto;min-width:32px;padding:0 6px}
 #capOn[aria-pressed=true]{background:#e4ecf6;color:#0e3061}
-#toc{position:absolute;right:0;top:38px;z-index:30;background:#fff;border:1px solid #ddd;border-radius:12px;padding:6px;min-width:240px;box-shadow:0 10px 30px -10px rgba(0,0,0,.25)}
+/* 目录从屏名按钮向上弹出：开始时间 + 屏名，当前屏加粗带"▶" */
+#toc{position:absolute;left:0;bottom:38px;z-index:30;background:#fff;border:1px solid #ddd;border-radius:12px;padding:6px;min-width:260px;max-width:min(420px,90vw);max-height:60vh;overflow:auto;box-shadow:0 -10px 30px -10px rgba(0,0,0,.25)}
 #toc[hidden],#tip[hidden]{display:none}
-#toc button{display:flex;width:100%;justify-content:space-between;gap:18px;border:0;background:none;padding:7px 10px;border-radius:8px;font:13px/1.4 inherit;cursor:pointer;color:inherit;text-align:left}
+#toc button{display:flex;width:100%;gap:12px;border:0;background:none;padding:7px 10px;border-radius:8px;font:13px/1.4 inherit;cursor:pointer;color:inherit;text-align:left}
 #toc button:hover{background:rgba(0,0,0,.05)}#toc button.cur{font-weight:700}
-#toc em{font-style:normal;opacity:.55;font-variant-numeric:tabular-nums}
-#tip{position:absolute;top:34px;transform:translateX(-50%);background:#222;color:#fff;font-size:12px;line-height:1.5;padding:3px 9px;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:31}
+#toc em{flex:none;width:3em;font-style:normal;opacity:.55;font-variant-numeric:tabular-nums}
+#toc button.cur em{opacity:1}
+#toc button.cur em::before{content:"▶ ";font-size:9px;vertical-align:1px}
+#tip{position:absolute;top:-30px;transform:translateX(-50%);background:#222;color:#fff;font-size:12px;line-height:1.5;padding:3px 9px;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:31}
 #pal{font:inherit;font-size:12px;margin-left:6px}
-/* 嵌入网站节页：全屏学习层（网站 CourseSwitch.vue 把 iframe 铺满视口）。只有一条控制条 + 舞台 + 字幕，舞台按宽高两个方向缩放（fit） */
+/* 嵌入网站节页：全屏学习层（网站 CourseSwitch.vue 把 iframe 铺满视口）。左上角 ×，中间舞台 + 字幕，底部控制区贴着视口下沿；舞台按宽高两个方向缩放（fit） */
 .emb{display:none!important}
 body.embed .emb{display:inline-flex!important}
 body.embed{background:transparent!important;overflow:hidden}
 body.embed.th-clean{background:var(--page)!important}
-body.embed main{max-width:none!important;box-sizing:border-box;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:10px 24px 12px!important}
-body.embed .bar{flex:none}
+body.embed main{max-width:none!important;box-sizing:border-box;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:52px 24px 6px!important}
+body.embed #exit{position:fixed;top:10px;left:14px;z-index:40}
 body.embed .wrap{flex:none;margin:auto auto 0}
 body.embed #cap{flex:none;margin:14px auto auto}
-@media (max-width:640px){body.embed main{padding:6px 10px 10px!important}body.embed .bar{gap:8px}body.embed #scr{display:none}body.embed #speed{display:none}}
+body.embed .dock{flex:none}
+@media (max-width:640px){body.embed main{padding:48px 10px 4px!important}.bar{gap:6px}#scr,.caret,#speed{display:none}}
+@media (max-width:400px){#time{display:none}}
 .wrap{position:relative;box-sizing:border-box;width:100%;aspect-ratio:16/9;background:#fafaf8;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .stage{position:absolute;left:0;top:0;width:640px;height:360px;transform-origin:0 0}
 .stage .f{position:absolute;left:0;top:0}
@@ -358,11 +378,11 @@ body.themed{color:var(--ink);font:14px/1.5 var(--sf)}
 body.st-desk{--sf:"DeskSans","Microsoft YaHei",sans-serif;--tf:"DeskHand","Microsoft YaHei",sans-serif;background:var(--bg)}
 body.st-sticker{--sf:"StickerSans","Microsoft YaHei",sans-serif;--tf:"StickerSans","Microsoft YaHei",sans-serif;
   background:radial-gradient(circle at 2px 2px,var(--dot) 1px,transparent 1.5px) 0 0/16px 16px,var(--bg)}
-.themed .bar{align-items:center;color:var(--mute);margin-bottom:10px}
+.themed .bar{align-items:center;color:var(--mute)}
 .themed #scr{font-family:var(--tf);font-size:16px;color:var(--ink)}
 .st-desk #scr{display:inline-block;background:var(--tape);padding:2px 12px;border:1.5px solid var(--ink);box-shadow:2px 3px 0 var(--shadow);transform:rotate(-1deg)}
 .st-sticker #scr{font-weight:900}.st-sticker #scr::before{content:"";display:inline-block;width:9px;height:9px;margin-right:8px;background:var(--acc);vertical-align:1px}
-.themed .seg{background:var(--off)}.themed .seg i{background:var(--acc)}
+.themed .seg b{background:var(--off)}.themed .seg i{background:var(--acc)}
 .st-desk .wrap{background:var(--bg);border:2px solid var(--ink);border-radius:10px;box-shadow:5px 6px 0 var(--shadow)}
 .st-sticker .wrap{background:var(--bg);border:6px solid var(--paper);border-radius:16px;box-shadow:0 1px 1px rgb(0 0 0/.06),0 12px 28px -10px rgb(0 0 0/.3)}
 .themed .cover{background:color-mix(in srgb,var(--bg) 82%,transparent)}
@@ -425,31 +445,37 @@ function warm(n) {
 let t = 0, playing = false, speed = 1, curAudio = null, waitingQuiz = -1
 const quizState = DATA.quizzes.map(() => ({ sel: new Set(), checked: false, shown: false }))
 
-// —— 进度条：当前这一屏展开成长条，其余屏缩成短横（照 Gauth）；悬停显示屏名和时间 ——
+// —— 进度线：每屏一段，宽度按这一屏的时长，段间缺口就是分屏标记（照抖音）；点哪儿跳哪儿，悬停显示屏名和时间 ——
 const tip = $('tip')
 const segAt = (s, el, e) => {
-  if (!el.classList.contains('cur')) return s.start
   const r = el.getBoundingClientRect(); return s.start + (s.end - s.start) * Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
 }
 const segs = DATA.screens.map((s) => {
-  const el = document.createElement('div'); el.className = 'seg'; el.innerHTML = '<i></i>'
-  el.onclick = (e) => seek(segAt(s, el, e), true)
+  const el = document.createElement('div'); el.className = 'seg'; el.innerHTML = '<b><i></i></b>'
+  el.style.flex = (s.end - s.start).toFixed(2) + ' 1 0'
+  el.onclick = (e) => { $('cover').hidden = true; seek(segAt(s, el, e), true) }
   el.onmousemove = (e) => {
-    const bar = tip.parentElement.getBoundingClientRect()
-    tip.textContent = s.name + '　' + fmt(segAt(s, el, e)) + ' / ' + fmt(DATA.total)
-    tip.style.left = (e.clientX - bar.left) + 'px'; tip.hidden = false
+    const box = $('dock').getBoundingClientRect()
+    tip.textContent = s.name + '　' + fmt(segAt(s, el, e)) + ' / ' + fmt(DATA.total); tip.hidden = false
+    const half = tip.offsetWidth / 2
+    tip.style.left = Math.max(half, Math.min(box.width - half, e.clientX - box.left)) + 'px'
   }
   el.onmouseleave = () => { tip.hidden = true }
   $('prog').appendChild(el); return el
 })
-// —— 目录：列出各屏，点哪屏跳到哪屏 ——
+const fill = segs.map((el) => el.querySelector('i'))
+// —— 跳屏：目录里点哪屏跳哪屏；"下一屏"跳到下一屏开头。都从屏首开始放 ——
 const toc = $('toc')
+const closeToc = () => { toc.hidden = true; $('menu').setAttribute('aria-expanded', 'false') }
+const goScreen = (s) => { closeToc(); $('cover').hidden = true; seek(s.start, true) }
 DATA.screens.forEach((s) => {
   const b = document.createElement('button')
-  b.innerHTML = '<span>' + s.name + '</span><em>' + fmt(s.end - s.start) + '</em>'
-  b.onclick = () => { toc.hidden = true; $('menu').setAttribute('aria-expanded', 'false'); $('cover').hidden = true; seek(s.start, true) }
+  b.innerHTML = '<em>' + fmt(s.start) + '</em><span>' + s.name + '</span>'
+  b.onclick = () => goScreen(s)
   toc.appendChild(b)
 })
+let scrIdx = 0
+$('next').onclick = () => { const s = DATA.screens[scrIdx + 1]; if (s) goScreen(s) }
 
 // —— 画面层：每帧一个 .f，只在第一次用到时创建 ——
 const layers = new Map()
@@ -493,15 +519,18 @@ function render(time) {
   if (q !== quizShown) showQuiz(q)
   if (exportMode && q >= 0) sig.push('q' + q, videoQuiz(step, time - step.start))
 
-  // 字幕、进度、标题
+  // 字幕、进度、时间、当前屏
   $('cap').textContent = step.k === 'beat' ? step.text : ''
-  const sc = DATA.screens.find((s) => time >= s.start && time < s.end) || DATA.screens.at(-1)
-  $('scr').textContent = $('scr').title = sc.name
-  DATA.screens.forEach((s, i) => {
-    segs[i].classList.toggle('cur', s === sc)
-    segs[i].firstChild.style.width = Math.max(0, Math.min(1, (time - s.start) / (s.end - s.start))) * 100 + '%'
-  })
-  toc.querySelectorAll('button').forEach((b, i) => b.classList.toggle('cur', DATA.screens[i] === sc))
+  let k = DATA.screens.findIndex((s) => time >= s.start && time < s.end)
+  if (k < 0) k = DATA.screens.length - 1
+  if (k !== scrIdx || !$('scr').textContent) {
+    scrIdx = k
+    $('scr').textContent = $('scr').title = DATA.screens[k].name
+    $('next').hidden = k === DATA.screens.length - 1
+    toc.querySelectorAll('button').forEach((b, i) => b.classList.toggle('cur', i === k))
+  }
+  DATA.screens.forEach((s, i) => { fill[i].style.width = Math.max(0, Math.min(1, (time - s.start) / (s.end - s.start))) * 100 + '%' })
+  $('time').textContent = fmt(time) + ' / ' + fmt(DATA.total)
   return sig.join(',')
 }
 
@@ -610,7 +639,7 @@ const toggleCap = () => {
 }
 $('capOn').onclick = toggleCap
 $('menu').onclick = (e) => { e.stopPropagation(); toc.hidden = !toc.hidden; $('menu').setAttribute('aria-expanded', String(!toc.hidden)) }
-document.addEventListener('click', (e) => { if (!toc.hidden && !toc.contains(e.target)) { toc.hidden = true; $('menu').setAttribute('aria-expanded', 'false') } })
+document.addEventListener('click', (e) => { if (!toc.hidden && !toc.contains(e.target)) closeToc() })
 $('startLabel').textContent = '开始播放 · ' + fmt(DATA.total)
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return
@@ -618,7 +647,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowLeft') jumpBeat(-1)
   else if (e.key === 'ArrowRight') jumpBeat(1)
   else if (e.key === 'c' || e.key === 'C') toggleCap()
-  else if (e.key === 'Escape') { toc.hidden = true; $('menu').setAttribute('aria-expanded', 'false') }
+  else if (e.key === 'Escape') closeToc()
 })
 
 // —— 画布缩放 ——
@@ -626,10 +655,10 @@ document.addEventListener('keydown', (e) => {
 const fullscreen = () => document.body.classList.contains('embed')
 function fitWrap() {
   if (!fullscreen()) { wrap.style.width = ''; return }
-  const main = document.querySelector('main'), cs = getComputedStyle(main), bar = document.querySelector('.bar'), cap = $('cap')
+  const main = document.querySelector('main'), cs = getComputedStyle(main), dock = $('dock'), cap = $('cap')
   const px = (v) => parseFloat(v) || 0
   const w = main.clientWidth - px(cs.paddingLeft) - px(cs.paddingRight)
-  const h = innerHeight - px(cs.paddingTop) - px(cs.paddingBottom) - bar.offsetHeight - px(getComputedStyle(bar).marginBottom) - cap.offsetHeight - px(getComputedStyle(cap).marginTop)
+  const h = innerHeight - px(cs.paddingTop) - px(cs.paddingBottom) - dock.offsetHeight - px(getComputedStyle(dock).marginTop) - cap.offsetHeight - px(getComputedStyle(cap).marginTop)
   wrap.style.width = Math.max(160, Math.floor(Math.min(w, (h * 16) / 9))) + 'px'
 }
 const fit = () => { stage.style.transform = 'scale(' + wrap.clientWidth / 640 + ')' }
@@ -710,7 +739,7 @@ async function main() {
   const strip = (h: string) => h.replace(/<[^>]*>/g, '')
   const more = screens.flatMap((s) => s.beats.map((b) => b.text)).join('') + title + screens.map((s) => s.name).join('') +
     quizzes.map((q) => strip(q.stem + q.explain + q.options.map((o) => o.html + o.why).join(''))).join('') +
-    '第屏练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕读文字问AI退出色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
+    '第屏下一›▾0123456789:/练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕读文字问AI退出色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
   for (const p of pages) {
     const htmls = p.cards.map((c) => c.html)
     const themeCss = p.style === 'desk' ? (await deskCss(htmls, more)).css : p.style === 'sticker' ? (await stickerCss(htmls, DEFAULT_PALETTE, more)).css : p.style === 'clean' ? (await cleanCss(htmls, more)).css : ''
