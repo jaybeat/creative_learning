@@ -122,16 +122,15 @@ test('单选题：答对后记住，刷新仍显示答对', async ({ page }) => 
   await expect(page.locator(pages).nth(3).locator('.quiz')).toHaveClass(/is-right/)
 })
 
-test('2.2：六页，节名隐藏；例题有题目卡片和答案卡片，第5、6页各一道题', async ({ page }) => {
+test('2.2：四页，节名隐藏；例题有题目卡片和答案卡片，第3、4页各一道填空题', async ({ page }) => {
   await page.goto('ch02/2-2')
-  await expect(page.locator(pages)).toHaveCount(6)
+  await expect(page.locator(pages)).toHaveCount(4)
   await expect(page.locator('.vp-doc h1')).toHaveClass(/lesson-section-title/)
-  for (let i = 0; i < 6; i++) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toHaveCount(1)
-  const ex = page.locator(pages).nth(3)
+  for (let i = 0; i < 4; i++) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toHaveCount(1)
+  const ex = page.locator(pages).nth(1)
   await expect(ex.locator('blockquote.milestone-problem')).toHaveCount(1)
   await expect(ex.locator('blockquote.milestone-answer')).toHaveCount(1)
-  await expect(page.locator(pages).nth(4).locator('.quiz-badge')).toHaveText('单选')
-  await expect(page.locator(pages).nth(5).locator('.quiz-badge')).toHaveText('多选')
+  for (const i of [2, 3]) await expect(page.locator(pages).nth(i).locator('.fill-quiz')).toHaveCount(1)
 })
 
 test('2.3：六页，节名隐藏；例题有题目卡片和答案卡片，第5、6页各一道单选题', async ({ page }) => {
