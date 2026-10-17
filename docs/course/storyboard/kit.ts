@@ -418,3 +418,34 @@ export const chist = (states: [string, number][], cls = '') =>
   `<div class="c-hist">${states.map(([s, c]) => editor(s, { cursor: c, cls: `sm ${cls}` })).join('')}</div>`
 /** 挂在场景上的问题胶囊：编号 + 问题 */
 export const cqpill = (n: number, s: string, cls = '') => `<span class="c-qp ${cls}"><b>${n}</b>${s}</span>`
+/**
+ * 空位（例题和填空练习同型，照 Gauth）：灰底虚线框，样式和播放器里学生作答的空位一样。
+ * s 是填进去的内容（画成选项块），不给就一直空着。beat 是第几拍填上：播放器到这一拍开头按 0.25 秒淡入，
+ * 之前是空的；分镜墙上画成填好的样子，在这一拍所在的帧里带 new 描边。不给 beat 就一开始就是填好的。w 是空位的最小宽度
+ */
+export const cblank = (s = '', o: { beat?: number; w?: number; cls?: string } = {}) =>
+  `<span class="c-blank ${o.cls ?? ''}"${o.w ? ` style="min-width:${o.w}px"` : ''}>${
+    s ? `<span class="c-fill"${o.beat ? ` data-beat="${o.beat}"` : ''}>${s}</span>` : ''
+  }</span>`
+/**
+ * 例题的空位表：一行一步，左边写动作，右边几个空位。rows 每行是 [动作, 第1个空的答案, 第2个空的答案…]。
+ * fill 写"这一拍填第几行第几个空"，行和空都从 1 数（和双栏稿"第1行两个空位"的说法一样）：
+ *   { 34: [[1, 1], [1, 2]], 35: [[2, 1], [2, 2]] }，整行一起填可以简写成行号：{ 34: 1, 35: 2 }。
+ * 没写到的空一直空着。同一屏的各帧传同一个 fill 就行：已经过去的拍画成填好的，没到的拍空着，到了才淡入。
+ * w 是每一列空位的最小宽度
+ */
+export function cblanks(rows: string[][], fill: Record<number, number | [number, number][]> = {}, o: { w?: number[]; cls?: string } = {}) {
+  const at = new Map<string, number>()
+  for (const [beat, v] of Object.entries(fill)) {
+    const cells: [number, number][] = typeof v === 'number' ? rows[v - 1].slice(1).map((_, k) => [v, k + 1]) : v
+    for (const [r, k] of cells) {
+      if (!rows[r - 1]?.[k]) throw new Error(`cblanks：第${beat}拍要填第${r}行第${k}个空，但没有这个空`)
+      at.set(`${r},${k}`, Number(beat))
+    }
+  }
+  const html = rows.map(([act, ...ans], r) =>
+    `<span class="sa">${act}</span>` +
+    ans.map((a, k) => { const b = at.get(`${r + 1},${k + 1}`); return cblank(b ? a : '', { beat: b, w: o.w?.[k] }) }).join(''),
+  )
+  return `<div class="c-steps ${o.cls ?? ''}" style="grid-template-columns:auto${' auto'.repeat(Math.max(...rows.map((r) => r.length - 1)))}">${html.join('')}</div>`
+}
