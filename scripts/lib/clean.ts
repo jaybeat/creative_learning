@@ -23,8 +23,11 @@ const FONTS = {
 // 色值和字体栈在 clean-tokens.ts（网站外壳也用它们）
 export { MONO, SANS, SERIF, TOKENS }
 
-/** 字体子集 + 令牌 + 质感层样式。more 是页面上另外要显示的文字（也进字体子集） */
-export async function cleanCss(htmls: string[], more = ''): Promise<{ css: string; info: string }> {
+/**
+ * 字体子集 + 令牌 + 质感层样式。more 是页面上另外要显示的文字（也进字体子集）。
+ * 空位的样式（BLANK_CSS）只在用到时才带上：帧里有空位，或者 blanks（播放器里有填空练习）。没用到空位的节，输出和加空位之前逐字节一样
+ */
+export async function cleanCss(htmls: string[], more = '', o: { blanks?: boolean } = {}): Promise<{ css: string; info: string }> {
   for (const f of Object.values(FONTS)) if (!fs.existsSync(path.join(ROOT, f.file))) throw new Error(`找不到 ${f.file}（${f.note}）`)
   const ascii = Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)).join('')
   const chars = [...new Set(visibleText(htmls) + ascii + '问题练习多选单选检查提示·✓✗…≠→←↓₀₁₂ₙ₋−' + more)].join('')
@@ -42,7 +45,7 @@ ${face('CleanSerif', serif, '200 900')}
 ${face('CleanSans', sans, '100 900')}
 ${face('CleanMono', mono)}
 .th-clean{${Object.entries(TOKENS).map(([k, v]) => `${k}:${v}`).join(';')}}
-${CLEAN_CSS}`
+${CLEAN_CSS}${o.blanks || htmls.some((h) => h.includes('c-blank')) ? BLANK_CSS : ''}`
   const kb = (b: Uint8Array) => (b.length / 1024).toFixed(0)
   return { css, info: `思源宋体 ${kb(serif)} KB + 思源黑体 ${kb(sans)} KB + 更纱 ${kb(mono)} KB（${[...chars].length} 字）` }
 }
@@ -245,4 +248,29 @@ ${C} .c-qp.on b{background:var(--paper);color:var(--warm)}
 /* 对比页开关：正文改纯黑、元组改衬线斜体（标题已定宋体） */
 .ink-black ${C}{--ink:var(--ink-strong)}
 .tuple-serif ${C} .tuple,.tuple-serif ${C} .row .rs,.tuple-serif ${C} .c-row .rs{font-family:${SERIF};font-style:italic}
+`
+
+/**
+ * 空位（kit 的 cblank / cblanks，播放器的填空练习）：例题和练习同型，照 Gauth。
+ * 灰底虚线框，填进去的是选项块（发丝框白底等宽字）；例题里老师按拍填，练习里学生填，看起来一样。
+ * 练习检查后：错的空变灰加划线（不用红叉），对的换成蓝标签色；用过的选项块变灰。
+ */
+const BLANK_CSS = `
+/* —— 空位：例题和填空练习共用 —— */
+${C} .c-blank{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;box-sizing:border-box;min-width:64px;min-height:28px;margin:0 3px;padding:2px;border:1px dashed var(--line-cell);border-radius:10px;background:var(--btn);font:inherit;color:inherit}
+${C} .c-fill{display:inline-block;border:1px solid var(--line-cell);border-radius:8px;background:var(--paper);padding:0 10px;font-family:${MONO};font-size:13px;line-height:22px;color:var(--ink-strong);white-space:nowrap}
+${C} .c-steps{display:grid;grid-template-columns:auto auto auto;gap:6px 6px;align-items:center;justify-content:start}
+${C} .c-steps .sa{font-size:12.5px;color:var(--ink);padding-right:6px;white-space:nowrap}
+${C} .c-steps .c-blank{margin:0}
+/* 填空练习（播放器）：空位可以点、可以拖进去 */
+${C} .quiz.fq .qs{color:var(--ink)}
+${C} .fq-b{cursor:pointer}
+${C} .fq.locked .fq-b{cursor:default}
+${C} .fq-b.is-picked{border-style:solid;border-color:var(--c1-line);background:var(--c1-soft)}
+${C} .fq-b.is-wrong .c-fill{color:var(--off);text-decoration:line-through;border-color:var(--line-soft)}
+${C} .fq-b.is-right .c-fill{background:var(--c1-soft);color:var(--c1);border-color:transparent}
+${C} .fq-o{cursor:grab;font-size:13px}
+${C} .fq-o:hover:not(:disabled){border-color:var(--c1-line)}
+${C} .fq-o.picked{border-color:var(--c1);box-shadow:inset 0 0 0 1px var(--c1)}
+${C} .fq-o:disabled{opacity:.35;cursor:default}
 `

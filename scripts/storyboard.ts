@@ -19,6 +19,15 @@ import { deskTheme } from './lib/desk'
 import { cleanTheme } from './lib/clean'
 import { ROOT, CHARS_PER_SEC, esc, md, parseScript, assemble, secs, fmt, FRAME_CSS, type Screen, type Card, type Frame } from './lib/course'
 
+// 按拍填的空位（kit 的 cblank/cblanks，data-beat）：分镜墙一帧只画一张图，这一帧里的拍填上的空带 new 描边，
+// 还没到的拍的空藏起来（播放器里到那一拍才淡入）。帧里没有按拍填的空位时原样返回
+function beatFills(html: string, c: Card): string {
+  if (!html.includes('data-beat') || !c.beats.length) return html
+  const last = c.beats.at(-1)!.n
+  return html.replace(/class="c-fill" data-beat="(\d+)"/g, (m, n: string) =>
+    Number(n) > last ? `${m} style="visibility:hidden"` : c.beats.some((b) => b.n === Number(n)) ? `class="c-fill new" data-beat="${n}"` : m)
+}
+
 function render(id: string, title: string, screens: Screen[], cards: Card[], theme?: { css: string; script: string; bodyClass?: string }, framesName = `${id}.frames.ts`): string {
   const all = screens.flatMap((s) => s.beats)
   const count = (t: string) => all.filter((b) => b.src === t).length
@@ -35,7 +44,7 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], the
     const lead = c.lead !== undefined ? `<div class="thumb lead"><div class="f dark">${c.lead}</div></div>` : ''
     return `<article class="sb${c.pause ? ' is-pause' : ''}" data-id="${c.id}">
   <header><b class="fid">${c.id}</b><span>${range}</span><span class="dur">${c.pause ? '⏸' : '≈' + fmt(secs(c.beats))}</span></header>
-  ${lead}<div class="thumb"><div class="f${c.dark ? ' dark' : ''}">${c.html}</div></div>
+  ${lead}<div class="thumb"><div class="f${c.dark ? ' dark' : ''}">${beatFills(c.html, c)}</div></div>
   <p class="pic">${pic}</p>
   <ol class="vo">${lines}</ol>
 </article>`
@@ -105,7 +114,7 @@ async function main() {
   const variant = picked === 'classic' ? '' : picked
   const pi = args.indexOf('--palette')
   const palette = pi >= 0 ? args[pi + 1] : undefined
-  const id = args.find((a, i) => !a.startsWith('--') && i !== pi + 1) ?? '2-1'
+  const id = args.find((a, i) => !a.startsWith('--') && !(pi >= 0 && i === pi + 1)) ?? '2-1'
   const scriptFile = path.join(ROOT, 'docs/course', `${id}.md`)
   // 纸面版、贴纸版有自己的帧文件，和原帧逐拍对应
   const framesFile = path.join(ROOT, 'docs/course/storyboard', `${id}${variant === 'paper' || variant === 'sticker' || variant === 'desk' || variant === 'clean' ? '.' + variant : ''}.frames.ts`)

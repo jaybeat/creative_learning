@@ -189,7 +189,7 @@ const BLANK_RE = /\[\[([^\]]+)\]\]/g
 const OTHERS_LABEL = '其他选项'
 
 /** 按 qid 做种子的伪随机（mulberry32）：选项顺序每次构建都一样，不在读者端随机 */
-function seededShuffle<T>(items: T[], seed: string): T[] {
+export function seededShuffle<T>(items: T[], seed: string): T[] {
   let h = 2166136261
   for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619)
   const rand = () => {
