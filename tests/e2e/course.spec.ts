@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 // 节页"看动画 | 读文字"：看动画时是全屏学习层（theme/components/CourseSwitch.vue），读文字是专注阅读页（LessonBar.vue）。
-// 2.1 有课程动画（site/public/course/2-1/），2.2 没有
+// 2.1、2.2 有课程动画（site/public/course/<id>/），2.3 没有
 const VIDEO = 'ch02/2-1'
 const MODE_KEY = 'ds-book:course-mode'
 
@@ -57,7 +57,7 @@ test('切到读文字后记住选择：刷新、换节都保持；没有动画�
   await expect(page.locator('.cs-text')).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('.cs-player iframe')).toHaveCount(0)
 
-  await page.goto('ch02/2-2')
+  await page.goto('ch02/2-3')
   await expect(page.locator('.vp-doc')).toBeVisible()
   await expect(page.locator('.cs-player')).toHaveCount(0)
   await expect(page.locator('.cs-tabs')).toHaveCount(0)
@@ -72,7 +72,7 @@ test('章首目录：有动画的节标出时长，按钮改成"开始学习"', 
   await page.goto('ch02/')
   const item = page.locator('.ci-list li').filter({ hasText: '2.1 线性表' })
   await expect(item.locator('.video-mark')).toHaveText(/▶ \d+:\d\d/)
-  await expect(page.locator('.ci-list li').filter({ hasText: '2.2 ' }).locator('.video-mark')).toHaveCount(0)
+  await expect(page.locator('.ci-list li').filter({ hasText: '2.3 ' }).locator('.video-mark')).toHaveCount(0)
   await expect(page.locator('.ci-actions .cr-button')).toHaveText('开始学习')
 })
 

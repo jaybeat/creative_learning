@@ -24,7 +24,7 @@ test.describe('搜索', () => {
   for (const [kw, expected] of cases) {
     test(`搜「${kw}」命中正确的节`, async ({ page }) => {
       // 从没有动画的节开始：有动画的节默认是全屏学习层，盖住了网站导航（搜索在读文字时用）
-      await page.goto('ch02/2-2')
+      await page.goto('ch02/2-3')
       await openSearch(page)
       await page.fill('#localsearch-input', kw)
       const first = page.locator('.results li a').first()

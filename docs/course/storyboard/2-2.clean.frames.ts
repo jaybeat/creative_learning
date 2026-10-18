@@ -77,8 +77,8 @@ const ROWS = [
   ['a、t 之间敲 x', 'Insert(L, 2, x)', '(c, a, x, t)'],
   ['退格', 'Delete(L, 2)', '(c, a, t)'],
 ]
-/** 拍33–38 各填一行；各帧传同一个 FILL */
-const FILL: Record<number, number> = { 33: 1, 34: 2, 35: 3, 36: 4, 37: 5, 38: 6 }
+/** 拍43–48 各填一行；各帧传同一个 FILL */
+const FILL: Record<number, number> = { 43: 1, 44: 2, 45: 3, 46: 4, 47: 5, 48: 6 }
 /** 版面 A：题目卡 (40,92) 一行 + 六行空位 (40,136) + 右边窄演示卡 (436,136) 164×190 */
 function exA(o: { ask?: boolean; rows?: boolean | string; mini?: string; extra?: string; cls?: string } = {}) {
   const q = card(`${STEM}${o.ask ? `<b>${ASK}</b>` : ''}`, o.cls ?? '', 'width:560px;padding:6px 14px;white-space:nowrap')
