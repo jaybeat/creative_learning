@@ -1,8 +1,8 @@
 // 2.2 质感层分镜帧（npm run storyboard -- 2-2；播放器 course:player -- 2-2）。双栏稿 docs/course/2-2.md。
 // 结构照 Gauth 集合课第二节（交集/并集）：开头直接讲工具，编辑器只当演示；例题和练习同型（空位）。
-// - 第1屏：左右对照。左边五行操作（签名 + 结果行），右边固定演示卡：编辑器、分开的方块（位置号在上方）、表和长度；
-// - 第2屏：例题。版面 A 是题目卡 + 六行空位（cblanks）+ 窄演示卡；版面 B 讲抽象数据类型：等式卡、打勾清单、编辑器→操作名连线；
-// - 第3、4屏：填空练习；第5屏：一拍过门（照 Gauth，练习完直接进下一小节，不做小结）。
+// - 第1、2屏：左右对照（第2屏从 Insert 起，版面不变）。左边五行操作（签名 + 结果行），右边固定演示卡：编辑器、分开的方块（位置号在上方）、表和长度；
+// - 第3屏：例题。版面 A 是题目卡 + 六行空位（cblanks）+ 窄演示卡；版面 B 讲抽象数据类型：等式卡、打勾清单、编辑器→操作名连线；
+// - 第4、5屏：填空练习；第6屏：一拍过门（照 Gauth，练习完直接进下一小节，不做小结）。
 // 开场照 Aho：先说给线性表定一组操作（关系 + 操作 = 抽象数据类型），常用操作很多、这里取最基本的五个，再逐个演示。
 // 线性表用逻辑画法（分开的方块），不画内存、不画搬移；错误变灰加划线。帧里不写色值，样式在 scripts/lib/clean.ts。
 // 2-2.frames.ts 原样转出本文件（播放器要求原版帧位一致）。
@@ -18,7 +18,7 @@ const tuple = (s: string, cls = '') => `<span class="tuple c-tuple ${cls}">${s}<
 /** 位置号：0 1 2 … */
 const nums = (n: number) => Array.from({ length: n }, (_, i) => String(i))
 
-// ───────── 第1屏：标题区 + 五行操作 + 演示卡 ─────────
+// ───────── 第1、2屏：标题区 + 五行操作 + 演示卡 ─────────
 const KICK = (done = false, cls = '') => ckick(`问题 2 · ${Q[1]}${done ? ` ${ok}` : ''}`, cls)
 const head1 = (o: { done?: boolean; kcls?: string; cls?: string } = {}) => at(40, 16, KICK(o.done, o.kcls)) + at(40, 44, ctitle('线性表的基本操作').replace('c-title', `c-title ${o.cls ?? ''}`))
 
@@ -63,7 +63,7 @@ const CAT = { text: 'cat', chars: ['c', 'a', 't'], tup: '(c, a, t)', len: '3' }
 const CAXT = { text: 'caxt', cursor: 3, chars: ['c', 'a', 'x', 't'], tup: '(c, a, x, t)', len: '4' }
 const s1 = (l: Parameters<typeof ops>[0], d: Parameters<typeof demo>[0], h: Parameters<typeof head1>[0] = {}) => head1(h) + ops(l) + demo(d)
 
-// ───────── 第2屏：例题 ─────────
+// ───────── 第3屏：例题 ─────────
 const head2 = (cls = '') => at(40, 16, ckick('例题', cls)) + at(40, 44, ctitle('一串编辑动作对应哪些操作？').replace('c-title', `c-title ${cls}`))
 // 题目卡压成一行（画面上的字可以比旁白简短），给下面六行空位留出高度
 const STEM = '编辑器刚启动，依次敲 c、a、t，在 a、t 之间敲 x，再退格删掉 x。'
@@ -113,7 +113,7 @@ function exB(o: { eq: 0 | 1 | 2; ecls?: string; check?: boolean; links?: boolean
   return head2() + at(40, 92, SUMLINE) + eq + ck + lk
 }
 
-// ───────── 第3、4屏：填空练习（暂停时播放器把真题盖在画面上，这里画出原样给分镜墙审） ─────────
+// ───────── 第4、5屏：填空练习（暂停时播放器把真题盖在画面上，这里画出原样给分镜墙审） ─────────
 function quiz(o: { n: number; title: string; stem: string; lines: [string, number][]; opts: string[]; tip?: string; cls?: string; dim?: boolean; extra?: string }) {
   const c = `${o.cls ?? ''} ${o.dim ? 'dim' : ''}`
   return at(40, 16, ckick(`练习 ${o.n} · 填空`, o.cls)) + at(40, 44, ctitle(o.title).replace('c-title', `c-title ${c}`)) +
@@ -170,6 +170,7 @@ export const frames: Frame[] = [
   { beat: 15, html: s1({ open: 2, cls: { 2: 'new' } }, { ph: 'Get(L, i)　按位查找', ...CAT }) },
   { beat: 17, reveal: 'spread', html: s1({ open: 2 }, { ph: 'Get(L, i)　按位查找', ...CAT, ccls: ['hl new', 'hl new', 'hl new'], foot: cap('依次取第 0、1、2 个：c、a、t', 'new') }) },
   { beat: 18, html: s1({ open: 2, range: [2], fresh: 2 }, { ph: 'Get(L, i)　按位查找', ...CAT, foot: cap('i 只能是已有元素的位置', 'new') }) },
+  // ───────── 第2屏　插入和删除：版面和第1屏一样，从 Insert 起另起一屏 ─────────
   // Insert：先一般形式，再编辑器例子
   { beat: 19, html: s1({ open: 3, range: [2], cls: { 3: 'new' } }, { ph: 'Insert(L, i, x)', ...CAT, cursor: 2, ecls: 'new' }) },
   { beat: 20, html: s1({ open: 3, range: [2] }, { ph: 'Insert(L, i, x)', ...CAT, cursor: 2, foot: cap('第 i 个及之后：位置都加 1', 'new') }) },
@@ -198,7 +199,7 @@ export const frames: Frame[] = [
   { beat: 39, html: s1({ open: 5, range: [2, 3, 4] }, { ph: '小结', extra: at(0, 40, cap('五个操作，汇总在左边这张表里')) + at(0, 72, cap('还有：按值查找 · 判空 · 销毁 …（用到时再加）')) + at(0, 120, cqpill(2, Q[1], 'on new')) }) },
   { beat: 40, html: s1({ open: 5, range: [2, 3, 4] }, { ph: '小结', extra: at(0, 40, cap('五个操作，汇总在左边这张表里')) + at(0, 72, cap('还有：按值查找 · 判空 · 销毁 …（用到时再加）')) + at(0, 120, cqpill(2, `${Q[1]} ${ok}`, 'on new')) }, { done: true, kcls: 'new' }) },
 
-  // ───────── 第2屏　例题（版面 A：拍41–52） ─────────
+  // ───────── 第3屏　例题（版面 A：拍41–52） ─────────
   { beat: 41, html: exA({ cls: 'new', mini: mini('', 0, []) }) },
   { beat: 42, html: exA({ ask: true, rows: 'new', mini: mini('', 0, []) }) },
   { beat: 43, html: exA({ ask: true, rows: true, mini: mini('', 0, [], { tup: '()', tcls: 'new' }) }) },
@@ -218,17 +219,17 @@ export const frames: Frame[] = [
   { beat: 54, reveal: 'spread', html: exB({ eq: 2, check: true }) },
   { beat: 55, html: exB({ eq: 2, check: true, links: true }) },
 
-  // ───────── 第3屏　练习1 ─────────
+  // ───────── 第4屏　练习1 ─────────
   { beat: 57, html: Q1({ cls: 'new' }) },
   { beat: 58, html: Q1({ tip: true }) },
   { after: 58, html: Q1({ tip: true }) + pause('等学生作答（点选项块再点空位）；作答后显示解析，不配旁白') },
 
-  // ───────── 第4屏　练习2 ─────────
+  // ───────── 第5屏　练习2 ─────────
   { beat: 59, html: Q2({ cls: 'new' }) },
   { after: 59, html: Q2() + pause('等学生作答；作答后显示解析') },
   { beat: 60, html: Q2({ dim: true, extra: at(40, 300, cbadge('Insert：0 ≤ i ≤ <b>n</b>', 'new') + ' ' + cbadge('Delete：0 ≤ i ≤ <b>n−1</b>', 'new')) }) },
 
-  // ───────── 第5屏　下一步：一拍过门（照 Gauth：练习完直接进下一小节，不做小结） ─────────
+  // ───────── 第6屏　下一步：一拍过门（照 Gauth：练习完直接进下一小节，不做小结） ─────────
   {
     beat: 61,
     html: at(40, 16, ckick('下一步')) + at(40, 44, ctitle('把线性表放进内存')) +
