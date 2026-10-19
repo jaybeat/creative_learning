@@ -17,5 +17,10 @@
  {"word": "数据"},
  {"word": "整数"},
  {"word": "一种"},
- {"word": "还是"}
+ {"word": "还是"},
+ {"word": "它得知道", "py": "ta1 dei3 zhi1 dao4"},
+ {"word": "还要", "py": "hai2 yao4"},
+ {"word": "还有", "py": "hai2 you3"},
+ {"word": "判空", "py": "pan4 kong1"},
+ {"word": "调用", "py": "diao4 yong4"}
 ]

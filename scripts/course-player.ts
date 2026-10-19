@@ -18,7 +18,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
-import { ROOT, md, parseScript, assemble, FRAME_CSS, type Beat, type Card, type Frame, type Screen } from './lib/course'
+import { parseQuizzes, type Quiz } from './lib/course-quiz'
+import { ROOT, parseScript, assemble, FRAME_CSS, type Beat, type Card, type Frame, type Screen } from './lib/course'
 import { stickerCss } from './lib/sticker'
 import { deskCss } from './lib/desk'
 import { cleanCss, CLEAN_SHELL_CSS } from './lib/clean'
@@ -72,39 +73,6 @@ const GAP_SCREEN = 0.9 // 换屏
 // 练习暂停在视频里的时长（网页里停住等学生作答）：先倒计时"自己想想"，再揭晓答案，选项越多揭晓停得越久
 const THINK = 5
 const revealSecs = (q: { options: unknown[] }) => 4 + 0.8 * q.options.length
-
-// ───────── 练习题：从书稿这一节的 ::: quiz 读 ─────────
-
-type Quiz = { kind: 'single' | 'multi'; stem: string; options: { html: string; correct: boolean; why: string }[]; explain: string }
-
-function parseQuizzes(file: string, section: string): Quiz[] {
-  const lines = fs.readFileSync(path.join(ROOT, file), 'utf8').split('\n')
-  const start = lines.findIndex((l) => l.startsWith(`## ${section} `))
-  if (start < 0) throw new Error(`${file} 里找不到 ## ${section}`)
-  let end = lines.findIndex((l, i) => i > start && /^## /.test(l))
-  if (end < 0) end = lines.length
-  const quizzes: Quiz[] = []
-  for (let i = start; i < end; i++) {
-    const m = /^:::\s*quiz(?:\s+(单选|多选))?\s*$/.exec(lines[i])
-    if (!m) continue
-    const stem: string[] = []
-    const options: Quiz['options'] = []
-    const explain: string[] = []
-    let j = i + 1
-    for (; j < end && !/^:::\s*$/.test(lines[j]); j++) {
-      const l = lines[j]
-      const opt = /^- \[([ xX])\]\s*(.*)$/.exec(l)
-      if (opt) options.push({ html: md(opt[2]), correct: opt[1] !== ' ', why: '' })
-      else if (/^\s{2,}\S/.test(l) && options.length && !explain.length) options.at(-1)!.why += md(l.trim())
-      else if (l.trim() && !options.length) stem.push(md(l.trim()))
-      else if (l.trim()) explain.push(md(l.trim()))
-    }
-    const kind = m[1] === '单选' ? 'single' : m[1] === '多选' ? 'multi' : options.filter((o) => o.correct).length > 1 ? 'multi' : 'single'
-    quizzes.push({ kind, stem: stem.join('<br>'), options, explain: explain.join('<br>') })
-    i = j
-  }
-  return quizzes
-}
 
 // ───────── 配音 ─────────
 
@@ -241,7 +209,6 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
 <body class="player${style === 'classic' ? '' : ' themed st-' + style}${style === 'clean' ? ' th-clean' : ''}">
 <!-- 由 docs/course/${id}.md 和 docs/course/storyboard/${id}${STYLES.find((s) => s.style === style)!.frames} 生成，不要手改本文件。配音：${VOICE}。 -->
 <main>
-  <button id="exit" class="ib emb" title="退出动画，回到本章（Esc）" aria-label="退出">${ICON.close}</button>
   <div class="wrap" id="wrap">
     <div class="stage" id="stage"></div>
     <div class="cover" id="cover"><button id="start"><span class="big">${ICON.play}</span><span id="startLabel"></span></button></div>
@@ -250,6 +217,7 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
   <div class="dock" id="dock">
     <div id="prog"></div>
     <div class="bar">
+      <button id="exit" class="ib emb" title="退出动画，回到本章（Esc）" aria-label="退出">${ICON.close}</button>
       <button id="play" class="ib" title="播放/暂停（空格）" aria-label="播放">${ICON.play}${ICON.pause}</button>
       <span id="time"></span>
       <div class="nav">
@@ -261,7 +229,8 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
         <button id="speed" class="ib txt" title="倍速">1×</button>
         <button id="capOn" class="ib txt" title="字幕（C）" aria-pressed="true">字</button>
         <button id="ask" class="ib txt emb" title="边看边问：右侧打开问 AI 面板（动画会暂停）">问 AI</button>
-        <button id="toText" class="ib txt emb" title="改读文字详细版">读文字</button>${style === 'sticker' ? `
+        <button id="toText" class="ib txt emb" title="改读文字详细版">读文字</button>
+        <button id="fs" class="ib" title="全屏（F）" aria-label="全屏" hidden>${ICON.fsOn}${ICON.fsOff}</button>${style === 'sticker' ? `
         <select id="pal" title="色系">${Object.entries(PALETTES).map(([k, p]) => `<option value="${k}"${k === DEFAULT_PALETTE ? ' selected' : ''}>${p.name}</option>`).join('')}</select>` : ''}
       </div>
     </div>
@@ -279,6 +248,8 @@ const ICON = {
   play: '<svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8c0 .8.9 1.3 1.6.8l10-6.4c.6-.4.6-1.2 0-1.6l-10-6.4C8.9 4.3 8 4.8 8 5.6z" fill="currentColor"/></svg>',
   pause: '<svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.5v13M15.5 5.5v13" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  fsOn: '<svg class="i-fs-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  fsOff: '<svg class="i-fs-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>',
   list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.5" cy="6.5" r=".9" fill="currentColor"/><circle cx="4.5" cy="12" r=".9" fill="currentColor"/><circle cx="4.5" cy="17.5" r=".9" fill="currentColor"/></svg>',
 }
 
@@ -323,12 +294,22 @@ main{max-width:980px;margin:0 auto;padding:16px}
 body.embed .emb{display:inline-flex!important}
 body.embed{background:transparent!important;overflow:hidden}
 body.embed.th-clean{background:var(--page)!important}
-body.embed main{max-width:none!important;box-sizing:border-box;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:52px 24px 6px!important}
-body.embed #exit{position:fixed;top:10px;left:14px;z-index:40}
+body.embed main{max-width:none!important;box-sizing:border-box;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:12px 24px 6px!important}
 body.embed .wrap{flex:none;margin:auto auto 0}
 body.embed #cap{flex:none;margin:14px auto auto}
-body.embed .dock{flex:none}
-@media (max-width:640px){body.embed main{padding:48px 10px 4px!important}.bar{gap:6px}#scr,.caret,#speed{display:none}}
+body.embed .dock{flex:none;box-sizing:border-box;margin-left:auto;margin-right:auto;max-width:100%}
+#fs .i-fs-off,body.fs #fs .i-fs-on{display:none}body.fs #fs .i-fs-off{display:block}
+#fs[hidden]{display:none}
+/* 真全屏（浏览器全屏接口）：四周不留白，控制区叠在画面底边上（bottom 由 fitWrap 算），播放时鼠标不动 2.5 秒就淡出；字幕仍在画面下方，不被压住 */
+body.fs main{max-width:none!important;box-sizing:border-box;height:100vh;display:flex;flex-direction:column;padding:0 0 4px!important}
+body.fs .wrap{flex:none;margin:auto auto 0;border-radius:0!important;border:0!important}
+body.fs #cap{flex:none;margin:10px auto auto}
+body.fs .dock{position:fixed;left:0;right:0;bottom:0;width:auto!important;margin:0;padding:22px 24px 2px;z-index:35;transition:opacity .25s;
+  background:linear-gradient(transparent,color-mix(in srgb,var(--stage,#fafaf8) 92%,transparent) 40%)}
+body.fs.idle .dock{opacity:0;pointer-events:none}
+body.fs.idle{cursor:none}
+body.fs #exit{display:none!important}
+@media (max-width:640px){body.embed main{padding:8px 10px 4px!important}.bar{gap:6px}#scr,.caret,#speed{display:none}}
 @media (max-width:400px){#time{display:none}}
 .wrap{position:relative;box-sizing:border-box;width:100%;aspect-ratio:16/9;background:#fafaf8;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .stage{position:absolute;left:0;top:0;width:640px;height:360px;transform-origin:0 0}
@@ -368,6 +349,21 @@ body.embed .dock{flex:none}
 .think{margin-top:8px;padding:6px 12px;border-radius:8px;background:#fff3bf;color:#a06000;font-size:15px;text-align:center}
 .think b{font-size:20px;margin-left:6px}
 .think.ans{background:#ebfbee;color:#2b8a3e}
+/* 填空题：空位和选项块（质感版的样式在 scripts/lib/clean.ts，和例题的空位共用）；这里是其他风格的底子 */
+.fq .qs p{margin:0 0 4px}.fq .qs ul,.fq .qs ol{margin:0;padding-left:20px}.fq .qs li{margin:6px 0}
+.fq .qs pre{margin:4px 0;font-size:12px}
+.fq .qex p{margin:0 0 4px}
+.c-blank{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;box-sizing:border-box;min-width:64px;min-height:26px;margin:0 3px;padding:2px;border:1px dashed #bbb;border-radius:8px;background:#f1f3f5;font:inherit;color:inherit}
+.c-fill{display:inline-block;border:1px solid #ccc;border-radius:6px;background:#fff;padding:0 10px;line-height:20px;white-space:nowrap;font:inherit;color:inherit}
+.fq-b{cursor:pointer}.fq.locked .fq-b{cursor:default}
+.fq-b.is-picked{border-style:solid;border-color:#1971c2}
+.fq-b.is-wrong .c-fill{color:#999;text-decoration:line-through}
+.fq-b.is-right .c-fill{border-color:#2b8a3e}
+.fq-opts{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 2px}
+.fq-o{cursor:grab}
+.fq-o.picked{border-color:#1971c2;box-shadow:inset 0 0 0 1px #1971c2}
+.fq-o:disabled{opacity:.35;cursor:default}
+.qbar button[hidden]{display:none}
 `
 
 // 工作台版、贴纸版的页面外壳：只用色系令牌（var(--xxx)），跟着画面的风格走。
@@ -443,7 +439,12 @@ function warm(n) {
 }
 
 let t = 0, playing = false, speed = 1, curAudio = null, waitingQuiz = -1
-const quizState = DATA.quizzes.map(() => ({ sel: new Set(), checked: false, shown: false }))
+const quizState = DATA.quizzes.map((Q) => Q.kind === 'fill'
+  ? { filled: Q.answers.map(() => -1), pickO: -1, pickB: -1, status: 'idle' }
+  : { sel: new Set(), checked: false, shown: false })
+// 每拍开始的秒数：例题空位按拍填（帧里带 data-beat 的选项块）
+const beatStart = new Map(beats.map((s) => [s.n, s.start]))
+const BLANK_FADE = 0.25
 
 // —— 进度线：每屏一段，宽度按这一屏的时长，段间缺口就是分屏标记（照抖音）；点哪儿跳哪儿，悬停显示屏名和时间 ——
 const tip = $('tip')
@@ -484,9 +485,11 @@ function layer(ci) {
   const c = DATA.cards[ci]
   const el = document.createElement('div'); el.className = 'f'; el.innerHTML = c.html; el.style.display = 'none'
   stage.appendChild(el)
-  const items = [...el.querySelectorAll('.new')]
+  // 按拍填的空位（data-beat）不跟着帧一起出现，到那一拍才淡入；分镜墙上它们也带 new，这里排除
+  const items = [...el.querySelectorAll('.new:not([data-beat])')]
   const span = c.reveal === 'spread' ? Math.max(0.6, c.speak * 0.85) : Math.min(0.6, 0.12 * items.length)
-  const L = { el, items: items.map((node, i) => ({ node, at: items.length > 1 ? (span * i) / items.length : 0 })) }
+  const fills = [...el.querySelectorAll('[data-beat]')].map((node) => ({ node, at: beatStart.get(Number(node.dataset.beat)) ?? 0 }))
+  const L = { el, items: items.map((node, i) => ({ node, at: items.length > 1 ? (span * i) / items.length : 0 })), fills }
   layers.set(ci, L); return L
 }
 const ease = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : 1 - Math.pow(1 - x, 3))
@@ -510,6 +513,10 @@ function render(time) {
   for (const it of cur.items) {
     const e = ease((local - it.at) / POP)
     sig.push(e.toFixed(3)); it.node.style.opacity = String(e); it.node.style.translate = e < 1 ? '0 ' + ((1 - e) * 8).toFixed(1) + 'px' : ''
+  }
+  for (const it of cur.fills) {
+    const e = Math.max(0, Math.min(1, (time - it.at) / BLANK_FADE))
+    sig.push('b' + e.toFixed(3)); it.node.style.opacity = String(e)
   }
   sig.unshift(ci, cur.el.style.opacity)
   if (vis.length > 1) { const p = layer(ci - 1); sig.push('p'); p.el.style.display = ''; p.el.style.opacity = String(1 - ease(local / FADE)); p.el.style.zIndex = '1' }
@@ -542,7 +549,8 @@ function videoQuiz(step, local) {
   if (!think) { think = document.createElement('div'); think.className = 'think'; quizEl.appendChild(think) }
   think.innerHTML = revealed ? '✓ 答案' : '⏸ 暂停一下，自己想想　<b>' + left + '</b>'
   think.classList.toggle('ans', revealed)
-  quizEl.querySelectorAll('.qopt').forEach((b, i) => b.classList.toggle('right', revealed && Q.options[i].correct))
+  if (Q.kind === 'fill') quizEl.videoReveal(revealed)
+  else quizEl.querySelectorAll('.qopt').forEach((b, i) => b.classList.toggle('right', revealed && Q.options[i].correct))
   quizEl.classList.toggle('done', revealed)
   return revealed ? 'r' : String(left)
 }
@@ -556,6 +564,7 @@ function showQuiz(q) {
   const Q = DATA.quizzes[q], st = quizState[q]
   quizEl = document.createElement('div'); quizEl.className = 'quiz'
   const n = DATA.steps.filter((s) => s.k === 'pause').findIndex((s) => s.quiz === q) + 1
+  if (Q.kind === 'fill') return showFill(q, n)
   quizEl.innerHTML = '<div class="qh">练习' + n + '　' + (Q.kind === 'multi' ? '多选' : '单选') + '</div><div class="qs">' + Q.stem + '</div>' +
     Q.options.map((o, i) => '<button class="qopt" data-i="' + i + '">' + o.html + '<div class="why">' + o.why + '</div></button>').join('') +
     '<div class="qex">' + Q.explain + '</div>' +
@@ -592,6 +601,72 @@ function showQuiz(q) {
   paint()
 }
 
+// —— 填空题（照网站 FillQuiz.vue）：点选项块再点空，或者先点空再点选项块，桌面上也能拖；点已填的空把选项块退回。
+// 用过的选项块变灰；填满了才能检查；答错只标出错的空，可以再试一次（错的空退回）或看答案；答对、看答案之后显示解析 ——
+function showFill(q, n) {
+  const Q = DATA.quizzes[q], st = quizState[q]
+  quizEl.className = 'quiz fq'
+  quizEl.innerHTML = '<div class="qh">练习' + n + '　填空</div><div class="qs">' + Q.stem + '</div>' +
+    '<div class="fq-opts" role="group" aria-label="选项">' + Q.options.map((o, i) => '<button type="button" class="c-fill fq-o" data-i="' + i + '"></button>').join('') + '</div>' +
+    '<div class="qex">' + Q.explain + '</div>' +
+    '<div class="qbar"><span class="fb" role="status"></span><button class="ck">检查</button><button class="retry">再试一次</button><button class="ans">看答案</button><button class="redo">重做</button><button class="go">继续 ▶</button></div>'
+  stage.appendChild(quizEl)
+  const blanks = [...quizEl.querySelectorAll('.fq-b')], opts = [...quizEl.querySelectorAll('.fq-o')]
+  const btn = (c) => quizEl.querySelector(c), fb = btn('.fb')
+  opts.forEach((b, i) => { b.textContent = Q.options[i] })
+  const locked = () => st.status !== 'idle'
+  const used = () => new Set(st.filled.filter((x) => x >= 0))
+  const isRight = (k) => st.filled[k] >= 0 && Q.options[st.filled[k]] === Q.answers[k]
+  const place = (i, k) => { if (locked() || used().has(i)) return; st.filled[k] = i; st.pickO = st.pickB = -1; paint() }
+  // 每个空放上一个写着正确答案的选项块（答案相同的块可以互换）
+  const fillAnswers = () => { const taken = new Set(); st.filled = Q.answers.map((a) => { const i = Q.options.findIndex((o, j) => o === a && !taken.has(j)); taken.add(i); return i }) }
+  const paint = () => {
+    const u = used(), answered = st.status === 'right' || st.status === 'revealed'
+    blanks.forEach((b, k) => {
+      const i = st.filled[k]
+      b.textContent = ''
+      if (i >= 0) { const c = document.createElement('span'); c.className = 'c-fill'; c.textContent = Q.options[i]; b.appendChild(c) }
+      const s = answered ? 'right' : st.status === 'wrong' ? (isRight(k) ? '' : 'wrong') : i < 0 && st.pickB === k ? 'picked' : ''
+      b.className = 'c-blank fq-b' + (s ? ' is-' + s : '')
+      b.setAttribute('aria-label', '第' + (k + 1) + '个空' + (i >= 0 ? '：' + Q.options[i] : ''))
+    })
+    opts.forEach((b, i) => { b.disabled = locked() || u.has(i); b.draggable = !b.disabled; b.classList.toggle('picked', st.pickO === i) })
+    quizEl.classList.toggle('locked', locked()); quizEl.classList.toggle('done', answered)
+    const wrongN = Q.answers.filter((_, k) => !isRight(k)).length
+    fb.textContent = st.status === 'right' ? '答对了。' : st.status === 'revealed' ? '正确答案已填好。' : st.status === 'wrong' ? '还不对：有 ' + wrongN + ' 个空填错了。' : ''
+    fb.className = 'fb' + (st.status === 'right' ? ' ok' : st.status === 'wrong' ? ' no' : '')
+    btn('.ck').hidden = st.status !== 'idle'; btn('.ck').disabled = st.filled.some((x) => x < 0)
+    btn('.retry').hidden = btn('.ans').hidden = st.status !== 'wrong'
+    btn('.redo').hidden = !answered
+  }
+  opts.forEach((b, i) => {
+    b.onclick = () => {
+      if (locked() || used().has(i)) return
+      if (st.pickB >= 0) return place(i, st.pickB)
+      st.pickO = st.pickO === i ? -1 : i; paint()
+    }
+    b.ondragstart = (e) => { if (b.disabled) return e.preventDefault(); e.dataTransfer.setData('text/plain', String(i)); st.pickO = i; paint() }
+  })
+  blanks.forEach((b, k) => {
+    b.onclick = () => {
+      if (locked()) return
+      if (st.filled[k] >= 0) { st.filled[k] = -1; paint(); return }
+      if (st.pickO >= 0) return place(st.pickO, k)
+      st.pickB = st.pickB === k ? -1 : k; paint()
+    }
+    b.ondragover = (e) => { if (!locked() && st.filled[k] < 0) e.preventDefault() }
+    b.ondrop = (e) => { e.preventDefault(); const i = Number(e.dataTransfer.getData('text/plain')); if (Number.isInteger(i) && st.filled[k] < 0) place(i, k) }
+  })
+  btn('.ck').onclick = () => { if (st.filled.some((x) => x < 0)) return; st.status = Q.answers.every((_, k) => isRight(k)) ? 'right' : 'wrong'; paint() }
+  btn('.retry').onclick = () => { st.filled = st.filled.map((x, k) => (isRight(k) ? x : -1)); st.status = 'idle'; paint() }
+  btn('.ans').onclick = () => { fillAnswers(); st.status = 'revealed'; paint() }
+  btn('.redo').onclick = () => { st.filled = Q.answers.map(() => -1); st.pickO = st.pickB = -1; st.status = 'idle'; paint() }
+  btn('.go').onclick = () => { const s = DATA.steps.find((x) => x.k === 'pause' && x.quiz === q); waitingQuiz = -1; seek(s.end, playing) }
+  // 导出视频：倒计时时空着，揭晓时把答案填好
+  quizEl.videoReveal = (on) => { if (on) fillAnswers(); else st.filled = Q.answers.map(() => -1); st.status = on ? 'revealed' : 'idle'; paint(); fb.textContent = '' }
+  paint()
+}
+
 // —— 播放：t 跟着音频走 ——
 function stopAudio() { if (curAudio) { curAudio.pause(); curAudio = null } }
 let last = 0
@@ -613,7 +688,7 @@ function tick(now) {
   }
   requestAnimationFrame(tick)
 }
-function setPlaying(p) { playing = p; $('play').classList.toggle('on', p); $('play').setAttribute('aria-label', p ? '暂停' : '播放'); if (!p) stopAudio() }
+function setPlaying(p) { playing = p; if (typeof wake === 'function') wake(); $('play').classList.toggle('on', p); $('play').setAttribute('aria-label', p ? '暂停' : '播放'); if (!p) stopAudio() }
 function seek(time, keepPlaying) {
   stopAudio(); t = Math.max(0, Math.min(DATA.total - 0.001, time)); render(t)
   if (keepPlaying !== undefined) setPlaying(keepPlaying)
@@ -647,20 +722,49 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowLeft') jumpBeat(-1)
   else if (e.key === 'ArrowRight') jumpBeat(1)
   else if (e.key === 'c' || e.key === 'C') toggleCap()
+  else if ((e.key === 'f' || e.key === 'F') && !$('fs').hidden) toggleFs()
   else if (e.key === 'Escape') closeToc()
 })
 
+// —— 真全屏（浏览器全屏接口，网站的 iframe 带 allow="fullscreen"）；不支持的浏览器（iPhone）不显示按钮 ——
+const isFs = () => Boolean(document.fullscreenElement)
+const toggleFs = () => (isFs() ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {})
+if (document.fullscreenEnabled) $('fs').hidden = false
+$('fs').onclick = toggleFs
+let fsLeftAt = -Infinity
+document.addEventListener('fullscreenchange', () => {
+  document.body.classList.toggle('fs', isFs())
+  $('fs').setAttribute('aria-label', isFs() ? '退出全屏' : '全屏'); $('fs').title = isFs() ? '退出全屏（F / Esc）' : '全屏（F）'
+  if (!isFs()) fsLeftAt = performance.now()
+  wake(); fitWrap()
+})
+// 全屏里播放时鼠标 2.5 秒不动，控制区淡出；动一下、按键、暂停、目录开着时都显示
+let idleTimer = 0
+function wake() {
+  document.body.classList.remove('idle'); clearTimeout(idleTimer)
+  idleTimer = setTimeout(() => { if (isFs() && playing && toc.hidden) document.body.classList.add('idle') }, 2500)
+}
+for (const ev of ['mousemove', 'pointerdown', 'keydown']) document.addEventListener(ev, wake, { passive: true })
+
 // —— 画布缩放 ——
-// 嵌入网站时整屏只有这一页：先按宽、高两个方向算出舞台最大能多大（扣掉控制条、字幕和留白），再按舞台宽度缩放画布
-const fullscreen = () => document.body.classList.contains('embed')
+// 嵌入网站、或真全屏时整屏只有这一页：先按宽、高两个方向算出舞台最大能多大（扣掉控制区、字幕和留白），再按舞台宽度缩放画布。
+// 控制区和字幕跟画面同宽，看起来是一台播放器；真全屏时控制区叠在画面上，不扣它的高度
 function fitWrap() {
-  if (!fullscreen()) { wrap.style.width = ''; return }
-  const main = document.querySelector('main'), cs = getComputedStyle(main), dock = $('dock'), cap = $('cap')
+  const dock = $('dock'), cap = $('cap')
+  if (!document.body.classList.contains('embed') && !isFs()) { wrap.style.width = dock.style.width = cap.style.maxWidth = ''; return }
+  const main = document.querySelector('main'), cs = getComputedStyle(main)
   const px = (v) => parseFloat(v) || 0
   const w = main.clientWidth - px(cs.paddingLeft) - px(cs.paddingRight)
-  const h = innerHeight - px(cs.paddingTop) - px(cs.paddingBottom) - dock.offsetHeight - px(getComputedStyle(dock).marginTop) - cap.offsetHeight - px(getComputedStyle(cap).marginTop)
-  wrap.style.width = Math.max(160, Math.floor(Math.min(w, (h * 16) / 9))) + 'px'
+  const under = isFs() ? 0 : dock.offsetHeight + px(getComputedStyle(dock).marginTop)
+  const h = innerHeight - px(cs.paddingTop) - px(cs.paddingBottom) - under - cap.offsetHeight - px(getComputedStyle(cap).marginTop)
+  const width = Math.max(160, Math.floor(Math.min(w, (h * 16) / 9)))
+  wrap.style.width = width + 'px'
+  dock.style.width = isFs() ? '' : width + 'px'
+  cap.style.maxWidth = Math.floor(width * 0.9) + 'px'
+  // 真全屏：控制区叠在画面底边上（照 YouTube），不压住下面的字幕
+  dock.style.bottom = isFs() ? Math.max(0, innerHeight - wrap.getBoundingClientRect().bottom) + 'px' : ''
 }
+addEventListener('resize', fitWrap)
 const fit = () => { stage.style.transform = 'scale(' + wrap.clientWidth / 640 + ')' }
 new ResizeObserver(fit).observe(wrap); fit()
 
@@ -688,17 +792,20 @@ if (params.has('embed') && window.parent !== window) {
   window.__onEnded = () => post({ type: 'ended' })
   $('exit').onclick = () => post({ type: 'exit' })
   $('toText').onclick = () => { setPlaying(false); post({ type: 'text' }) }
-  $('ask').onclick = () => { setPlaying(false); post({ type: 'ask' }) }
-  // Esc：目录开着先关目录，否则退出
+  // 全屏里问 AI：先退出全屏，侧栏才看得见
+  $('ask').onclick = () => { setPlaying(false); (isFs() ? document.exitFullscreen().catch(() => {}) : Promise.resolve()).then(() => post({ type: 'ask' })) }
+  // Esc：目录开着先关目录，否则退出。全屏时 Esc 归浏览器退出全屏，不连带退出动画
   // 捕获阶段先于上面关目录的那个监听器，才能看到按下时目录是不是开着
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && toc.hidden) post({ type: 'exit' }) }, true)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && toc.hidden && !isFs() && performance.now() - fsLeftAt > 500) post({ type: 'exit' })
+  }, true)
   window.addEventListener('message', (e) => {
     const d = e.data
     if (e.source !== window.parent || !d || d.source !== 'ds-site') return
     if (d.type === 'replay') { t = 0; $('start').click() }
     else if (d.type === 'pause') setPlaying(false)
   })
-  addEventListener('resize', fitWrap); fitWrap()
+  fitWrap()
 }
 render(t); requestAnimationFrame(tick)
 `
@@ -732,17 +839,20 @@ async function main() {
   const pauses = cards.filter((c) => c.pause).length
   if (quizzes.length !== pauses) throw new Error(`双栏稿有 ${pauses} 处暂停，书稿这一节有 ${quizzes.length} 道练习题，对不上`)
 
+  const hasFill = quizzes.some((q) => q.kind === 'fill')
+
   const audio = synthesize(id, screens, mod.say ?? {}, skipTts)
   const tl = timeline(cards, audio, quizzes)
   const outDir = path.join(ROOT, 'docs/course/player', id)
   // 页面上除了画面还要显示的字：字幕、练习题、按钮，都要进主题的字体子集
   const strip = (h: string) => h.replace(/<[^>]*>/g, '')
   const more = screens.flatMap((s) => s.beats.map((b) => b.text)).join('') + title + screens.map((s) => s.name).join('') +
-    quizzes.map((q) => strip(q.stem + q.explain + q.options.map((o) => o.html + o.why).join(''))).join('') +
-    '第屏下一›▾0123456789:/练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕读文字问AI退出色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
+    quizzes.map((q) => strip(q.stem + q.explain) + (q.kind === 'fill' ? q.options.join('') : q.options.map((o) => strip(o.html + o.why)).join(''))).join('') +
+    (hasFill ? '填空重做正确答案已填好还不对有个空填错了' : '') +
+    '第屏下一›▾全退出0123456789:/练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕读文字问AI退出色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
   for (const p of pages) {
     const htmls = p.cards.map((c) => c.html)
-    const themeCss = p.style === 'desk' ? (await deskCss(htmls, more)).css : p.style === 'sticker' ? (await stickerCss(htmls, DEFAULT_PALETTE, more)).css : p.style === 'clean' ? (await cleanCss(htmls, more)).css : ''
+    const themeCss = p.style === 'desk' ? (await deskCss(htmls, more)).css : p.style === 'sticker' ? (await stickerCss(htmls, DEFAULT_PALETTE, more)).css : p.style === 'clean' ? (await cleanCss(htmls, more, { blanks: hasFill })).css : ''
     fs.mkdirSync(path.dirname(path.join(outDir, p.page)), { recursive: true })
     fs.writeFileSync(path.join(outDir, p.page), render(id, title, screens, p.cards, tl, quizzes, p.style, themeCss))
   }

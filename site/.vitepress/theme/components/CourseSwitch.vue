@@ -11,7 +11,9 @@ import { ask, openAsk } from '../ask/store'
  * 里面只有播放器 iframe（site/public/course/<节>/index.html?embed），播放器自己的控制条就是唯一的顶栏。
  * 正文仍在页面 HTML 里（搜索、已读记录不变）；选"读文字"就去掉这一层，回到专注阅读页（LessonBar.vue）。
  * 播放器发来的消息：ended（记已读、弹结束卡片）、exit（回本章课程地图）、text（改读文字）、ask（打开问 AI 面板）。
- * 问 AI 面板打开时播放器让出右边一栏（ask/ask.css），并发 pause 让它暂停。
+ * 问 AI 面板打开时播放器让出右边一栏（ask/ask.css）；学生自己打开的会发 pause 让它暂停。
+ * 宽屏（≥ ASK_DOCK_MIN）看动画时问 AI 默认常驻：画面卡在高度上、两边本来就空，放一栏几乎不缩小画面。
+ * 学生在看动画时关掉它就记下（ds-book:ask-dock = off），以后不再自动打开；再打开就恢复。
  * 全屏层在 SSR 就有（只是没有 iframe），由 <html data-course-mode> 决定显示与否，首屏不闪出下面的页面。
  */
 const { frontmatter, page } = useData()
@@ -54,9 +56,35 @@ function onMessage(e: MessageEvent): void {
 watch(
   () => ask.open,
   (open) => {
-    if (open) frame.value?.contentWindow?.postMessage({ source: 'ds-site', type: 'pause' }, '*')
+    if (open && !ask.auto) frame.value?.contentWindow?.postMessage({ source: 'ds-site', type: 'pause' }, '*')
+    // 只记看动画时的开关；换到没有动画的页面时面板被顺带关掉，不算学生的选择
+    if (video.value && courseMode.value === 'video' && !(open && ask.auto)) writeDock(open)
   },
 )
+
+/* ---------- 宽屏默认常驻问 AI ---------- */
+const ASK_DOCK_MIN = 1200
+const DOCK_KEY = 'ds-book:ask-dock'
+function writeDock(open: boolean): void {
+  try {
+    localStorage.setItem(DOCK_KEY, open ? 'on' : 'off')
+  } catch {
+    /* ignore */
+  }
+}
+function dockOff(): boolean {
+  try {
+    return localStorage.getItem(DOCK_KEY) === 'off'
+  } catch {
+    return false
+  }
+}
+function autoDock(): void {
+  if (!mounted.value || !video.value || courseMode.value !== 'video' || ask.open) return
+  if (!window.matchMedia(`(min-width: ${ASK_DOCK_MIN}px)`).matches || dockOff()) return
+  openAsk('', { auto: true })
+}
+watch([video, courseMode, mounted], autoDock)
 /** 焦点不在 iframe 里时（比如刚打开、点了结束卡片），Esc 同样退出 */
 function onKey(e: KeyboardEvent): void {
   if (e.key !== 'Escape' || !video.value || courseMode.value !== 'video') return

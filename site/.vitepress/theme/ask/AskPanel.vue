@@ -72,13 +72,21 @@ watch(
       ask.prefill = ''
       void refreshQuota()
       void nextTick(() => {
-        box.value?.focus()
+        // 自动打开（宽屏看动画默认常驻）时焦点留在播放器，空格、←/→ 照常控制播放
+        if (!ask.auto) box.value?.focus()
         scrollDown()
       })
     } else {
       releaseRight('ask')
     }
     document.documentElement.toggleAttribute('data-ask-open', open)
+  },
+)
+// 面板是自动打开的，学生再点"问 AI"：这时才把光标放进输入框
+watch(
+  () => ask.auto,
+  (auto) => {
+    if (!auto && ask.open) void nextTick(() => box.value?.focus())
   },
 )
 watch(rightOpen, (r) => {

@@ -107,6 +107,13 @@ describe('练习题', () => {
     expect(html).toMatch(/<template #body>\n[\s\S]*void Inc1[\s\S]*<\/template>\n<template #explain>/)
   })
 
+  test('填空：答案和干扰项里可以带逗号，干扰项只按顿号分', () => {
+    const src = '::: quiz 填空\n之后 [[(c, x, a, t)]]，再之后 [[(c, x, a)]]\n\n**其他选项**：(c, a, x, t)、(c, x, t)\n:::\n'
+    const html = render(src)
+    const opts = JSON.parse(html.match(/:options="([^"]*)"/)![1].replace(/&quot;/g, '"')) as string[]
+    expect(opts.slice().sort()).toEqual(['(c, x, a, t)', '(c, x, a)', '(c, a, x, t)', '(c, x, t)'].sort())
+  })
+
   test('填空：选项顺序每次构建都一样', () => {
     const src = '::: quiz 填空\n甲 [[1]]，乙 [[2]]，丙 [[3]]\n\n**其他选项**：4、5\n:::\n'
     const a = render(src).match(/:options="([^"]*)"/)![1]

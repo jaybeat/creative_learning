@@ -189,7 +189,7 @@ const BLANK_RE = /\[\[([^\]]+)\]\]/g
 const OTHERS_LABEL = '其他选项'
 
 /** 按 qid 做种子的伪随机（mulberry32）：选项顺序每次构建都一样，不在读者端随机 */
-function seededShuffle<T>(items: T[], seed: string): T[] {
+export function seededShuffle<T>(items: T[], seed: string): T[] {
   let h = 2166136261
   for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619)
   const rand = () => {
@@ -230,7 +230,8 @@ function rewriteFill(md: MarkdownIt, Token: TokenCtor, inner: MdToken[], open: M
     const c = joinText((inner[k + 1].children ?? []).filter((x) => !(x.type === 'text' && x.content === '')))
     if (c[0]?.type !== 'strong_open' || c[1]?.content.trim() !== OTHERS_LABEL || c[2]?.type !== 'strong_close') continue
     const rest = c.slice(3).map((x) => x.content).join('').replace(/^\s*[：:]\s*/, '')
-    distractors.push(...rest.split(/[、，,]/).map((s) => s.trim()).filter(Boolean))
+    // 只按顿号分：选项本身可能带逗号，比如线性表 (c, a, t)
+    distractors.push(...rest.split('、').map((s) => s.trim()).filter(Boolean))
     inner.splice(k, 3)
     k--
   }

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 // 节页"看动画 | 读文字"：看动画时是全屏学习层（theme/components/CourseSwitch.vue），读文字是专注阅读页（LessonBar.vue）。
-// 2.1 有课程动画（site/public/course/2-1/），2.2 没有
+// 2.1、2.2 有课程动画（site/public/course/<id>/），2.3 没有
 const VIDEO = 'ch02/2-1'
 const MODE_KEY = 'ds-book:course-mode'
 
@@ -10,9 +10,11 @@ test('有动画的节默认看动画：全屏学习层盖住整页，正文隐�
   await expect(page.locator('.cs-player iframe')).toBeVisible()
   await expect(page.locator('.cs-video')).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('.vp-doc')).toBeHidden()
-  // 播放器铺满视口，网站导航被盖住，页面不能滚动
+  // 播放器铺满视口（宽屏时右边让给自动打开的问 AI），网站导航被盖住，页面不能滚动
   const vp = page.viewportSize()!
-  expect(await page.locator('.cs-player iframe').boundingBox()).toEqual({ x: 0, y: 0, width: vp.width, height: vp.height })
+  const askW = vp.width >= 1200 ? 400 : 0
+  await expect(page.locator('.ask-panel')).toHaveCount(askW ? 1 : 0)
+  await expect.poll(() => page.locator('.cs-player iframe').boundingBox()).toEqual({ x: 0, y: 0, width: vp.width - askW, height: vp.height })
   expect(await page.evaluate(() => document.elementFromPoint(20, 20)?.tagName)).toBe('IFRAME')
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).overflow)).toBe('hidden')
   // 播放器的控制条是唯一的顶栏，嵌入时多出 ×（退出）和"读文字"
@@ -22,6 +24,25 @@ test('有动画的节默认看动画：全屏学习层盖住整页，正文隐�
   // 搜索引擎看到的 HTML 里有正文
   const html = await (await request.get(VIDEO)).text()
   expect(html).toContain('把字符换成任意一种元素')
+})
+
+test('宽屏看动画时问 AI 默认常驻：不暂停、不抢焦点；学生关掉后不再自动打开', async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 0) < 1200, '窄屏不自动打开')
+  await page.goto(VIDEO)
+  const frame = page.frameLocator('.cs-player iframe')
+  await expect(frame.locator('body.embed')).toHaveCount(1)
+  await expect(page.locator('.ask-panel')).toBeVisible()
+  // 焦点还在播放器：空格开始播放
+  await expect.poll(() => page.evaluate(() => document.activeElement?.tagName)).toBe('IFRAME')
+  await page.keyboard.press(' ')
+  await expect(frame.locator('#play')).toHaveClass(/(^| )on( |$)/)
+  // 关掉以后记住，刷新不再自动打开
+  await page.locator('.ask-close').click()
+  await expect(page.locator('.ask-panel')).toHaveCount(0)
+  await page.reload()
+  await expect(frame.locator('body.embed')).toHaveCount(1)
+  await page.waitForTimeout(500)
+  await expect(page.locator('.ask-panel')).toHaveCount(0)
 })
 
 test('切到读文字后记住选择：刷新、换节都保持；没有动画的节不出切换条', async ({ page }) => {
@@ -36,7 +57,7 @@ test('切到读文字后记住选择：刷新、换节都保持；没有动画�
   await expect(page.locator('.cs-text')).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('.cs-player iframe')).toHaveCount(0)
 
-  await page.goto('ch02/2-2')
+  await page.goto('ch02/2-3')
   await expect(page.locator('.vp-doc')).toBeVisible()
   await expect(page.locator('.cs-player')).toHaveCount(0)
   await expect(page.locator('.cs-tabs')).toHaveCount(0)
@@ -51,7 +72,7 @@ test('章首目录：有动画的节标出时长，按钮改成"开始学习"', 
   await page.goto('ch02/')
   const item = page.locator('.ci-list li').filter({ hasText: '2.1 线性表' })
   await expect(item.locator('.video-mark')).toHaveText(/▶ \d+:\d\d/)
-  await expect(page.locator('.ci-list li').filter({ hasText: '2.2 ' }).locator('.video-mark')).toHaveCount(0)
+  await expect(page.locator('.ci-list li').filter({ hasText: '2.3 ' }).locator('.video-mark')).toHaveCount(0)
   await expect(page.locator('.ci-actions .cr-button')).toHaveText('开始学习')
 })
 
