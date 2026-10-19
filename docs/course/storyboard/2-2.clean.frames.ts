@@ -6,7 +6,7 @@
 // 开场照 Aho：先说给线性表定一组操作（关系 + 操作 = 抽象数据类型），常用操作很多、这里取最基本的五个，再逐个演示。
 // 线性表用逻辑画法（分开的方块），不画内存、不画搬移；错误变灰加划线。帧里不写色值，样式在 scripts/lib/clean.ts。
 // 2-2.frames.ts 原样转出本文件（播放器要求原版帧位一致）。
-import { at, cells, editor, card, pause, Q, ckick, ctitle, cchip, cbadge, cblank, cblanks, cqpill } from './kit'
+import { at, cells, editor, card, pause, Q, ckick, ctitle, cchip, cbadge, cslot, cblank, cblanks, cqpill } from './kit'
 import type { Frame } from '../../../scripts/lib/course'
 
 export const quizSource = { file: 'book/chapters/ch02.md', section: '2.2' }
@@ -135,30 +135,51 @@ const Q2 = (o: { cls?: string; dim?: boolean; extra?: string } = {}) => quiz({
   opts: ['Insert(L, 3, s)', 'Delete(L, 4)', 'Delete(L, 3)', 'Insert(L, 4, s)'], ...o,
 })
 
-// ───────── 开场：演示卡里原位出现的等式卡（拍3–5），讲完换回 cat ─────────
-const GOAL = (o: { mark?: boolean; more?: boolean; cls?: string } = {}) =>
+// ───────── 开场（拍1–7）：问题屏。左卡"是什么"是 2.1 的一般形式线性表（照 2.1 的 1-04），右卡"能做什么？"给它定操作集 ─────────
+const GEN = ['', '', '', '…', '']
+const NTOP = ['a₀', 'a₁', 'a₂', '', 'aₙ₋₁']
+/** 左卡 (40,86) 260×244：一般形式的线性表；rel 为 true 时卡头亮起"逻辑关系" */
+const LIST = (o: { cls?: string; rel?: boolean; relNew?: boolean } = {}) =>
+  at(40, 86, card(
+    at(14, 10, cap('是什么 · 2.1 线性表')) +
+      (o.rel ? at(150, 8, `<span class="${o.relNew ? 'new' : ''}" ${o.relNew ? 'data-from=".3"' : ''}>${cbadge('逻辑关系')}</span>`) : '') +
+      at(14, 70, cells(GEN, { top: NTOP })) +
+      at(14, 130, tuple('(a₀, a₁, …, aₙ₋₁)')) + at(14, 166, cbadge('长度 n')),
+    o.cls ?? '', 'width:260px;height:244px;padding:0'))
+/** 右卡 (316,86) 284×244：n 是这一帧已经出现到第几样（1 卡头，2 空位，3 等式，4 "这一节来定"，5 "常用操作很多"），fresh 是刚出现的那样 */
+function OPCARD(n: number, cls = '') {
+  const f = (k: number) => (k === n ? 'new' : '')
+  return at(316, 86, card(
+    at(14, 10, cap('能做什么？')) +
+      (n >= 2 ? at(14, 40, `<span class="${f(2)}">${cslot('一组操作 ？', n >= 4 ? 'hl' : '')}</span>`) : '') +
+      (n >= 3 ? at(14, 84, `<div class="c-q ${f(3)}">逻辑关系 + 一组操作<br>= 抽象数据类型</div>`) + at(14, 140, cbadge('1.3', f(3))) : '') +
+      (n >= 4 ? at(14, 176, cap('↑ 一组操作：这一节来定', f(4))) : '') +
+      (n >= 5 ? at(14, 204, cap('常用操作很多，用途不同，要的不同', f(5))) : ''),
+    cls, 'width:284px;height:244px;padding:0'))
+}
+/** 拍6–7：同一张一般形式的图搬进右边演示卡；pos 为 true 时标出位置、表 L、要插入的 x */
+const GENDEMO = (pos = false) =>
   demo({
-    ph: '先说目的',
-    cls: o.cls,
+    ph: pos ? '记号' : '线性表',
     extra:
-      at(0, 30, `<div class="c-q">逻辑关系 + 一组操作 = 抽象数据类型</div>`) + at(0, 62, cbadge('1.3')) +
-      (o.mark ? at(0, 96, cap('↑ 逻辑关系：2.1 的线性表', o.more ? '' : 'new')) + at(0, 120, cap('↑ 一组操作：这一节来定', o.more ? '' : 'new')) : '') +
-      (o.more ? at(0, 164, cap('常用操作很多，用途不同，要的不同', 'new')) : ''),
+      at(0, 50, cells(GEN, { top: NTOP, idx: pos ? ['0', '1', '2', '', 'n−1'] : undefined })) +
+      at(0, 136, tuple('(a₀, a₁, …, aₙ₋₁)')) +
+      (pos
+        ? at(170, 138, cap('← 表 L', 'new')) + at(0, 176, cap('↑ 方块下面的编号：位置 i', 'new')) + at(262, 50, cells(['x'], { top: ['要插入的'], cls: ['new'] }))
+        : at(0, 172, cbadge('长度 n'))),
   })
 
 export const frames: Frame[] = [
   // ───────── 第1屏　线性表的基本操作：左边五行、右边演示卡都固定，换操作只移动高亮、在演示卡里原位换内容 ─────────
-  { beat: 1, html: head1({ kcls: 'new', cls: 'new' }) + demo({ ...CAT, cls: 'new' }) },
-  // 开场照 Aho：等式卡在演示卡里原位出现
-  { beat: 3, html: head1() + GOAL({ cls: 'new' }) },
-  { beat: 4, reveal: 'spread', html: head1() + GOAL({ mark: true }) },
-  { beat: 5, html: head1() + GOAL({ mark: true, more: true }) },
-  { beat: 6, reveal: 'spread', html: s1({ open: -1, cls: { 0: 'new', 1: 'new', 2: 'new', 3: 'new', 4: 'new' } }, CAT) },
-  {
-    beat: 7,
-    reveal: 'spread',
-    html: s1({ open: -1 }, { ...CAT, extra: at(0, 176, cap('↑ 表 L', 'new')) + at(140, 74, cap('← 位置 i', 'new')) + at(236, 96, cells(['x'], { top: ['要插入的'], cls: ['new'] })) }),
-  },
+  // 开场照 Aho，用问题屏：左边 2.1 的线性表（是什么），右边给它定一组操作（能做什么）
+  { beat: 1, html: head1({ kcls: 'new', cls: 'new' }) + LIST({ cls: 'new' }) + OPCARD(1, 'new') },
+  { beat: 2, html: head1() + LIST() + OPCARD(2) },
+  { beat: 3, html: head1() + LIST({ rel: true, relNew: true }) + OPCARD(3) },
+  { beat: 4, html: head1() + LIST({ rel: true }) + OPCARD(4) },
+  { beat: 5, html: head1() + LIST({ rel: true }) + OPCARD(5) },
+  // 转成左右对照：左栏五行操作，左卡那张图搬进右边演示卡
+  { beat: 6, reveal: 'spread', html: head1() + ops({ open: -1, cls: { 0: 'new', 1: 'new', 2: 'new', 3: 'new', 4: 'new' } }) + GENDEMO() },
+  { beat: 7, reveal: 'spread', html: head1() + ops({ open: -1 }) + GENDEMO(true) },
   // Init
   { beat: 8, html: s1({ open: 0, cls: { 0: 'new' } }, { ph: 'Init(L)', text: '', cursor: 0, tup: '()', len: '0', tcls: 'new', lcls: 'new' }) },
   // Length
