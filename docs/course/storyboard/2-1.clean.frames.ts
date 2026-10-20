@@ -23,7 +23,7 @@ const key = (k: string, cls = 'new') => `<div class="keys"><span class="key ${cl
 // ───────── 第0屏：封面屏和问题屏的固定部分 ─────────
 /** 封面标题（照 Gauth 封面：居中，从第一帧就在）；sub 为 true 时显示"一个想法"副标题（拍12 出现） */
 const COVER = (sub = false) =>
-  at(0, 12, ccover('第2章', '线性表：自己做一个单行编辑器', sub ? '一个想法：一行字，就是一个接一个排成一列的数据' : '', 'new'))
+  at(0, 12, ccover('第2章', '线性表：从一个单行编辑器说起', sub ? '一个想法：一行字，就是一个接一个排成一列的数据' : '', 'new'))
 /** 封面右边的"一行字"数据卡：(340,96) 260×160，内容用卡内坐标 */
 /** "一行字"数据卡：封面在右边 (340,96)；问题屏搬到左栏 (40,110)，外观不变，只是高一些 */
 const line = (inner: string, cls = '', x = 340, y = 96, h = 160) =>
@@ -40,9 +40,19 @@ const pills = (n: number, o: { fresh?: number; hi?: number } = {}) =>
  * 问题屏（照 Gauth"Two Best Sellers"）：左上标题和后面各屏同一位置；左栏是封面那张"一行字"卡，
  * 右栏是问题卡 (316,110) 284×200，卡头和问题胶囊在卡里依次出现。head 是卡头文字，body 是卡里的胶囊。
  */
-const B = (o: { cls?: string; head?: string; headCls?: string; body?: string } = {}) =>
-  at(40, 16, ckick('第2章 · 线性表')) + at(40, 44, ctitle('目标：编辑器1.0').replace('c-title', `c-title ${o.cls ?? ''}`)) +
-  at(40, 80, cap('用 C 亲手做出它的第一版', o.cls)) +
+const GOAL = ['判断', '操作', '用 C 放进内存']
+/** 目标小字：前 lit 个词亮，其余变淡；fresh 里的词是这一帧刚亮的 */
+const goal = (lit = 3, fresh: number[] = []) =>
+  GOAL.map((w, i) => {
+    const t = `${i ? ' · ' : ''}${w}`
+    if (i >= lit) return `<span class="dim">${t}</span>`
+    // 刚亮的词：播放器从 data-from 的透明度原地亮到 1（由淡变亮）
+    if (fresh.includes(i)) return `<span class="new" data-from=".4">${t}</span>`
+    return `<span>${t}</span>`
+  }).join('')
+const B = (o: { cls?: string; head?: string; headCls?: string; body?: string; lit?: number; fresh?: number[] } = {}) =>
+  at(40, 16, ckick('第2章 · 线性表')) + at(40, 44, ctitle('目标：学会线性表').replace('c-title', `c-title ${o.cls ?? ''}`)) +
+  at(40, 80, cap(goal(o.lit, o.fresh), o.cls)) +
   line(LINE_END, o.cls, 40, 110, 200) +
   at(316, 110, card((o.head ? `<div class="c-cap ${o.headCls ?? ''}" style="position:absolute;left:14px;top:10px">${o.head}</div>` : '') + (o.body ?? ''), o.cls, 'width:284px;height:200px;padding:0'))
 
@@ -169,11 +179,13 @@ export const frames: Frame[] = [
   },
 
   // 问题屏（拍13–20，照 Gauth"Two Best Sellers"）：左上小标签 + 宋体屏标题，和后面各屏同一位置；问题胶囊挂在下面
-  { beat: 13, html: B({ cls: 'new' }) },
-  { beat: 16, html: B({ head: '要做出它，先回答三个问题：', headCls: 'new' }) },
-  { beat: 17, html: B({ head: '要做出它，先回答三个问题：', body: pills(1, { fresh: 0 }) }) },
-  { beat: 18, html: B({ head: '要做出它，先回答三个问题：', body: pills(2, { fresh: 1 }) }) },
-  { beat: 19, html: B({ head: '要做出它，先回答三个问题：', body: pills(3, { fresh: 2 }) }) },
+  // 目标小字随旁白逐个亮：拍13"判断"，拍14"操作""放进内存"（spread 摊在这一拍的旁白里）
+  { beat: 13, html: B({ cls: 'new', lit: 1 }) },
+  { beat: 14, reveal: 'spread', html: B({ lit: 3, fresh: [1, 2] }) },
+  { beat: 16, html: B({ head: '要让它跑起来，先回答三个问题：', headCls: 'new' }) },
+  { beat: 17, html: B({ head: '要让它跑起来，先回答三个问题：', body: pills(1, { fresh: 0 }) }) },
+  { beat: 18, html: B({ head: '要让它跑起来，先回答三个问题：', body: pills(2, { fresh: 1 }) }) },
+  { beat: 19, html: B({ head: '要让它跑起来，先回答三个问题：', body: pills(3, { fresh: 2 }) }) },
   // 第 1 枚高亮（就是第1屏标题上方的"问题 1"小标签），另外两枚变淡
   { beat: 20, html: B({ head: '先记住这三个问题，从第一个开始', headCls: 'new', body: pills(3, { hi: 0 }) }) },
 

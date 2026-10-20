@@ -512,7 +512,10 @@ function render(time) {
   cur.el.style.display = ''; cur.el.style.opacity = ci > 0 ? String(ease(local / FADE)) : '1'; cur.el.style.zIndex = '2'
   for (const it of cur.items) {
     const e = ease((local - it.at) / POP)
-    sig.push(e.toFixed(3)); it.node.style.opacity = String(e); it.node.style.translate = e < 1 ? '0 ' + ((1 - e) * 8).toFixed(1) + 'px' : ''
+    // data-from：从这个透明度亮起来，原地变亮不上移（"由淡变亮"）；没有就从 0 淡入加上移
+    const from = parseFloat(it.node.dataset.from ?? '0')
+    sig.push(e.toFixed(3)); it.node.style.opacity = String(from + (1 - from) * e)
+    it.node.style.translate = e < 1 && !it.node.dataset.from ? '0 ' + ((1 - e) * 8).toFixed(1) + 'px' : ''
   }
   for (const it of cur.fills) {
     const e = Math.max(0, Math.min(1, (time - it.at) / BLANK_FADE))
