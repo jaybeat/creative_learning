@@ -81,6 +81,8 @@ body.st-clean #cap{color:var(--ink);font-family:var(--sf);font-size:17px}
 body.st-clean .qbar button{border:1px solid var(--line);border-radius:10px}
 body.st-clean .quiz{border:1px solid var(--line);border-radius:12px}
 body.st-clean .quiz .qh{font-weight:700}
+/* 题干里的格子图（书稿的字符画）：用更纱等宽，框线字符是半角；系统 monospace 在 Windows 回退到中文字体，框线变全角，16 格会撑出题卡 */
+body.st-clean .quiz .qs pre,body.st-clean .quiz .qs pre code{font-family:${MONO};font-size:12px;line-height:1.2;background:none;padding:0}
 body.st-clean .qopt{border-radius:10px}
 `
 
@@ -107,6 +109,7 @@ ${C} .cell{border:1px solid var(--line-cell);font-family:${MONO};background:var(
 ${C} .cells .cell{margin:0 8px 0 0;border-radius:6px}
 ${C} .cells .cell:last-child,${C} .cells.gap .cell{margin-right:0}
 ${C} .cells.mem .cell{margin:0 0 0 -1px;border-radius:0}
+${C} .cell.new{z-index:1}
 ${C} .cells.mem .cell:first-child{border-radius:6px 0 0 6px}
 ${C} .cells.mem .cell:last-child{border-radius:0 6px 6px 0}
 ${C} .cells.mem .ci{font-family:${MONO}}

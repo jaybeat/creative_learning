@@ -22,5 +22,11 @@
  {"word": "还要", "py": "hai2 yao4"},
  {"word": "还有", "py": "hai2 you3"},
  {"word": "判空", "py": "pan4 kong1"},
- {"word": "调用", "py": "diao4 yong4"}
+ {"word": "调用", "py": "diao4 yong4"},
+ {"word": "行首", "py": "hang2 shou3"},
+ {"word": "空格子", "py": "kong4 ge2 zi5"},
+ {"word": "有空", "py": "you3 kong4"},
+ {"word": "得有", "py": "dei3 you3"},
+ {"word": "还差", "py": "hai2 cha4"},
+ {"word": "数一遍", "py": "shu3 yi2 bian4"}
 ]
