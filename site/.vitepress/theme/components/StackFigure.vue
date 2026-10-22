@@ -6,7 +6,7 @@ import { computed } from 'vue'
  *
  * items：开始时栈里的元素，空格分开，从栈底到栈顶，例如 `1 2 3`。
  * ops：一串操作，空格分开；给了 ops 就画一排小图（第一张是调用前，之后每个操作一张）：
- *   `push:3` 入栈 3；`pop` 出栈；`gettop` 取栈顶；`empty` 判空；`init` 初始化成空栈。
+ *   `push:3` 入栈 3；`pop` 出栈；`calc:*` 弹出两个数算好放回（后缀式求值）；`gettop` 取栈顶；`empty` 判空；`init` 初始化成空栈。
  *   顺序栈的分步：`set:2=3` 只做 data[2] = 3；`top:3` 只做 top = 3；`read:2` 只做 x = data[2]。
  * capacity：画成数组（顺序栈）：画出 capacity 个格子和下标，出栈后格子里的旧值留着、变灰。
  * top：在右边画 top 箭头，指向下一个空格（top 等于元素个数）。只在 capacity 模式下有意义。
@@ -19,7 +19,7 @@ const props = withDefaults(
   { items: '', ops: '', capacity: 0, top: false, bare: undefined, skip: 0, labels: '' },
 )
 
-type Kind = 'start' | 'push' | 'pop' | 'gettop' | 'empty' | 'init' | 'set' | 'top' | 'read'
+type Kind = 'start' | 'push' | 'pop' | 'gettop' | 'empty' | 'init' | 'set' | 'top' | 'read' | 'calc'
 interface Frame {
   data: string[] // 数组里的格子（capacity 模式下包括 top 以上的旧值）
   top: number // 元素个数
@@ -50,6 +50,17 @@ const frames = computed<Frame[]>(() => {
       top--
       const v = data[top]
       f = { kind: 'pop', value: v, caption: 'Pop(S, &x)', note: `x = ${v}` }
+    } else if (op === 'calc') {
+      // 后缀式的一个运算符：弹出两个数（先弹出的是右边的），算好放回去
+      if (top < 2) throw new Error('StackFigure: 栈里不到两个数，不能运算')
+      const b = Number(data[top - 1])
+      const a = Number(data[top - 2])
+      const v = arg === '+' ? a + b : arg === '-' ? a - b : arg === '*' ? a * b : Math.trunc(a / b)
+      top -= 2
+      data[top] = String(v)
+      top++
+      if (!cap.value) data.length = top
+      f = { kind: 'calc', value: String(v), caption: `读到 ${arg}`, note: `${a} ${arg} ${b} = ${v}` }
     } else if (op === 'gettop') {
       if (top === 0) throw new Error('StackFigure: 空栈没有栈顶')
       const v = data[top - 1]
@@ -135,7 +146,7 @@ function label(f: Frame) {
         </g>
         <g v-for="(it, k) in f.data" :key="k" class="cell" :class="{
           stale: k >= f.top && k !== f.idx,
-          now: ((f.kind === 'push' || f.kind === 'gettop') && k === f.top - 1) || k === f.idx,
+          now: ((f.kind === 'push' || f.kind === 'gettop' || f.kind === 'calc') && k === f.top - 1) || k === f.idx,
         }">
           <rect v-if="k < f.top || k === f.idx" :x="boxL + 1" :y="cellY(k) + 1" :width="boxR - boxL - 2" :height="cellH - 2" />
           <!-- 和下面一格的分隔线（最底下一格靠容器底） -->
