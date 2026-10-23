@@ -28,5 +28,18 @@
  {"word": "有空", "py": "you3 kong4"},
  {"word": "得有", "py": "dei3 you3"},
  {"word": "还差", "py": "hai2 cha4"},
- {"word": "数一遍", "py": "shu3 yi2 bian4"}
+ {"word": "数一遍", "py": "shu3 yi2 bian4"},
+ {"word": "几行", "py": "ji3 hang2"},
+ {"word": "空链表", "py": "kong1 lian4 biao3"},
+ {"word": "零散", "py": "ling2 san3"},
+ {"word": "散着", "py": "san3 zhe5"},
+ {"word": "为例", "py": "wei2 li4"},
+ {"word": "为NULL", "say": "是NULL"},
+ {"word": "还给", "py": "huan2 gei3"},
+ {"word": "还没"},
+ {"word": "还不"},
+ {"word": "就行"},
+ {"word": "字节数"},
+ {"word": "运行"},
+ {"word": "这种"}
 ]

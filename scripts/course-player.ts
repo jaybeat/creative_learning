@@ -177,6 +177,46 @@ function timeline(cards: Card[], audio: Map<number, AudioInfo>, quizzes: Quiz[])
   return { steps, cardStart, total: t, quizCount: quiz }
 }
 
+// ───────── 练习卡：帧里画的卡就是作答界面（质感版） ─────────
+
+/** 去掉标签、解开转义、去掉空白，用来比帧里的选项和书稿的选项 */
+const plain = (h: string) =>
+  h.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/\s+/g, '')
+
+/**
+ * 第 k 个暂停帧配第 k 道题。卡上要有 data-quiz、按钮条、解析位；
+ * 选择题：选项个数和书稿一样，按顺序对应（帧里的选项字可以缩写，开头几个字要和书稿一样）；
+ * 填空题：空位个数等于答案个数，选项块的字和书稿的选项一一对上（顺序可以不同），给每个选项块写上 data-qi
+ */
+function wireQuizzes(cards: Card[], quizzes: Quiz[]): Card[] {
+  let k = 0
+  return cards.map((c) => {
+    if (!c.pause) return c
+    const Q = quizzes[k++], where = `第 ${k} 道练习（帧 ${c.id}）`
+    for (const a of ['data-quiz', 'data-qbar', 'data-ex']) if (!c.html.includes(a)) throw new Error(`${where}：练习卡上没有 ${a}，要用 kit 的 cquiz / cqbar / cqex 画`)
+    if (Q.kind !== 'fill') {
+      const opts = [...c.html.matchAll(/data-opt="(\d+)"><b>[^<]*<\/b>([\s\S]*?)<\/div>/g)]
+      if (opts.length !== Q.options.length) throw new Error(`${where}：卡上 ${opts.length} 个选项，书稿 ${Q.options.length} 个`)
+      opts.forEach((m, i) => {
+        const f = plain(m[2]), b = plain(Q.options[i].html)
+        if (Number(m[1]) !== i || !b.startsWith(f.slice(0, Math.min(4, f.length)))) throw new Error(`${where}：卡上第 ${i + 1} 个选项「${f}」和书稿「${b}」对不上`)
+      })
+      return c
+    }
+    const blanks = c.html.match(/data-blank/g)?.length ?? 0
+    if (blanks !== Q.answers.length) throw new Error(`${where}：卡上 ${blanks} 个空位，书稿 ${Q.answers.length} 个空`)
+    const left = Q.options.map((o, i) => ({ t: plain(o), i }))
+    const html = c.html.replace(/<span class="c-chip" data-chip>([\s\S]*?)<\/span>/g, (all, s: string) => {
+      const j = left.findIndex((o) => o.t === plain(s))
+      if (j < 0) throw new Error(`${where}：卡上的选项块「${plain(s)}」书稿里没有（书稿：${Q.options.join('、')}）`)
+      const [{ i }] = left.splice(j, 1)
+      return `<span class="c-chip" data-chip data-qi="${i}">${s}</span>`
+    })
+    if (left.length) throw new Error(`${where}：书稿的选项「${left.map((o) => o.t).join('、')}」卡上没有`)
+    return { ...c, html }
+  })
+}
+
 // ───────── 页面 ─────────
 
 function render(id: string, title: string, screens: Screen[], cards: Card[], tl: ReturnType<typeof timeline>, quizzes: Quiz[], style: Style, themeCss: string) {
@@ -200,6 +240,8 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
       return { n: s.n, name: s.name, start, end }
     }),
     quizzes,
+    // 质感版：暂停时在帧里画的练习卡上直接作答（wireQuizzes 已核对过），不盖题卡
+    inplace: style === 'clean',
   }
   const json = JSON.stringify(data).replace(/</g, '\\u003c')
   return `<!doctype html>
@@ -505,11 +547,13 @@ let shown = []
 function render(time) {
   const sig = []
   const si = stepAt(time), step = DATA.steps[si], ci = step.card, local = time - DATA.cards[ci].start
-  const vis = [ci]; if (ci > 0 && local < FADE) vis.push(ci - 1)
+  // 练习暂停时时钟停在暂停帧的第一刻：它不做淡入，直接显示（卡上作答就在这一帧上，淡入会停在全透明）
+  const fade = ci > 0 && step.k !== 'pause'
+  const vis = [ci]; if (fade && local < FADE) vis.push(ci - 1)
   for (const k of shown) if (!vis.includes(k)) layers.get(k).el.style.display = 'none'
   shown = vis
   const cur = layer(ci)
-  cur.el.style.display = ''; cur.el.style.opacity = ci > 0 ? String(ease(local / FADE)) : '1'; cur.el.style.zIndex = '2'
+  cur.el.style.display = ''; cur.el.style.opacity = fade ? String(ease(local / FADE)) : '1'; cur.el.style.zIndex = '2'
   for (const it of cur.items) {
     const e = ease((local - it.at) / POP)
     // data-from：从这个透明度亮起来，原地变亮不上移（"由淡变亮"）；没有就从 0 淡入加上移
@@ -547,37 +591,73 @@ function render(time) {
 // 视频里的练习题：先倒计时"自己想想"，再揭晓正确选项和解析。返回这一刻的状态，供导出时判断画面变没变
 let exportMode = false
 function videoQuiz(step, local) {
-  const Q = DATA.quizzes[step.quiz], left = Math.ceil(step.think - local), revealed = left <= 0
-  let think = quizEl.querySelector('.think')
-  if (!think) { think = document.createElement('div'); think.className = 'think'; quizEl.appendChild(think) }
+  const left = Math.ceil(step.think - local), revealed = left <= 0
+  // 倒计时条：盖层题卡放在最后；卡上作答（质感版）放进按钮条，按钮在导出时藏起来
+  const host = quizEl.inplace ? quizEl.querySelector('[data-qbar]') : quizEl
+  let think = host.querySelector('.think')
+  if (!think) { think = document.createElement('div'); think.className = 'think'; host.appendChild(think) }
   think.innerHTML = revealed ? '✓ 答案' : '⏸ 暂停一下，自己想想　<b>' + left + '</b>'
   think.classList.toggle('ans', revealed)
-  if (Q.kind === 'fill') quizEl.videoReveal(revealed)
-  else quizEl.querySelectorAll('.qopt').forEach((b, i) => b.classList.toggle('right', revealed && Q.options[i].correct))
-  quizEl.classList.toggle('done', revealed)
+  quizEl.videoReveal(revealed)
   return revealed ? 'r' : String(left)
 }
 
 // —— 练习题（网页里可作答；导出视频时只显示题面）——
+// 质感版（DATA.inplace）：帧里画的练习卡就是作答界面，暂停时直接给卡上的选项、空位、选项块、按钮条接上作答，
+// 画面不换（生成时已核对卡上的选项和书稿对得上，见 wireQuizzes）。其他风格：在画面上盖一层题卡
 let quizShown = -1, quizEl = null
 function showQuiz(q) {
   quizShown = q
-  if (quizEl) { quizEl.remove(); quizEl = null }
+  if (quizEl && !quizEl.inplace) quizEl.remove()
+  quizEl = null
   if (q < 0) return
-  const Q = DATA.quizzes[q], st = quizState[q]
+  const Q = DATA.quizzes[q]
+  const step = DATA.steps.find((x) => x.k === 'pause' && x.quiz === q)
+  const root = DATA.inplace ? layer(step.card).el.querySelector('[data-quiz]') : null
+  if (root) {
+    quizEl = root; root.inplace = true
+    const bar = root.querySelector('[data-qbar]')
+    const ui = { fb: bar.querySelector('.fb'), btn: (c) => bar.querySelector(c), ex: root.querySelector('[data-ex]') }
+    if (Q.kind === 'fill') {
+      root.classList.add('fq')
+      // 选项块在帧里画成 span，换成按钮才能点、能禁用；data-qi 是它在书稿选项里的下标
+      root.querySelectorAll('span[data-chip]').forEach((el) => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = el.className + ' fq-o'
+        b.dataset.chip = ''; b.dataset.qi = el.dataset.qi; b.textContent = el.textContent; el.replaceWith(b)
+      })
+      ui.blanks = [...root.querySelectorAll('[data-blank]')]
+      ui.opts = []
+      root.querySelectorAll('[data-chip]').forEach((b) => { ui.opts[Number(b.dataset.qi)] = b })
+      return bindFill(q, ui)
+    }
+    ui.opts = [...root.querySelectorAll('[data-opt]')].sort((a, b) => a.dataset.opt - b.dataset.opt)
+    return bindChoice(q, ui)
+  }
   quizEl = document.createElement('div'); quizEl.className = 'quiz'
   const n = DATA.steps.filter((s) => s.k === 'pause').findIndex((s) => s.quiz === q) + 1
+  const btn = (c) => quizEl.querySelector(c)
   if (Q.kind === 'fill') return showFill(q, n)
   quizEl.innerHTML = '<div class="qh">练习' + n + '　' + (Q.kind === 'multi' ? '多选' : '单选') + '</div><div class="qs">' + Q.stem + '</div>' +
     Q.options.map((o, i) => '<button class="qopt" data-i="' + i + '">' + o.html + '<div class="why">' + o.why + '</div></button>').join('') +
     '<div class="qex">' + Q.explain + '</div>' +
     '<div class="qbar"><span class="fb"></span><button class="ck">检查</button><button class="ans">看答案</button><button class="go">继续 ▶</button></div>'
   stage.appendChild(quizEl)
-  const opts = [...quizEl.querySelectorAll('.qopt')], fb = quizEl.querySelector('.fb'), ck = quizEl.querySelector('.ck')
+  bindChoice(q, { opts: [...quizEl.querySelectorAll('.qopt')], fb: btn('.fb'), btn, ex: null })
+}
+const goOn = (q) => { const s = DATA.steps.find((x) => x.k === 'pause' && x.quiz === q); waitingQuiz = -1; seek(s.end, playing) }
+
+// —— 选择题。ex 是卡上的解析位（盖层题卡没有：解析写在选项里和题卡底部，按 .done 显示）：
+// 答错写选错的那几项的解析，答对、看答案写整题解析（没有整题解析就写正确选项的解析）——
+function bindChoice(q, ui) {
+  const Q = DATA.quizzes[q], st = quizState[q], opts = ui.opts, fb = ui.fb, ck = ui.btn('.ck')
+  const whyOf = (i) => (Q.options[i].why ? '<div class="why"><b>' + String.fromCharCode(65 + i) + '</b>' + Q.options[i].why + '</div>' : '')
+  const solved = () => Q.explain || Q.options.map((o, i) => (o.correct ? whyOf(i) : '')).join('')
+  const writeEx = (html) => { if (ui.ex) ui.ex.innerHTML = html }
   const paint = () => {
     opts.forEach((b, i) => { b.classList.toggle('sel', st.sel.has(i) && !st.checked) })
     ck.disabled = st.sel.size === 0
     ck.textContent = st.checked && !st.right ? '再试一次' : '检查'
+    quizEl.classList.toggle('locked', st.checked)
   }
   opts.forEach((b, i) => b.onclick = () => {
     if (st.checked) return
@@ -585,7 +665,7 @@ function showQuiz(q) {
     paint()
   })
   ck.onclick = () => {
-    if (st.checked) { st.checked = false; opts.forEach((b) => b.classList.remove('right', 'wrong')); fb.textContent = ''; st.sel.clear(); paint(); return }
+    if (st.checked) { st.checked = false; opts.forEach((b) => b.classList.remove('right', 'wrong')); fb.textContent = ''; st.sel.clear(); writeEx(''); paint(); return }
     st.checked = true
     const wrong = [...st.sel].filter((i) => !Q.options[i].correct)
     const miss = Q.options.filter((o, i) => o.correct && !st.sel.has(i)).length
@@ -593,30 +673,39 @@ function showQuiz(q) {
     if (st.right) { reveal(); fb.textContent = '答对了。'; fb.className = 'fb ok' }
     else {
       wrong.forEach((i) => opts[i].classList.add('wrong'))
+      writeEx(wrong.map(whyOf).join(''))
       fb.textContent = Q.kind === 'multi' ? '选错了 ' + wrong.length + ' 个' + (miss ? '，还有漏选的' : '') : '不对，再想想。'
       fb.className = 'fb no'
     }
     paint()
   }
-  const reveal = () => { Q.options.forEach((o, i) => { if (o.correct) opts[i].classList.add('right') }); quizEl.classList.add('done') }
-  quizEl.querySelector('.ans').onclick = () => { st.checked = true; st.right = true; reveal(); fb.textContent = ''; paint() }
-  quizEl.querySelector('.go').onclick = () => { const s = DATA.steps.find((x) => x.k === 'pause' && x.quiz === q); waitingQuiz = -1; seek(s.end, playing) }
+  const reveal = () => { Q.options.forEach((o, i) => { if (o.correct) opts[i].classList.add('right') }); quizEl.classList.add('done'); writeEx(solved()) }
+  ui.btn('.ans').onclick = () => { st.checked = true; st.right = true; reveal(); fb.textContent = ''; paint() }
+  ui.btn('.go').onclick = () => goOn(q)
+  // 导出视频：倒计时时题面空着，揭晓时标出正确选项、写上解析
+  quizEl.videoReveal = (on) => { opts.forEach((b, i) => b.classList.toggle('right', on && Q.options[i].correct)); quizEl.classList.toggle('done', on); writeEx(on ? solved() : '') }
   paint()
 }
 
 // —— 填空题（照网站 FillQuiz.vue）：点选项块再点空，或者先点空再点选项块，桌面上也能拖；点已填的空把选项块退回。
 // 用过的选项块变灰；填满了才能检查；答错只标出错的空，可以再试一次（错的空退回）或看答案；答对、看答案之后显示解析 ——
 function showFill(q, n) {
-  const Q = DATA.quizzes[q], st = quizState[q]
+  const Q = DATA.quizzes[q]
   quizEl.className = 'quiz fq'
   quizEl.innerHTML = '<div class="qh">练习' + n + '　填空</div><div class="qs">' + Q.stem + '</div>' +
     '<div class="fq-opts" role="group" aria-label="选项">' + Q.options.map((o, i) => '<button type="button" class="c-fill fq-o" data-i="' + i + '"></button>').join('') + '</div>' +
     '<div class="qex">' + Q.explain + '</div>' +
     '<div class="qbar"><span class="fb" role="status"></span><button class="ck">检查</button><button class="retry">再试一次</button><button class="ans">看答案</button><button class="redo">重做</button><button class="go">继续 ▶</button></div>'
   stage.appendChild(quizEl)
-  const blanks = [...quizEl.querySelectorAll('.fq-b')], opts = [...quizEl.querySelectorAll('.fq-o')]
-  const btn = (c) => quizEl.querySelector(c), fb = btn('.fb')
+  const opts = [...quizEl.querySelectorAll('.fq-o')], btn = (c) => quizEl.querySelector(c)
   opts.forEach((b, i) => { b.textContent = Q.options[i] })
+  bindFill(q, { blanks: [...quizEl.querySelectorAll('.fq-b')], opts, fb: btn('.fb'), btn, ex: null })
+}
+// opts[i] 是书稿第 i 个选项的按钮（卡上作答时，画面上的排列可以和书稿不同）；ex 是卡上的解析位，答对、看答案后写整题解析
+function bindFill(q, ui) {
+  const Q = DATA.quizzes[q], st = quizState[q], blanks = ui.blanks, opts = ui.opts, btn = ui.btn, fb = ui.fb
+  // 空位原来的样式类（帧里的空位可能带别的类），每次重画在它后面加作答状态
+  const base = (b) => b.dataset.base ?? (b.dataset.base = [...b.classList].filter((c) => c !== 'fq-b' && !c.startsWith('is-')).join(' '))
   const locked = () => st.status !== 'idle'
   const used = () => new Set(st.filled.filter((x) => x >= 0))
   const isRight = (k) => st.filled[k] >= 0 && Q.options[st.filled[k]] === Q.answers[k]
@@ -626,15 +715,16 @@ function showFill(q, n) {
   const paint = () => {
     const u = used(), answered = st.status === 'right' || st.status === 'revealed'
     blanks.forEach((b, k) => {
-      const i = st.filled[k]
+      const i = st.filled[k], cls = base(b)
       b.textContent = ''
       if (i >= 0) { const c = document.createElement('span'); c.className = 'c-fill'; c.textContent = Q.options[i]; b.appendChild(c) }
       const s = answered ? 'right' : st.status === 'wrong' ? (isRight(k) ? '' : 'wrong') : i < 0 && st.pickB === k ? 'picked' : ''
-      b.className = 'c-blank fq-b' + (s ? ' is-' + s : '')
+      b.className = cls + ' fq-b' + (s ? ' is-' + s : '')
       b.setAttribute('aria-label', '第' + (k + 1) + '个空' + (i >= 0 ? '：' + Q.options[i] : ''))
     })
     opts.forEach((b, i) => { b.disabled = locked() || u.has(i); b.draggable = !b.disabled; b.classList.toggle('picked', st.pickO === i) })
     quizEl.classList.toggle('locked', locked()); quizEl.classList.toggle('done', answered)
+    if (ui.ex) ui.ex.innerHTML = answered ? Q.explain : ''
     const wrongN = Q.answers.filter((_, k) => !isRight(k)).length
     fb.textContent = st.status === 'right' ? '答对了。' : st.status === 'revealed' ? '正确答案已填好。' : st.status === 'wrong' ? '还不对：有 ' + wrongN + ' 个空填错了。' : ''
     fb.className = 'fb' + (st.status === 'right' ? ' ok' : st.status === 'wrong' ? ' no' : '')
@@ -664,7 +754,7 @@ function showFill(q, n) {
   btn('.retry').onclick = () => { st.filled = st.filled.map((x, k) => (isRight(k) ? x : -1)); st.status = 'idle'; paint() }
   btn('.ans').onclick = () => { fillAnswers(); st.status = 'revealed'; paint() }
   btn('.redo').onclick = () => { st.filled = Q.answers.map(() => -1); st.pickO = st.pickB = -1; st.status = 'idle'; paint() }
-  btn('.go').onclick = () => { const s = DATA.steps.find((x) => x.k === 'pause' && x.quiz === q); waitingQuiz = -1; seek(s.end, playing) }
+  btn('.go').onclick = () => goOn(q)
   // 导出视频：倒计时时空着，揭晓时把答案填好
   quizEl.videoReveal = (on) => { if (on) fillAnswers(); else st.filled = Q.answers.map(() => -1); st.status = on ? 'revealed' : 'idle'; paint(); fb.textContent = '' }
   paint()
@@ -843,6 +933,8 @@ async function main() {
   if (quizzes.length !== pauses) throw new Error(`双栏稿有 ${pauses} 处暂停，书稿这一节有 ${quizzes.length} 道练习题，对不上`)
 
   const hasFill = quizzes.some((q) => q.kind === 'fill')
+  // 质感版在帧里的练习卡上直接作答：先核对卡和书稿对得上，再给选项块标上书稿里的下标
+  for (const p of pages) if (p.style === 'clean') p.cards = wireQuizzes(p.cards, quizzes)
 
   const audio = synthesize(id, screens, mod.say ?? {}, skipTts)
   const tl = timeline(cards, audio, quizzes)

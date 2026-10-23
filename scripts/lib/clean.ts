@@ -12,7 +12,7 @@ import path from 'node:path'
 import subsetFont from 'subset-font'
 import { ROOT } from './course'
 import { visibleText } from './sketch'
-import { MONO, SANS, SERIF, TOKENS } from './clean-tokens'
+import { CODE_TOKENS, MONO, SANS, SERIF, TOKENS } from './clean-tokens'
 
 const FONTS = {
   serif: { file: 'tools/fonts/NotoSerifSC-wght.ttf', note: '思源宋体 Noto Serif SC 可变字重（OFL，tools/fonts/OFL-NotoSerifSC.txt）' },
@@ -26,6 +26,7 @@ export { MONO, SANS, SERIF, TOKENS }
 /**
  * 字体子集 + 令牌 + 质感层样式。more 是页面上另外要显示的文字（也进字体子集）。
  * 空位的样式（BLANK_CSS）只在用到时才带上：帧里有空位，或者 blanks（播放器里有填空练习）。没用到空位的节，输出和加空位之前逐字节一样
+ * 代码卡的样式（EDITOR_CSS）、练习卡的样式（QUIZ_CSS）同理，只在帧里有 c-editor、data-quiz 时才带上
  */
 export async function cleanCss(htmls: string[], more = '', o: { blanks?: boolean } = {}): Promise<{ css: string; info: string }> {
   for (const f of Object.values(FONTS)) if (!fs.existsSync(path.join(ROOT, f.file))) throw new Error(`找不到 ${f.file}（${f.note}）`)
@@ -45,7 +46,7 @@ ${face('CleanSerif', serif, '200 900')}
 ${face('CleanSans', sans, '100 900')}
 ${face('CleanMono', mono)}
 .th-clean{${Object.entries(TOKENS).map(([k, v]) => `${k}:${v}`).join(';')}}
-${CLEAN_CSS}${o.blanks || htmls.some((h) => h.includes('c-blank')) ? BLANK_CSS : ''}`
+${CLEAN_CSS}${o.blanks || htmls.some((h) => h.includes('c-blank')) ? BLANK_CSS : ''}${htmls.some((h) => h.includes('c-editor')) ? EDITOR_CSS : ''}${htmls.some((h) => h.includes('data-quiz')) ? QUIZ_CSS : ''}`
   const kb = (b: Uint8Array) => (b.length / 1024).toFixed(0)
   return { css, info: `思源宋体 ${kb(serif)} KB + 思源黑体 ${kb(sans)} KB + 更纱 ${kb(mono)} KB（${[...chars].length} 字）` }
 }
@@ -251,6 +252,53 @@ ${C} .c-qp.on b{background:var(--paper);color:var(--warm)}
 /* 对比页开关：正文改纯黑、元组改衬线斜体（标题已定宋体） */
 .ink-black ${C}{--ink:var(--ink-strong)}
 .tuple-serif ${C} .tuple,.tuple-serif ${C} .row .rs,.tuple-serif ${C} .c-row .rs{font-family:${SERIF};font-style:italic}
+`
+
+/** 代码卡（kit 外，帧文件里画的 c-editor）：浅色代码编辑器，语法高亮色在 clean-tokens.ts 的 CODE_TOKENS */
+const EDITOR_CSS = `
+/* —— 代码卡：浅色代码编辑器（标签栏 + 行号槽 + 当前行 + 折叠行），高亮色是 CODE_TOKENS（照 github-light） —— */
+${C} .c-editor{${Object.entries(CODE_TOKENS).map(([k, v]) => `${k}:${v}`).join(';')};position:relative;background:var(--paper);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+${C} .ce-bar{height:30px;display:flex;align-items:center;justify-content:space-between;padding-right:10px;background:var(--stage);border-bottom:1px solid var(--line-soft)}
+${C} .ce-tab{align-self:stretch;display:flex;align-items:center;padding:0 14px;background:var(--paper);border-right:1px solid var(--line-soft);font-family:${MONO};font-size:12.5px;color:var(--ink)}
+${C} .ce-body{padding:8px 0}
+${C} .ce-ln{display:flex;height:20px;line-height:20px;font-family:${MONO};font-size:13px;white-space:pre;color:var(--shiki-foreground)}
+${C} .ce-ln i{flex:none;width:24px;text-align:right;font-style:normal;font-size:12px;color:var(--faint)}
+${C} .ce-ln b{flex:none;width:12px;text-align:center;font-weight:400;font-size:12px;color:var(--faint)}
+${C} .ce-ln code{font:inherit;background:none;padding:0;color:inherit}
+${C} .ce-ln.cur{background:var(--code-cur)}
+${C} .ce-ln.cur code::after{content:"";display:inline-block;width:1.5px;height:15px;margin-left:1px;vertical-align:-3px;background:var(--caret)}
+${C} .ce-ln.fold code{color:var(--shiki-token-comment)}
+${C} .ce-dots{display:inline-block;margin-left:6px;padding:0 5px;line-height:14px;border:1px solid var(--line);border-radius:4px;font-size:12px;color:var(--faint)}
+`
+
+/**
+ * 练习卡（kit 的 cquiz）：帧里画的练习卡就是作答界面，播放器暂停时直接在卡上作答。
+ * 选中是蓝描边；检查后对的选项浅蓝底加 ✓，错的变灰加划线（不用红叉）；解析位作答后才有字，盖住下面的东西。
+ */
+const QUIZ_CSS = `
+/* —— 练习卡：按钮条、解析位、选项的作答状态 —— */
+${C} .c-qbar{display:flex;align-items:center;justify-content:flex-end;gap:8px;width:560px;height:30px}
+${C} .c-qbar .fb{margin-right:auto;font-size:13px;font-weight:600;color:var(--mute)}
+${C} .c-qbar .fb.ok{color:var(--c1)}
+${C} .c-qbar button{font:inherit;font-size:12.5px;line-height:1;height:30px;padding:0 16px;border:1px solid var(--line-soft);border-radius:10px;background:var(--paper);color:var(--ink);cursor:pointer}
+${C} .c-qbar button.ck{min-width:120px;background:var(--btn);border-color:transparent}
+${C} .c-qbar button.go{background:var(--ink-strong);border-color:transparent;color:var(--paper)}
+${C} .c-qbar button:disabled{color:var(--faint);cursor:default}
+${C} .c-qbar button[hidden]{display:none}
+${C} .c-qbar .think{margin:0 0 0 auto;padding:4px 14px;border-radius:10px;background:var(--c1-soft);color:var(--c1);font-size:14px}
+${C}.export .c-qbar button,${C}.export .c-qbar .fb{display:none}
+${C} .c-qex{box-sizing:border-box;width:560px;overflow:auto;scrollbar-width:thin;padding:2px 0 0;background:var(--stage);font-size:12.5px;line-height:1.5;color:var(--ink)}
+${C} .c-qex:empty{display:none}
+${C} .c-qex p{margin:0}
+${C} .c-qex p+p{margin-top:2px}
+${C} .c-qex .why b{font-weight:600;color:var(--mute);margin-right:6px}
+${C} [data-quiz] [data-opt]{cursor:pointer}
+${C} [data-quiz].locked [data-opt]{cursor:default}
+${C} .c-opt.sel{border-color:var(--c1);box-shadow:inset 0 0 0 1px var(--c1)}
+${C} .c-opt.right{border-color:transparent;background:var(--c1-soft);color:var(--c1)}
+${C} .c-opt.right::after{content:"✓";margin-left:auto;font-weight:700;color:var(--ok)}
+${C} .c-opt.wrong{color:var(--off);text-decoration:line-through}
+${C} button.c-chip{font-family:inherit;color:inherit;cursor:grab}
 `
 
 /**

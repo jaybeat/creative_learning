@@ -386,8 +386,25 @@ export function ctable(rows: [string, string][], o: { open?: number; body?: stri
   })
   return `<div class="c-tbl" style="width:${o.w ?? 560}px">${r.join('')}</div>`
 }
-/** 练习选项行："字母 | 内容" */
-export const copt = (letter: string, s: string, cls = '') => `<div class="c-opt ${cls}"><b>${letter}</b>${s}</div>`
+/** 练习选项行："字母 | 内容"。data-opt 是第几个选项（A 是 0），播放器暂停时按它把选项接上作答 */
+export const copt = (letter: string, s: string, cls = '') =>
+  `<div class="c-opt ${cls}" data-opt="${letter.charCodeAt(0) - 65}"><b>${letter}</b>${s}</div>`
+/**
+ * 练习卡外层：帧里画的练习卡就是作答界面。播放器暂停时在这张卡里找选项（data-opt）、空位（data-blank）、
+ * 选项块（data-chip）、按钮条（data-qbar）和解析位（data-ex），接上作答，不另盖一层
+ */
+export const cquiz = (html: string) => `<div data-quiz style="position:absolute;left:0;top:0;width:640px;height:360px">${html}</div>`
+/** 填空练习的选项块：顺序就是画面上的顺序，文字要和书稿的选项一一对上（生成播放器时核对） */
+export const cqchips = (opts: string[], cls = '') => `<div class="${cls}" data-chips>${opts.map((s) => `<span class="c-chip" data-chip>${s}</span>`).join(' ')}</div>`
+/** 练习卡的按钮条：和作答时一样。选择题：检查、看答案、继续；填空题多两个平时藏着的：再试一次、重做 */
+export const cqbar = (kind: 'choice' | 'fill') =>
+  `<div class="c-qbar" data-qbar><span class="fb" role="status"></span><button type="button" class="ck" disabled>检查</button>` +
+  (kind === 'fill'
+    ? '<button type="button" class="retry" hidden>再试一次</button><button type="button" class="ans" hidden>看答案</button><button type="button" class="redo" hidden>重做</button>'
+    : '<button type="button" class="ans">看答案</button>') +
+  '<button type="button" class="go">继续 ▶</button></div>'
+/** 解析位：作答后才有字，盖在它下面的东西上（填空题一般放在选项块那一行：答完选项块就用不上了）；h 是高度，字多了在框里滚动 */
+export const cqex = (h: number) => `<div class="c-qex" data-ex style="height:${h}px"></div>`
 /**
  * 场景图"屏幕拼贴"（封面屏左边）：上面一条浏览器搜索栏，下面左边聊天、右边文件，各有一个单行输入框。
  * 直接按 280×160 排版，不缩放，字号都是 12px 真字号。reveal 时三个输入框带 new，播放器逐个点亮。
@@ -423,8 +440,8 @@ export const cqpill = (n: number, s: string, cls = '') => `<span class="c-qp ${c
  * s 是填进去的内容（画成选项块），不给就一直空着。beat 是第几拍填上：播放器到这一拍开头按 0.25 秒淡入，
  * 之前是空的；分镜墙上画成填好的样子，在这一拍所在的帧里带 new 描边。不给 beat 就一开始就是填好的。w 是空位的最小宽度
  */
-export const cblank = (s = '', o: { beat?: number; w?: number; cls?: string } = {}) =>
-  `<span class="c-blank ${o.cls ?? ''}"${o.w ? ` style="min-width:${o.w}px"` : ''}>${
+export const cblank = (s = '', o: { beat?: number; w?: number; cls?: string; quiz?: boolean } = {}) =>
+  `<span class="c-blank ${o.cls ?? ''}"${o.quiz ? ' data-blank' : ''}${o.w ? ` style="min-width:${o.w}px"` : ''}>${
     s ? `<span class="c-fill"${o.beat ? ` data-beat="${o.beat}"` : ''}>${s}</span>` : ''
   }</span>`
 /**

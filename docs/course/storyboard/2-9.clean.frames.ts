@@ -4,7 +4,7 @@
 // - 右栏 (252,86) 宽 348：上面是内存卡（12 格 100–111，共边格子 = 存储画法），下面 (252,198) 是箭头图卡（链表画法 .c-node）；
 // - 两卡的对应靠同一结点在两处同时浅蓝底（hl）加地址数字，不填色；地址格里的数字用灰字（.c-cap），和数据字区分。
 // 第5、6屏是填空练习，第7屏一拍过门。帧里不写色值，样式在 scripts/lib/clean.ts。
-import { at, card, editor, cells, pause, ckick, ctitle, cchip, cbadge, cslot, cqpill, cblank } from './kit'
+import { at, card, editor, cells, pause, ckick, ctitle, cchip, cbadge, cslot, cqpill, cblank, cquiz, cqchips, cqbar, cqex } from './kit'
 import type { Frame } from '../../../scripts/lib/course'
 
 export const quizSource = { file: 'book/chapters/ch02.md', section: '2.9' }
@@ -143,26 +143,27 @@ const ROWS = (o: { g?: string; l?: string; gs?: string; ls?: string; gcls?: stri
 const T4 = '链式存储的得失'
 const CONC = (cls = '') => `<div class="c-q ${cls}" style="font-size:14px">省掉的是挪动，<br>付出的是走路</div>`
 
-// ───────── 练习（暂停时播放器把真题盖在画面上，这里画出原样给分镜墙审） ─────────
+// ───────── 练习（练习卡就是作答界面：暂停时播放器给空位、选项块、按钮条接上作答） ─────────
 const ADDR16 = Array.from({ length: 16 }, (_, i) => String(100 + i))
 function quiz(o: { n: number; title: string; stem: string; body?: string; lines: [string, number[]][]; opts: string[]; tip?: string; cls?: string; dim?: boolean; extra?: string; y?: number }) {
   const c = `${o.cls ?? ''} ${o.dim ? 'dim' : ''}`
   const y = o.y ?? 148
-  return at(40, 16, ckick(`练习 ${o.n} · 填空`, o.cls)) + at(40, 44, ctitle(o.title).replace('c-title', `c-title ${c}`)) +
-    (o.tip ? at(40, 80, cap(o.tip, 'new')) : '') +
-    at(40, 108, `<div class="c-q ${c}" style="font-size:14px">${o.stem}</div>`) + (o.body ?? '') +
-    o.lines.map(([s, ws], i) => at(40, y + 36 * i, `<span class="${c}">${s} ${ws.map((w) => cblank('', { w })).join(' ')}</span>`)).join('') +
-    at(40, 270, `<div class="${c}">${o.opts.map((s) => cchip(s)).join(' ')}</div>`) +
-    (o.dim ? '' : at(40, 314, `<span class="c-btn">检查</span>`)) + (o.extra ?? '')
+  return cquiz(at(40, 16, ckick(`练习 ${o.n} · 填空`, o.cls)) + at(40, 44, ctitle(o.title).replace('c-title', `c-title ${c}`)) +
+    (o.tip ? at(40, 78, cap(o.tip, 'new')) : '') +
+    at(40, 102, `<div class="c-q ${c}" style="font-size:14px">${o.stem}</div>`) + (o.body ?? '') +
+    o.lines.map(([s, ws], i) => at(40, y + 36 * i, `<span class="${c}">${s} ${ws.map((w) => cblank('', { w, quiz: true })).join(' ')}</span>`)).join('') +
+    at(40, 270, cqchips(o.opts, c)) +
+    // 解析位从最后一行空位下面到按钮条上面，答完盖住选项块
+    (o.dim ? '' : at(40, y + 36 * o.lines.length - 6, cqex(320 - 6 - (y + 36 * o.lines.length - 6))) + at(40, 320, cqbar('fill'))) + (o.extra ?? ''))
 }
 // 练习1：题卡里放同一种内存卡（整屏宽，16 格）
 const BOOK: Record<number, string> = { 2: 'o', 3: ad('112'), 4: 'k', 5: ad('0'), 8: 'b', 9: ad('102'), 12: 'o', 13: ad('104') }
-const MEM16 = at(40, 132, card(
+const MEM16 = at(40, 126, card(
   at(10, 6, cap('head = 108')) +
     at(10, 30, cells(ADDR16.map((_, i) => BOOK[i] ?? ''), { mem: true, size: 34, idx: ADDR16 })),
   '', 'width:560px;height:90px;padding:0'))
 const Q1 = (o: { tip?: boolean; cls?: string } = {}) => quiz({
-  n: 1, title: '这一行是什么？', stem: '一个链表在内存里是这样的，head 等于 108。', body: MEM16, y: 232,
+  n: 1, title: '这一行是什么？', stem: '一个链表在内存里是这样的，head 等于 108。', body: MEM16, y: 224,
   lines: [['从 head 出发，依次经过的结点是', [44, 44, 44, 44]]],
   opts: ['108', '102', '112', '104', '103', '109', '113'],
   tip: o.tip ? '记住：谁在谁后面不再靠位置，而是存在每个结点的地址格里' : undefined, cls: o.cls,

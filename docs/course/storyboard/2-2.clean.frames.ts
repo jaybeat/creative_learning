@@ -6,7 +6,7 @@
 // 开场照 Aho：先说给线性表定一组操作（关系 + 操作 = 抽象数据类型），常用操作很多、这里取最基本的五个，再逐个演示。
 // 线性表用逻辑画法（分开的方块），不画内存、不画搬移；错误变灰加划线。帧里不写色值，样式在 scripts/lib/clean.ts。
 // 2-2.frames.ts 原样转出本文件（播放器要求原版帧位一致）。
-import { at, cells, editor, card, pause, Q, ckick, ctitle, cchip, cbadge, cslot, cblank, cblanks, cqpill } from './kit'
+import { at, cells, editor, card, pause, Q, ckick, ctitle, cchip, cbadge, cslot, cblank, cblanks, cqpill, cquiz, cqchips, cqbar, cqex } from './kit'
 import type { Frame } from '../../../scripts/lib/course'
 
 export const quizSource = { file: 'book/chapters/ch02.md', section: '2.2' }
@@ -113,15 +113,15 @@ function exB(o: { eq: 0 | 1 | 2; ecls?: string; check?: boolean; links?: boolean
   return head2() + at(40, 92, SUMLINE) + eq + ck + lk
 }
 
-// ───────── 第4、5屏：填空练习（暂停时播放器把真题盖在画面上，这里画出原样给分镜墙审） ─────────
+// ───────── 第4、5屏：填空练习（练习卡就是作答界面：暂停时播放器给空位、选项块、按钮条接上作答） ─────────
 function quiz(o: { n: number; title: string; stem: string; lines: [string, number][]; opts: string[]; tip?: string; cls?: string; dim?: boolean; extra?: string }) {
   const c = `${o.cls ?? ''} ${o.dim ? 'dim' : ''}`
-  return at(40, 16, ckick(`练习 ${o.n} · 填空`, o.cls)) + at(40, 44, ctitle(o.title).replace('c-title', `c-title ${c}`)) +
+  return cquiz(at(40, 16, ckick(`练习 ${o.n} · 填空`, o.cls)) + at(40, 44, ctitle(o.title).replace('c-title', `c-title ${c}`)) +
     (o.tip ? at(40, 86, cap(o.tip, 'new')) : '') +
     at(40, 112, `<div class="c-q ${c}">${o.stem}</div>`) +
-    o.lines.map(([s, w], i) => at(40, 148 + 40 * i, `<span class="${c}">${s} ${cblank('', { w })}</span>`)).join('') +
-    at(40, 240, `<div class="${c}">${o.opts.map((s) => cchip(s)).join(' ')}</div>`) +
-    (o.dim ? '' : at(40, 300, `<span class="c-btn">检查</span>`)) + (o.extra ?? '')
+    o.lines.map(([s, w], i) => at(40, 148 + 40 * i, `<span class="${c}">${s} ${cblank('', { w, quiz: true })}</span>`)).join('') +
+    at(40, 240, cqchips(o.opts, c)) +
+    (o.dim ? '' : at(40, 226, cqex(84)) + at(40, 314, cqbar('fill'))) + (o.extra ?? ''))
 }
 const Q1 = (o: { tip?: boolean; cls?: string } = {}) => quiz({
   n: 1, title: '每一步之后，表是什么？', stem: '表是 (c, a, t)。依次调用下面两个操作。',
