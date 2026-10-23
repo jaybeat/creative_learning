@@ -13,7 +13,7 @@ export const say: Record<number, string> = {
   5: '2.7节算过，这是大O n。',
   51: '取第i个，也就是Get，要从第一个结点出发，顺着地址走i步，最坏走n减1步，是大O n。',
   53: '改地址本身只要一步，找到要改的结点却要从头走。插得越靠后，走得越远，最坏也是大O n。',
-  55: '另外两个操作，从定义就能看出来。一个链表只有结点和头指针，没有记长度。要知道有几个，只能从head出发数一遍，Length是大O n；顺序表记着长度，是大O 1。',
+  55: '另外两个操作，从定义就能看出来。一个链表只有结点和头指针，没有记长度。要知道有几个，只能从head出发数一遍，Length是大O n。',
   56: 'Init只要让head等于NULL，一步就完成，大O 1。',
 }
 
@@ -107,6 +107,61 @@ function ARR(o: { nodes?: Nd[]; links?: boolean; lcls?: string[]; head?: string 
     o.cls ?? '', 'width:348px;height:150px;padding:0'))
 }
 
+// ───────── 第4、5屏：右栏只用一张高箭头图卡（第3屏末拍说过"后面都画箭头图"；一刻只动一处） ─────────
+// 卡 (252,86) 348×244，卡内坐标：c (12,64)、a (96,64)、t (264,64)，a、t 之间留一格空位；
+// 新结点 x 放在空位正下方 (180,150)，一直留在下面：插入只改箭头，c、a、t 原地不动（t 不右移，免得像"挪了"）
+const NW = 60, NH = 32
+const POS = { c: [12, 64], a: [96, 64], t: [264, 64], x: [180, 150] } as const
+/** 折线箭头：pts 是卡内坐标的点列，箭头头顺着最后一段的方向；SVG 只包住这条线（分镜墙的 new 虚线才贴着线） */
+function arw(pts: [number, number][], cls = '') {
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1])
+  const L = Math.min(...xs) - 6, T = Math.min(...ys) - 6, W = Math.max(...xs) - L + 6, H = Math.max(...ys) - T + 6
+  const q = (x: number, y: number) => `${(x - L).toFixed(1)} ${(y - T).toFixed(1)}`
+  const [x1, y1] = pts[pts.length - 2], [x2, y2] = pts[pts.length - 1]
+  const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len
+  const wing = (a: number) => { const c = Math.cos(a), s = Math.sin(a); return [x2 - 6 * (ux * c - uy * s), y2 - 6 * (ux * s + uy * c)] as const }
+  const [ax, ay] = wing(0.5), [bx, by] = wing(-0.5)
+  const d = 'M' + pts.map(([x, y]) => q(x, y)).join(' L')
+  return at(L, T, `<span class="c-cap ${cls}" style="display:block"><svg width="${W}" height="${H}" style="display:block;overflow:visible"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M${q(ax, ay)} L${q(x2, y2)} L${q(bx, by)}" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></span>`)
+}
+const MID = NH / 2
+const AR = {
+  ca: () => [[POS.c[0] + NW, POS.c[1] + MID], [POS.a[0] - 2, POS.a[1] + MID]] as [number, number][],
+  at: () => [[POS.a[0] + NW, POS.a[1] + MID], [POS.t[0] - 2, POS.t[1] + MID]] as [number, number][],
+  // a 的地址格往下拐，进 x 的左边
+  ax: () => [[POS.a[0] + 50, POS.a[1] + NH], [POS.a[0] + 50, POS.x[1] + MID], [POS.x[0] - 2, POS.x[1] + MID]] as [number, number][],
+  // x 的右边往右，再往上进 t 的底边（避开 t 下面的地址标签）
+  xt: () => [[POS.x[0] + NW, POS.x[1] + MID], [POS.t[0] + 8, POS.x[1] + MID], [POS.t[0] + 8, POS.t[1] + NH + 2]] as [number, number][],
+}
+type Arr2 = {
+  c?: Partial<Nd>; a?: Partial<Nd>; t?: Partial<Nd>
+  x?: 'slot' | 'below' | 'dim'; xn?: Partial<Nd>
+  link?: 'at' | 'ax'; lcls?: { ca?: string; at?: string; ax?: string; xt?: string }
+  head?: string; headNull?: boolean; steps?: string; extra?: string
+}
+function ARR2(o: Arr2) {
+  const nd = (k: 'c' | 'a' | 't', base: Nd, p: Partial<Nd> = {}) => at(POS[k][0], POS[k][1], node({ ...base, ...p }))
+  const lc = o.lcls ?? {}
+  const linkAx = o.link === 'ax'
+  const xs =
+    o.x === 'slot' ? at(POS.x[0], POS.x[1], `<div class="dash new" style="width:${NW}px;height:${NH}px"></div>`) + at(POS.x[0] - 4, POS.x[1] + NH + 4, cap('102 号空格', 'new'))
+      : o.x === 'below' || o.x === 'dim' ? at(POS.x[0], POS.x[1], `<span class="${o.x === 'dim' ? 'dim' : ''}">${node({ ...X(), ...o.xn })}</span>`)
+      : ''
+  const headTxt = o.headNull ? 'head = NULL' : 'head = 100'
+  return at(252, 86, card(
+    at(12, 4, cap('箭头图')) +
+      at(12, 24, cap(headTxt, o.head ?? '')) + (o.headNull ? '' : at(26, 42, cap('↓', o.head ?? ''))) +
+      nd('c', C(), o.c) + nd('a', A(linkAx ? { next: '102' } : {}), o.a) + nd('t', T(), o.t) +
+      arw(AR.ca(), lc.ca) + (linkAx ? arw(AR.ax(), lc.ax) : arw(AR.at(), lc.at)) +
+      xs + (o.x === 'below' ? arw(AR.xt(), lc.xt) : '') +
+      (o.steps !== undefined ? at(POS.c[0] + 58, POS.c[1] - 18, cap('1 步', o.steps)) + at(POS.a[0] + 96, POS.a[1] - 18, cap('2 步', o.steps)) : '') +
+      (o.extra ?? ''),
+    '', 'width:348px;height:244px;padding:0'))
+}
+type S2 = { ed?: [string, number?, string?]; txt?: string; tcls?: string; arr: Arr2 }
+const F2 = (s: S2) =>
+  head(T4, { kick: '链式存储与链表', tcls: s.tcls }) + ED(...(s.ed ?? ['cat'])) + (s.txt ? TXT(s.txt) : '') + ARR2(s.arr)
+
 // ───────── 第1–4屏的整帧：标题 + 左栏 + 右栏 ─────────
 type S = { title?: string; kick?: string; kcls?: string; tcls?: string; ed?: [string, number?, string?]; txt?: string; mem: MemOpt; arr?: Parameters<typeof ARR>[0] }
 const F = (s: S) =>
@@ -127,13 +182,14 @@ const CAT3 = (o: { addr?: boolean; cls?: string[]; ncls?: string[] } = {}) =>
 const GAIN1 = 'Insert：不挪'
 const GAIN = 'Insert、Delete：不挪'
 const LOSS = 'Get：走 i 步 · O(n)'
-/** 五行对照表（左栏文字区，宽 196）：操作 | 顺序表 | 链表；顺序表 Insert 那一格用徽章，回扣第1屏的 O(n) */
+/** 链表五个操作的表（左栏文字区，宽 196）：操作 | 快慢 | 为什么；和顺序表的逐项对比留给 2.19 */
 const TABLE = (cls = '') => {
-  const rows: [string, string, string][] = [['Init', 'O(1)', 'O(1)'], ['Length', 'O(1)', 'O(n)'], ['Get', 'O(1)', 'O(n)'], ['Insert、Delete', cbadge('O(n)'), 'O(n)']]
+  const rows: [string, string, string][] = [['Init', 'O(1)', '只改 head'], ['Length', 'O(n)', '数一遍'], ['Get', 'O(n)', '走 i 步'], ['Insert、Delete', 'O(n)', '走到前一个']]
   const td = (x: string) => `<span style="padding:3px 4px;border-top:1px solid var(--line);font-size:12px;white-space:nowrap">${x}</span>`
-  return `<div class="${cls}" style="display:grid;grid-template-columns:92px 52px 52px;width:196px">` +
-    td(cap('操作')) + td(cap('顺序表')) + td(cap('链表')) +
-    rows.map(([a, b, c]) => td(a) + td(b) + td(c)).join('') + '</div>'
+  return `<div class="${cls}" style="display:grid;grid-template-columns:88px 40px 68px;width:196px">` +
+    td(cap('操作')) + td(cap('快慢')) + td(cap('为什么')) +
+    rows.map(([a, b, c]) => td(a) + td(b) + td(cap(c))).join('') + '</div>' +
+    `<div style="margin-top:6px">${cap('和顺序表的对比 → 2.19')}</div>`
 }
 const ROWS = (o: { g?: string; l?: string; gs?: string; ls?: string; gcls?: string; lcls?: string; badge?: string } = {}) =>
   `<div style="white-space:nowrap">${cap('得 ')}${o.g ? `<span class="${o.gcls ?? ''}">${cbadge(o.g)}</span>` : cslot('？')}</div>` + (o.badge ? `<div>${o.badge}</div>` : '') +
@@ -228,32 +284,33 @@ export const frames: Frame[] = [
   // 以后主要看箭头图；内存卡不变淡，第4屏还要用
   { beat: 41, html: F({ kick: KD, txt: DEF(), mem: { cells: LINKED, head: '', boxes: BOXES(), name: '内存 · 格子图' }, arr: { nodes: CAT3(), links: true, head: '', cls: 'hl new' } }) },
 
-  // ───────── 第4屏　链式存储的得失：版面不变；插入、删除直接在左栏编辑器卡上演，全程用操作名说话 ─────────
-  { beat: 42, html: F({ title: T4, kick: '链式存储与链表', tcls: 'new', txt: `<div class="new">${ROWS()}</div>`, mem: { cells: LINKED, head: '', name: '内存 · 格子图' }, arr: { nodes: CAT3(), links: true, head: '' } }) },
-  { beat: 43, html: F({ title: T4, kick: '链式存储与链表', ed: ['cat', 2, 'new'], txt: ROWS(), mem: { cells: LINKED, cls: { 2: 'hl new' }, head: '', name: '内存 · 格子图' }, arr: { nodes: CAT3(), links: true, head: '' } }) },
-  // x 落进 102，x 的地址格写 105；箭头图里 x 结点先放在 a、t 下方
-  { beat: 44, html: F({ title: T4, kick: '链式存储与链表', ed: ['caxt', 3, 'new'], txt: ROWS(), mem: { cells: { ...LINKED, 2: 'x', 3: ad('105') }, cls: { 2: 'new', 3: 'new' }, head: '', name: '内存 · 格子图' }, arr: { nodes: CAT3(), links: true, head: '', extra: at(128, 100, `<span class="new" style="display:inline-flex;align-items:center">${node(X())}${cap('&nbsp;→ t')}</span>`) } }) },
-  // 关键一拍：110 格 105→102、a 的地址格 105→102、a 的箭头改指 x，三处同一刻
-  { beat: 45, html: F({ title: T4, kick: '链式存储与链表', ed: ['caxt', 3], txt: ROWS(), mem: { cells: WITHX, cls: { 10: 'hl new' }, head: '', name: '内存 · 格子图' }, arr: { nodes: [C(), A({ next: '102', ncls: 'hl new' }), X({ cls: 'new' }), T()], links: true, lcls: ['new', 'new', ''], head: '' } }) },
-  { beat: 46, html: F({ title: T4, kick: '链式存储与链表', ed: ['caxt', 3], txt: ROWS({ g: GAIN1, gcls: 'new', badge: ON27_OFF('new') }), mem: { cells: WITHX, cls: { 0: 'new', 9: 'new', 5: 'new' }, head: '', name: '内存 · 格子图' }, arr: { nodes: [C(), A({ next: '102' }), X(), T()], links: true, head: '' } }) },
-  // 删 x：第45拍的镜像，110 格 102→105、a 的地址格改回、a 的箭头改回指 t，三处同一刻
-  { beat: 48, html: F({ title: T4, kick: '链式存储与链表', ed: ['cat', 2, 'new'], txt: ROWS({ g: GAIN, gcls: 'new', badge: ON27_OFF() }), mem: { cells: LINKED, cls: { 10: 'hl new', 2: 'new', 3: 'new' }, head: '', name: '内存 · 格子图' }, arr: { nodes: CAT3({ ncls: ['', 'hl new', ''] }), links: true, lcls: ['', 'new'], head: '' } }) },
+  // ───────── 第4屏　链式存储的得失：右栏换成一张高箭头图卡（换屏处换版面）；插入、删除直接在左栏编辑器卡上演 ─────────
+  { beat: 42, html: F2({ tcls: 'new', txt: `<div class="new">${ROWS()}</div>`, arr: {} }) },
+  // 102 号空格：x 要放的地方，在链表下方
+  { beat: 43, html: F2({ ed: ['cat', 2, 'new'], txt: ROWS(), arr: { x: 'slot' } }) },
+  // x 结点放进 102 号（链表下方），x 的地址格写 105、箭头指向 t；a 仍直指 t
+  { beat: 44, html: F2({ ed: ['caxt', 3, 'new'], txt: ROWS(), arr: { x: 'below', xn: { cls: 'new' }, lcls: { xt: 'new' } } }) },
+  // 关键一拍：a 的地址格 105→102、a 的箭头从直指 t 改成拐下去指 x；c、a、t 原地不动
+  { beat: 45, html: F2({ ed: ['caxt', 3], txt: ROWS(), arr: { x: 'below', link: 'ax', a: { ncls: 'hl new' }, lcls: { ax: 'new' } } }) },
+  { beat: 46, html: F2({ ed: ['caxt', 3], txt: ROWS({ g: GAIN1, gcls: 'new', badge: ON27_OFF('new') }), arr: { x: 'below', link: 'ax', c: { cls: 'new' }, a: { cls: 'new' }, t: { cls: 'new' } } }) },
+  // 删 x：第45拍的镜像，a 的地址格 102→105、a 的箭头改回直指 t，x 变淡
+  { beat: 48, html: F2({ ed: ['cat', 2, 'new'], txt: ROWS({ g: GAIN, gcls: 'new', badge: ON27_OFF() }), arr: { x: 'dim', a: { ncls: 'hl new' }, lcls: { at: 'new' } } }) },
   // 取 t：第 2 个在哪？
-  { beat: 49, html: F({ title: T4, kick: '链式存储与链表', ed: ['cat', 2], txt: ROWS({ g: GAIN, badge: ON27_OFF() }), mem: { cells: LINKED, cls: { 5: 'hl new' }, head: '', name: '内存 · 格子图', extra: at(cx(5) - 30, 14, cap('第 2 个在哪？', 'new')) }, arr: { nodes: CAT3({ cls: ['', '', 'hl new'] }), links: true, head: '' } }) },
-  // 从 head 出发一跳一跳
-  { beat: 50, reveal: 'spread', html: F({ title: T4, kick: '链式存储与链表', ed: ['cat', 2], txt: ROWS({ g: GAIN, badge: ON27_OFF() }), mem: { cells: LINKED, cls: { 0: 'hl new', 9: 'hl new', 5: 'hl new' }, head: '', name: '内存 · 格子图', arcs: arc(1, 9, 'new') + arc(10, 5, 'new') }, arr: { nodes: CAT3({ cls: ['hl new', 'hl new', 'hl new'] }), links: true, head: '' } }) },
-  { beat: 51, html: F({ title: T4, kick: '链式存储与链表', ed: ['cat', 2], txt: ROWS({ g: GAIN, l: LOSS, lcls: 'new', badge: ON27_OFF() }), mem: { cells: LINKED, head: '', name: '内存 · 格子图', arcs: arc(1, 9) + arc(10, 5) }, arr: { nodes: CAT3({ cls: ['', '', 'hl'] }), links: true, head: '' } }) },
+  { beat: 49, html: F2({ ed: ['cat', 2], txt: ROWS({ g: GAIN, badge: ON27_OFF('new') }), arr: { t: { cls: 'hl new' }, extra: at(POS.t[0] - 14, 40, cap('第 2 个在哪？', 'new')) } }) },
+  // 从 head 出发一跳一跳：c → a → t
+  { beat: 50, reveal: 'spread', html: F2({ ed: ['cat', 2], txt: ROWS({ g: GAIN, badge: ON27_OFF() }), arr: { head: 'hl new', c: { cls: 'hl new' }, a: { cls: 'hl new' }, t: { cls: 'hl new' }, lcls: { ca: 'new', at: 'new' }, steps: 'new' } }) },
+  { beat: 51, html: F2({ ed: ['cat', 2], txt: ROWS({ g: GAIN, l: LOSS, lcls: 'new', badge: ON27_OFF() }), arr: { t: { cls: 'hl' }, steps: '' } }) },
   // 回到插入：要改 a 的地址格，得先从 head 走到 a
-  { beat: 52, html: F({ title: T4, kick: '链式存储与链表', ed: ['caxt', 3, 'new'], txt: ROWS({ g: GAIN, l: LOSS, badge: ON27_OFF() }), mem: { cells: WITHX, cls: { 10: 'hl new' }, head: 'hl new', name: '内存 · 格子图', arcs: arc(1, 9, 'new') }, arr: { nodes: [C({ cls: 'hl new' }), A({ next: '102', cls: 'hl new', ncls: 'hl new' }), X(), T()], links: true, lcls: ['new'], head: 'hl new' } }) },
-  { beat: 53, html: F({ title: T4, kick: '链式存储与链表', ed: ['caxt', 3], txt: ROWS({ g: GAIN, l: LOSS, gs: '改地址：一步', ls: '找结点：从头走', badge: ON27_OFF() }), mem: { cells: WITHX, head: '', name: '内存 · 格子图' }, arr: { nodes: [C(), A({ next: '102' }), X(), T()], links: true, head: '' } }) },
-  // 结论；两张图回到 cat，给后面的 Length、Init 用
-  { beat: 54, html: F({ title: T4, kick: '链式存储与链表', ed: ['cat', 2, 'new'], txt: ON27_OFF() + CONC('new'), mem: { cells: LINKED, cls: { 2: 'new', 3: 'new', 10: 'new' }, head: '', name: '内存 · 格子图' }, arr: { nodes: CAT3(), links: true, head: '' } }) },
+  { beat: 52, html: F2({ ed: ['caxt', 3, 'new'], txt: ROWS({ g: GAIN, l: LOSS, badge: ON27_OFF() }), arr: { x: 'below', link: 'ax', head: 'hl new', c: { cls: 'hl new' }, a: { cls: 'hl new', ncls: 'hl new' }, lcls: { ca: 'new' } } }) },
+  { beat: 53, html: F2({ ed: ['caxt', 3], txt: ROWS({ g: GAIN, l: LOSS, gs: '改地址：一步', ls: '找结点：从头走', badge: ON27_OFF() }), arr: { x: 'below', link: 'ax' } }) },
+  // 结论；回到 cat，给后面的 Length、Init 用
+  { beat: 54, html: F2({ ed: ['cat', 2, 'new'], txt: ON27_OFF() + CONC('new'), arr: {} }) },
   // Length：从 head 数一遍
-  { beat: 55, reveal: 'spread', html: F({ title: T4, kick: '链式存储与链表', ed: ['cat', 2], txt: ON27_OFF() + CONC() + cap('Length：数一遍 · O(n)', 'new'), mem: { cells: LINKED, head: '', name: '内存 · 格子图' }, arr: { nodes: CAT3({ cls: ['hl new', 'hl new', 'hl new'] }), links: true, head: 'hl new' } }) },
+  { beat: 55, reveal: 'spread', html: F2({ ed: ['cat', 2], txt: ON27_OFF() + CONC() + cap('Length：数一遍 · O(n)', 'new'), arr: { head: 'hl new', c: { cls: 'hl new' }, a: { cls: 'hl new' }, t: { cls: 'hl new' } } }) },
   // Init：head = NULL（示意空表，下一拍复原）
-  { beat: 56, html: F({ title: T4, kick: '链式存储与链表', ed: ['', 0, 'new'], txt: ON27_OFF() + CONC() + cap('Length：数一遍 · O(n)') + cap('Init：head = NULL · O(1)', 'new'), mem: { cells: {}, cls: { 0: 'new', 1: 'new', 5: 'new', 6: 'new', 9: 'new', 10: 'new' }, name: '内存 · 格子图', extra: at(4, 12, cap('head = NULL', 'new')) }, arr: { nodes: CAT3({ cls: ['dim new', 'dim new', 'dim new'] }), links: true, extra: at(12, 22, cap('head = NULL', 'new')) } }) },
+  { beat: 56, html: F2({ ed: ['', 0, 'new'], txt: ON27_OFF() + CONC() + cap('Length：数一遍 · O(n)') + cap('Init：head = NULL · O(1)', 'new'), arr: { headNull: true, head: 'new', c: { cls: 'dim new' }, a: { cls: 'dim new' }, t: { cls: 'dim new' } } }) },
   // 五个操作收成一张对照表；第1屏的 O(n) 收进"顺序表 Insert、Delete"那一格
-  { beat: 57, html: F({ title: T4, kick: '链式存储与链表', ed: ['cat', 2, 'new'], txt: TABLE('new'), mem: { cells: LINKED, head: 'new', name: '内存 · 格子图' }, arr: { nodes: CAT3({ cls: ['new', 'new', 'new'] }), links: true, head: 'new' } }) },
+  { beat: 57, html: F2({ ed: ['cat', 2, 'new'], txt: TABLE('new'), arr: { head: 'new', c: { cls: 'new' }, a: { cls: 'new' }, t: { cls: 'new' } } }) },
 
   // ───────── 第5屏　练习1 ─────────
   { beat: 58, html: Q1({ cls: 'new' }) },
