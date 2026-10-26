@@ -466,3 +466,39 @@ export function cblanks(rows: string[][], fill: Record<number, number | [number,
   )
   return `<div class="c-steps ${o.cls ?? ''}" style="grid-template-columns:auto${' auto'.repeat(Math.max(...rows.map((r) => r.length - 1)))}">${html.join('')}</div>`
 }
+/**
+ * 字符带（3.7 起）：一个字符一格，共边排开；输入带、输出带都用它。chars 是每格的字。
+ * - head：读头在第几格下面（-1 是还没开始，等于格数是"读完"）；不给就没有读头
+ * - rd：前几格已经读过（变淡）；cls：每格另加的类（hl、off、new、slot 虚线空位）
+ * - under：[i, j] 第 i–j 格下面画一条下划线；box：[i, j, 标签] 第 i–j 格套虚线框，标签写在框上方
+ * - w、h：格子宽高（默认 26×30）
+ */
+export function ctape(chars: string[], o: { head?: number; rd?: number; cls?: string[]; under?: [number, number, string?]; box?: [number, number, string, string?]; w?: number; h?: number; tcls?: string } = {}) {
+  const w = o.w ?? 26, h = o.h ?? 30, pitch = w - 1
+  const cells = chars.map((c, i) => `<span class="tc ${i < (o.rd ?? 0) ? 'rd' : ''} ${o.cls?.[i] ?? ''}" style="width:${w}px;height:${h}px">${c}</span>`).join('')
+  const x = (i: number) => i * pitch
+  const under = o.under ? `<i class="tu ${o.under[2] ?? ''}" style="left:${x(o.under[0]) + 3}px;width:${x(o.under[1] + 1) - x(o.under[0]) - 5}px;top:${h + 1}px"></i>` : ''
+  const box = o.box ? `<i class="tb ${o.box[3] ?? ''}" style="left:${x(o.box[0]) - 3}px;width:${x(o.box[1] + 1) - x(o.box[0]) + 7}px;height:${h + 6}px"><em>${o.box[2]}</em></i>` : ''
+  const head = o.head === undefined ? '' : o.head >= chars.length
+    ? `<i class="th end" style="left:${x(chars.length) + 6}px;top:${h / 2 - 9}px">读完</i>`
+    : `<i class="th" style="left:${o.head < 0 ? -8 : x(o.head) + w / 2}px;top:${h + 6}px"></i>`
+  return `<div class="c-tape ${o.tcls ?? ''}">${cells}${under}${box}${head}</div>`
+}
+/**
+ * 竖栈（3.7 起）：items 从栈底到栈顶，栈顶在上，和书稿 StackFigure 同一个朝向。
+ * - slots：槽位数（默认 3），决定栈的高度；dashed：还没命名时画虚线（"放着"）；label：栈下面的名字
+ * - wall：第几个元素是墙（"("，画成一道粗横线，墙下面的元素变淡）；ring：第几个元素套框（正在比的栈顶）
+ * - cls：每个元素另加的类；notes：每个元素右边的小注；top：栈顶标记
+ */
+export function cstack(items: string[], o: { slots?: number; dashed?: boolean; label?: string; lcls?: string; wall?: number; ring?: number; cls?: string[]; notes?: (string | undefined)[]; top?: boolean; scls?: string } = {}) {
+  const n = o.slots ?? 3, H = n * 30 + 4
+  const y = (k: number) => H - 30 - k * 30
+  const els = items.map((s, k) => {
+    const below = o.wall !== undefined && k < o.wall ? 'below' : ''
+    const kind = k === o.wall ? 'wall' : ''
+    return `<span class="si ${kind} ${below} ${k === o.ring ? 'ring' : ''} ${o.cls?.[k] ?? ''}" style="top:${y(k)}px">${kind ? '<em>(</em>' : s}</span>` +
+      (o.notes?.[k] ? `<span class="sn" style="top:${y(k)}px">${o.notes[k]}</span>` : '')
+  }).join('')
+  const top = o.top && items.length ? `<span class="stp" style="top:${y(items.length - 1)}px">top</span>` : ''
+  return `<div class="c-stack ${o.dashed ? 'dashed' : ''} ${o.scls ?? ''}" style="height:${H}px">${els}${top}${o.label ? `<span class="sl ${o.lcls ?? ''}">${o.label}</span>` : ''}</div>`
+}
