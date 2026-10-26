@@ -11,7 +11,7 @@ import { computed } from 'vue'
  * capacity：画成数组（顺序栈）：画出 capacity 个格子和下标，出栈后格子里的旧值留着、变灰。
  * top：在右边画 top 箭头，指向下一个空格（top 等于元素个数）。只在 capacity 模式下有意义。
  * skip：去掉前几张小图，只画后面的（例如某一步只画这一步做完的样子）。
- * labels：自己写每张小图下面的说明，用 | 分开，和画出来的小图一一对应（skip 之后的）；一张里用 ~ 换行。给了 labels 就不再显示默认的 Push(S, 3)、x = 3。
+ * labels：自己写每张小图下面的说明，用 | 分开，和画出来的小图一一对应（skip 之后的）；一张里用 ~ 换行（可以换几行）。给了 labels 就不再显示默认的 Push(S, 3)、x = 3。
  * bare：不画进栈、出栈箭头（逐步小图默认不画，单张图默认画）。
  */
 const props = withDefaults(
@@ -27,6 +27,7 @@ interface Frame {
   value: string // 这一步涉及的元素
   caption: string
   note: string // 第二行说明，如 x = 3
+  more?: string[] // labels 里第三行以后的说明
   idx: number // 分步时这一步碰到的格子，没有为 -1
 }
 
@@ -93,9 +94,10 @@ const frames = computed<Frame[]>(() => {
   if (props.labels) {
     const ls = props.labels.split('|')
     shown.forEach((f, i) => {
-      const [a = '', b = ''] = (ls[i] ?? '').split('~')
+      const [a = '', b = '', ...rest] = (ls[i] ?? '').split('~')
       f.caption = a.trim()
       f.note = b.trim()
+      f.more = rest.map((s) => s.trim()).filter(Boolean)
     })
   }
   return shown
@@ -176,6 +178,7 @@ function label(f: Frame) {
       <figcaption v-if="f.caption">
         <span class="op">{{ f.caption }}</span>
         <span v-if="f.note" class="note">{{ f.note }}</span>
+        <span v-for="(m, j) in f.more" :key="j" class="note">{{ m }}</span>
       </figcaption>
     </figure>
   </div>
