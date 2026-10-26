@@ -26,13 +26,26 @@ function speakCode(s: string): string {
   const one: Record<string, string> = { '+': '加号', '-': '减号', '*': '乘号', '/': '除号', '(': '左括号', ')': '右括号' }
   if (one[s]) return one[s]
   if (/^[A-Za-z_]\w*$/.test(s) || !/[0-9+\-*/()]/.test(s)) return s
-  return [...s].filter((c) => c !== ' ').map((c) => (/\d/.test(c) ? DIG[Number(c)] : OPW[c] ?? c)).join(' ')
+  // 式子里的括号照口语念："(3+4)*2"念"括号 三 加 四，乘 二"：左括号念"括号"，右括号念成一个停顿
+  return [...s].filter((c) => c !== ' ').map((c) => (/\d/.test(c) ? DIG[Number(c)] : c === '(' ? '括号' : c === ')' ? '，' : OPW[c] ?? c)).join(' ').replace(/ ，( ，)*/g, '，').replace(/，$/, '')
 }
-export const say: Record<number, string> = Object.fromEntries(
-  parseScript(path.join(ROOT, 'docs/course/3-6.md')).screens.flatMap((s) => s.beats)
-    .filter((b) => b.text.includes('`') || b.text.includes('**')) // 加粗记号也不能送去合成
-    .map((b) => [b.n, b.text.replace(/`([^`]+)`/g, (_, s: string) => speakCode(s)).replace(/\*\*/g, '')]),
-)
+// 这几拍的式子画面上已经写出来了，括号一层层念出来又长又绕，送合成的文字单独写（字幕仍是原文）
+const SAY_FIX: Record<number, string> = {
+  34: '先找最先算的乘号。它的两个运算对象是4和2，圈起来。',
+  35: '再找加号。它左边是3，右边是刚圈好的四乘二，圈起来。',
+  36: '最后找减号。它左边是整个三加四乘二，右边是1，圈起来。',
+  44: '再做括号三加四，乘二。原来的括号已经管住了三加四，再给乘法加一对括号；',
+  45: '挪运算符，再去掉括号，得三 四 加 二 乘。',
+  114: '这样后缀式里不用空格分开，三四二乘加一减连着写就行。',
+}
+export const say: Record<number, string> = {
+  ...Object.fromEntries(
+    parseScript(path.join(ROOT, 'docs/course/3-6.md')).screens.flatMap((s) => s.beats)
+      .filter((b) => b.text.includes('`') || b.text.includes('**')) // 加粗记号也不能送去合成
+      .map((b) => [b.n, b.text.replace(/`([^`]+)`/g, (_, s: string) => speakCode(s)).replace(/\*\*/g, '')]),
+  ),
+  ...SAY_FIX,
+}
 
 const ok = '<b class="okm">✓</b>'
 const cap = (s: string, cls = '') => `<span class="c-cap ${cls}" style="white-space:nowrap">${s}</span>`
@@ -70,7 +83,7 @@ function PROG(o: ProgO = {}) {
       at(14, 34, ctape(IN1, { head: o.head, rd: Math.max(0, o.head ?? 0), cls: o.cls1, under: o.under })) +
       (o.note ? at(14, 84, o.note) : '') +
       (o.paren ? at(14, 124, ctape(IN3, { cls: o.pcls, box: o.pbox ? [1, 3, '先算这里', o.pbox] : undefined })) : '') +
-      (o.concl ? at(14, 172, `<div class="c-q ${o.concl}" style="font-size:15px">计算的顺序 ≠ 书写的顺序</div>`) : ''),
+      (o.concl !== undefined ? at(14, 172, `<div class="c-q ${o.concl}" style="font-size:15px">计算的顺序 ≠ 书写的顺序</div>`) : ''),
     o.cls ?? '', 'width:272px;height:212px;padding:0'))
 }
 const OPS1 = [1, 3, 5]
@@ -104,9 +117,9 @@ function READ(o: ReadO) {
     return at(14, 34 + 38 * k, ctape(r, { w: 24, h: 28, cls }))
   }).join('')
   return at(328, 86, card(at(14, 8, cap('读法')) + rows +
-    (o.check ? at(70, 34 + 38 * 3 + 6, `<span class="${o.check}">${cap(`= 3+4*2-1 ${ok}`)}</span>`) : '') +
-    (o.concl ? at(14, 188, `<div class="c-q ${o.concl}" style="font-size:14px">运算符出现的顺序 = 计算的顺序</div>`) : '') +
-    (o.to37 ? at(120, 8, `<span class="${o.to37}">${cap('怎么扫一遍就算出来 → 3.7')}</span>`) : ''),
+    (o.check !== undefined ? at(70, 34 + 38 * 3 + 6, `<span class="${o.check}">${cap(`= 3+4*2-1 ${ok}`)}</span>`) : '') +
+    (o.concl !== undefined ? at(14, 188, `<div class="c-q ${o.concl}" style="font-size:14px">运算符出现的顺序 = 计算的顺序</div>`) : '') +
+    (o.to37 !== undefined ? at(120, 8, `<span class="${o.to37}">${cap('怎么扫一遍就算出来 → 3.7')}</span>`) : ''),
     o.cls ?? '', 'width:272px;height:220px;padding:0'))
 }
 
@@ -118,7 +131,7 @@ const STEPS3: { rn: string; rs?: string }[] = [
 ]
 function GOAL(o: { note?: string; steps?: number; scls?: string; on?: number[]; cls?: string } = {}) {
   return at(40, 86, card('<div class="c-q" style="font-size:14px;line-height:21px">目标：给每个运算符找到它的两个运算对象</div>', o.cls ?? '', 'width:248px;height:64px;padding:10px 12px')) +
-    (o.note ? at(40, 158, `<span class="${o.note}">${cap('找到一个，就圈一对括号')}</span>`) : '') +
+    (o.note !== undefined ? at(40, 158, `<span class="${o.note}">${cap('找到一个，就圈一对括号')}</span>`) : '') +
     STEPS3.slice(0, o.steps ?? 0).map((s, k) => at(40, 182 + 50 * k,
       `<div class="c-li ${o.on?.includes(k) ? 'on' : ''} ${k === (o.steps ?? 0) - 1 ? o.scls ?? '' : ''}" style="width:248px"><span class="rn">${s.rn}</span>${s.rs ? `<span class="rs">${s.rs}</span>` : ''}</div>`)).join('')
 }
@@ -135,7 +148,7 @@ function DEMO(o: DemoO) {
   const body = o.body ?? (
     at(14, 24, ctape(E_STEPS[o.e ?? 0], { w: 16, h: 26, tcls: 'bare', cls: E_STEPS[o.e ?? 0].map((_, i) => (o.ehl?.includes(i) ? 'hl new' : '')) })) +
     MOVES.slice(0, o.moves ?? 0).map((m, k) => at(14, 66 + 28 * k, `<span class="${o.mcls ?? ''}">${mono(m)}　${cap(MOVE_TAG[k])}</span>`)).join('') +
-    (o.result ? at(14, 162, `<span class="${o.result}">${ctape(POST1, { w: 20, h: 28 })}</span>`) : ''))
+    (o.result !== undefined ? at(14, 162, `<span class="${o.result}">${ctape(POST1, { w: 20, h: 28 })}</span>`) : ''))
   return at(304, 86, card(body, o.cls ?? '', 'width:296px;height:264px;padding:0'))
 }
 // 第5屏左栏：人和程序的对照（第6屏起换成规定卡和列表）
@@ -149,7 +162,7 @@ const DEMO2 = (o: Demo2O) => DEMO({
     ((o.rows ?? 0) >= 1 ? at(14, 24, `<span class="${o.rows === 1 ? o.rcls ?? '' : ''}">${mono('((3+4)*2)')}</span>`) : '') +
     ((o.rows ?? 0) >= 2 ? at(14, 54, `<span class="${o.rows === 3 ? o.rcls ?? '' : ''}">${mono('((3 4)+ 2)*')}</span>`) : '') +
     ((o.rows ?? 0) >= 3 ? at(14, 84, `<span class="${o.rows === 3 ? o.rcls ?? '' : ''}">${ctape(POST3, { w: 20, h: 28 })}</span>`) : '') +
-    (o.check ? at(14, 124, `<span class="${o.check}">${cap(`+ 算 3 和 4 得 7，* 算 7 和 2 得 14　= (3+4)*2 ${ok}`)}</span>`) : '') +
+    (o.check !== undefined ? at(14, 124, `<span class="${o.check}">${cap(`+ 算 3 和 4 得 7，* 算 7 和 2 得 14　= (3+4)*2 ${ok}`)}</span>`) : '') +
     (o.prog === 'num' ? at(14, 168, `<span class="${o.pcls ?? ''}">${cap('人：先 *（1），再 +（2），最后 -（3）')}</span>`) + at(14, 192, ctape(IN1, { w: 22, h: 28, tcls: 'bare', cls: IN1.map((_, i) => (OPS1.includes(i) ? 'hl' : '')) })) : '') +
     (o.prog === 'read' ? at(14, 168, `<span class="${o.pcls ?? ''}">${cap('程序：读到 + 时，后面还没读到')}</span>`) + at(14, 192, ctape(IN1, { w: 22, h: 28, head: 1, cls: IN1.map((_, i) => (i > 1 ? 'rd' : '')) })) + at(180, 196, cap('？？', 'new')) : ''),
 })

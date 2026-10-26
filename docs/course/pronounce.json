@@ -72,5 +72,15 @@
  {"word": "数组"},
  {"word": "得到"},
  {"word": "放得下"},
- {"word": "乘"}
+ {"word": "乘"},
+ {"word": "又得", "py": "you4 dei3"},
+ {"word": "因为", "py": "yin1 wei4"},
+ {"word": "为了", "py": "wei4 le5"},
+ {"word": "处理", "py": "chu3 li3"},
+ {"word": "不行", "py": "bu4 xing2"},
+ {"word": "空格", "py": "kong4 ge2"},
+ {"word": "得1", "say": "得到1"},
+ {"word": "得7", "say": "得到7"},
+ {"word": "得8", "say": "得到8"},
+ {"word": "得左", "say": "得到左"}
 ]
