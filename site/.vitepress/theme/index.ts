@@ -15,6 +15,7 @@ import Lesson from './lesson/Lesson.vue'
 import Quiz from './lesson/Quiz.vue'
 import FillQuiz from './lesson/FillQuiz.vue'
 import QuizBlank from './lesson/QuizBlank.vue'
+import { remapQuizStorage } from './lesson/quiz-remap'
 import '../generated/font.css'
 import '../generated/brand.css'
 import './custom.css'
@@ -29,6 +30,8 @@ export default {
   extends: DefaultTheme,
   Layout,
   enhanceApp({ app }) {
+    // 书稿重排后把本地的练习题记录挪到新节号（只跑一次）；要在练习题读记录之前
+    if (typeof window !== 'undefined') remapQuizStorage()
     app.component('ChapterList', ChapterList)
     // 章首页：frontmatter.layout: chapter 时由默认主题的 VPContent 渲染课程地图
     app.component('chapter', ChapterMap)

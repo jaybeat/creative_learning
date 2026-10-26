@@ -23,7 +23,7 @@ async function main() {
   const si = args.indexOf('--shots')
   const shots = si >= 0 ? path.resolve(args[si + 1]) : ''
   const variant = ['clean', 'classic', 'sticker', 'desk', 'paper', 'sketch', 'board', 'board2', 'board2-xiaolai'].find((v) => args.includes('--' + v)) ?? 'clean'
-  const id = args.find((a, i) => !a.startsWith('--') && i !== si + 1) ?? '2-1'
+  const id = args.find((a, i) => !a.startsWith('--') && !(si >= 0 && i === si + 1)) ?? '2-1'
   const wall = variant === 'clean'
     ? path.join(ROOT, 'docs/course/storyboard', `${id}.clean.html`)
     : path.join(ROOT, 'docs/course/storyboard/backup', `${id}${variant === 'classic' ? '' : '.' + variant}.html`)

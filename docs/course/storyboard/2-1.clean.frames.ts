@@ -5,7 +5,7 @@
 // - 箭头只在讲"一个接一个"时画；没有先后的一袋字符用胶囊；
 // - 例题检查行改成行内胶囊，还没检查的先画虚线空位；错误变灰加划线。
 // 帧里不写色值，样式在 scripts/lib/clean.ts。
-import { at, cells, editor, card, tag, pause, Q, ckick, ctitle, cchip, clabel, cbadge, cslot, copt, cscreen, ccover, chist, cqpill } from './kit'
+import { at, cells, editor, card, tag, pause, Q, ckick, ctitle, cchip, clabel, cbadge, cslot, copt, cscreen, ccover, chist, cqpill, cquiz, cqbar, cqex } from './kit'
 import type { Frame } from '../../../scripts/lib/course'
 
 export { quizSource, say } from './2-1.frames'
@@ -23,7 +23,7 @@ const key = (k: string, cls = 'new') => `<div class="keys"><span class="key ${cl
 // ───────── 第0屏：封面屏和问题屏的固定部分 ─────────
 /** 封面标题（照 Gauth 封面：居中，从第一帧就在）；sub 为 true 时显示"一个想法"副标题（拍12 出现） */
 const COVER = (sub = false) =>
-  at(0, 12, ccover('第2章', '线性表：自己做一个单行编辑器', sub ? '一个想法：一行字，就是一个接一个排成一列的数据' : '', 'new'))
+  at(0, 12, ccover('第2章', '线性表：从一个单行编辑器说起', sub ? '一个想法：一行字，就是一个接一个排成一列的数据' : '', 'new'))
 /** 封面右边的"一行字"数据卡：(340,96) 260×160，内容用卡内坐标 */
 /** "一行字"数据卡：封面在右边 (340,96)；问题屏搬到左栏 (40,110)，外观不变，只是高一些 */
 const line = (inner: string, cls = '', x = 340, y = 96, h = 160) =>
@@ -40,9 +40,19 @@ const pills = (n: number, o: { fresh?: number; hi?: number } = {}) =>
  * 问题屏（照 Gauth"Two Best Sellers"）：左上标题和后面各屏同一位置；左栏是封面那张"一行字"卡，
  * 右栏是问题卡 (316,110) 284×200，卡头和问题胶囊在卡里依次出现。head 是卡头文字，body 是卡里的胶囊。
  */
-const B = (o: { cls?: string; head?: string; headCls?: string; body?: string } = {}) =>
-  at(40, 16, ckick('第2章 · 线性表')) + at(40, 44, ctitle('目标：编辑器1.0').replace('c-title', `c-title ${o.cls ?? ''}`)) +
-  at(40, 80, cap('用 C 亲手做出它的第一版', o.cls)) +
+const GOAL = ['判断', '操作', '用 C 放进内存']
+/** 目标小字：前 lit 个词亮，其余变淡；fresh 里的词是这一帧刚亮的 */
+const goal = (lit = 3, fresh: number[] = []) =>
+  GOAL.map((w, i) => {
+    const t = `${i ? ' · ' : ''}${w}`
+    if (i >= lit) return `<span class="dim">${t}</span>`
+    // 刚亮的词：播放器从 data-from 的透明度原地亮到 1（由淡变亮）
+    if (fresh.includes(i)) return `<span class="new" data-from=".4">${t}</span>`
+    return `<span>${t}</span>`
+  }).join('')
+const B = (o: { cls?: string; head?: string; headCls?: string; body?: string; lit?: number; fresh?: number[] } = {}) =>
+  at(40, 16, ckick('第2章 · 线性表')) + at(40, 44, ctitle('目标：学会线性表').replace('c-title', `c-title ${o.cls ?? ''}`)) +
+  at(40, 80, cap(goal(o.lit, o.fresh), o.cls)) +
   line(LINE_END, o.cls, 40, 110, 200) +
   at(316, 110, card((o.head ? `<div class="c-cap ${o.headCls ?? ''}" style="position:absolute;left:14px;top:10px">${o.head}</div>` : '') + (o.body ?? ''), o.cls, 'width:284px;height:200px;padding:0'))
 
@@ -118,19 +128,20 @@ const LM3 = ['✓', '✓', '✓']
 
 // ───────── 第3、4屏：练习 ─────────
 const OPTS1 = ['编辑器里的一行字 cat', '一周的七天', '按学号排好的花名册', '电脑里的文件夹目录', '城市的地铁线路网', '抽奖箱里的号码球', '全体正整数 1, 2, 3, …']
-const quiz1 = (cls = '') =>
+// 练习卡就是作答界面（cquiz）：暂停时播放器给选项、按钮条接上作答，解析写进解析位（盖住下面的"判断的办法"）
+const quiz1 = (cls = '') => cquiz(
   at(40, 16, ckick('练习 1 · 多选', cls)) +
   at(40, 44, `<div class="c-q ${cls}">把每样东西里的成员当作元素，判断能不能看成线性表。</div>`) +
   at(40, 88, `<div class="c-opts">${OPTS1.map((s, i) => copt('ABCDEFG'[i], s, cls)).join('')}</div>`) +
   at(40, 246, cap('判断的办法', cls)) +
   at(40, 268, cchip('是不是同一种东西', cls) + cchip('是不是一个接一个', cls) + cchip('个数是不是有限', cls)) +
-  at(196, 314, `<span class="c-btn">检查</span>`) + at(372, 314, `<span class="c-btn ghost">提示</span>`)
+  at(40, 234, cqex(72)) + at(40, 314, cqbar('choice')))
 const OPTS2 = ['不是，线性表要求元素按从小到大排好', '是，线性表只要求元素一个接一个，不要求按大小排', '不是，c、a、t 是三个不同的字符，不算同类型']
-const quiz2 = (cls = '') =>
+const quiz2 = (cls = '') => cquiz(
   at(40, 16, ckick('练习 2 · 单选', cls)) +
   at(40, 44, `<div class="c-q ${cls}">屏幕上的 cat 看成线性表是 (c, a, t)。这三个字符没有按字母顺序排。</div>`) +
   at(40, 92, `<div class="c-opts1">${OPTS2.map((s, i) => copt('ABC'[i], s, cls)).join('')}</div>`) +
-  at(196, 314, `<span class="c-btn">检查</span>`) + at(372, 314, `<span class="c-btn ghost">提示</span>`)
+  at(40, 204, cqex(100)) + at(40, 314, cqbar('choice')))
 
 // ───────── 第4屏后半、第5屏 ─────────
 const TIP = (cls = '') => at(40, 40, card(`<div class="c-cap">💡 提示</div><div class="c-q">有序 ≠ 排好序</div><div class="c-cap">有序：位置有先后　　不是：按大小排好</div>`, cls, 'width:360px;padding:12px 18px'))
@@ -169,11 +180,13 @@ export const frames: Frame[] = [
   },
 
   // 问题屏（拍13–20，照 Gauth"Two Best Sellers"）：左上小标签 + 宋体屏标题，和后面各屏同一位置；问题胶囊挂在下面
-  { beat: 13, html: B({ cls: 'new' }) },
-  { beat: 16, html: B({ head: '要做出它，先回答三个问题：', headCls: 'new' }) },
-  { beat: 17, html: B({ head: '要做出它，先回答三个问题：', body: pills(1, { fresh: 0 }) }) },
-  { beat: 18, html: B({ head: '要做出它，先回答三个问题：', body: pills(2, { fresh: 1 }) }) },
-  { beat: 19, html: B({ head: '要做出它，先回答三个问题：', body: pills(3, { fresh: 2 }) }) },
+  // 目标小字随旁白逐个亮：拍13"判断"，拍14"操作""放进内存"（spread 摊在这一拍的旁白里）
+  { beat: 13, html: B({ cls: 'new', lit: 1 }) },
+  { beat: 14, reveal: 'spread', html: B({ lit: 3, fresh: [1, 2] }) },
+  { beat: 16, html: B({ head: '要让它跑起来，先回答三个问题：', headCls: 'new' }) },
+  { beat: 17, html: B({ head: '要让它跑起来，先回答三个问题：', body: pills(1, { fresh: 0 }) }) },
+  { beat: 18, html: B({ head: '要让它跑起来，先回答三个问题：', body: pills(2, { fresh: 1 }) }) },
+  { beat: 19, html: B({ head: '要让它跑起来，先回答三个问题：', body: pills(3, { fresh: 2 }) }) },
   // 第 1 枚高亮（就是第1屏标题上方的"问题 1"小标签），另外两枚变淡
   { beat: 20, html: B({ head: '先记住这三个问题，从第一个开始', headCls: 'new', body: pills(3, { hi: 0 }) }) },
 

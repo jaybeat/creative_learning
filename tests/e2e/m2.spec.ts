@@ -15,10 +15,10 @@ async function openSearch(page: Page) {
 test.describe('搜索', () => {
   // 期望值对应改版后（20 节）的节号
   const cases: Array<[string, RegExp]> = [
-    ['头结点', /2\.13/],
+    ['头结点', /2\.14/],
     ['扩容', /2\.8/],
     // 第3章链栈的 Push 也讲 malloc
-    ['malloc', /2\.(8|9|1[0-2])|3\.4/],
+    ['malloc', /2\.(8|9|1[0-3])|3\.4/],
     ['值传递', /2\.5/],
   ]
   for (const [kw, expected] of cases) {
@@ -222,19 +222,20 @@ test.describe('字号调节', () => {
 
 test.describe('键盘翻节', () => {
   test('← → 翻节，焦点在搜索框时不触发', async ({ page }) => {
-    // 分页的节里 ← → 先翻页，所以从 2.8 的最后一页开始
-    await page.goto('ch02/2-8#p9')
+    // 分页的节里 ← → 先翻页，所以从 2.7 的最后一页开始；
+    // 用两个没有动画的节（有动画的节里 ← → 归播放器，2.9 起有动画）
+    await page.goto('ch02/2-7#p5')
     await page.keyboard.press('ArrowRight')
-    await expect(page).toHaveURL(/\/ch02\/2-9$/)
-    await expect(page.locator('.vp-doc h1')).toHaveText(/^2\.9/)
-    await page.keyboard.press('ArrowLeft')
     await expect(page).toHaveURL(/\/ch02\/2-8$/)
     await expect(page.locator('.vp-doc h1')).toHaveText(/^2\.8/)
+    await page.keyboard.press('ArrowLeft')
+    await expect(page).toHaveURL(/\/ch02\/2-7$/)
+    await expect(page.locator('.vp-doc h1')).toHaveText(/^2\.7/)
 
     await openSearch(page)
     await page.keyboard.press('ArrowRight')
     await page.waitForTimeout(300)
-    await expect(page).toHaveURL(/\/ch02\/2-8$/)
+    await expect(page).toHaveURL(/\/ch02\/2-7$/)
     await page.keyboard.press('Escape')
   })
 

@@ -24,6 +24,21 @@ export const TOKENS: Record<string, string> = {
   '--track': '#e9e5da', // 播放器进度条底轨（Gauth 的米色）
 }
 
+/** 代码卡（c-editor）的语法高亮色，照网站代码块的 github-light；只在用到代码卡的页面里输出 */
+export const CODE_TOKENS: Record<string, string> = {
+  '--shiki-foreground': '#24292e',
+  '--shiki-token-keyword': '#d73a49',
+  '--shiki-token-constant': '#005cc5',
+  '--shiki-token-string': '#032f62',
+  '--shiki-token-string-expression': '#032f62',
+  '--shiki-token-comment': '#6a737d',
+  '--shiki-token-function': '#6f42c1',
+  '--shiki-token-parameter': '#24292e',
+  '--shiki-token-punctuation': '#24292e',
+  '--shiki-token-link': '#032f62',
+  '--code-cur': '#f3f6fb', // 当前行底带
+}
+
 /** 深色：只给网站外壳用（网站有深色模式，课程画面没有）。同样是"字亮线淡、底深字浅的标签" */
 export const DARK_TOKENS: Record<string, string> = {
   '--page': '#1b1b1f',
