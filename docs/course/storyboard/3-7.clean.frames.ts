@@ -20,12 +20,15 @@ function speakCode(s: string): string {
   const q = s.match(/^'(.)'$/)
   if (q) return q[1] === '+' ? '加号' : OPW[q[1]] ?? q[1]
   if (s === 'GetTop') return 'get top'
+  // 单独一个运算符念"乘号""减号"（"乘号在等它的右边"），式子里的才念"乘""减"
+  const one: Record<string, string> = { '+': '加号', '-': '减号', '*': '乘号', '/': '除号', '(': '左括号', ')': '右括号' }
+  if (one[s]) return one[s]
   if (/^[A-Za-z_]\w*$/.test(s) || !/[0-9+\-*/()]/.test(s)) return s
   return [...s].filter((c) => c !== ' ').map((c) => (/\d/.test(c) ? DIG[Number(c)] : OPW[c] ?? c)).join(' ')
 }
 export const say: Record<number, string> = Object.fromEntries(
   parseScript(path.join(ROOT, 'docs/course/3-7.md')).screens.flatMap((s) => s.beats)
-    .filter((b) => b.text.includes('`'))
+    .filter((b) => b.text.includes('`') || b.text.includes('**')) // 加粗记号也不能送去合成
     .map((b) => [b.n, b.text.replace(/`([^`]+)`/g, (_, s: string) => speakCode(s)).replace(/\*\*/g, '')]),
 )
 
