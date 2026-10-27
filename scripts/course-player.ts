@@ -170,7 +170,8 @@ function timeline(cards: Card[], audio: Map<number, AudioInfo>, quizzes: Quiz[])
       const a = audio.get(b.n)!
       const last = bi === c.beats.length - 1
       const gap = !last ? GAP_BEAT : !next ? 1.2 : next.screen !== c.screen ? GAP_SCREEN : GAP_CARD
-      steps.push({ k: 'beat', n: b.n, text: b.text, audio: a.file, start: t, dur: a.dur, end: t + a.dur + gap, card: ci })
+      // 字幕用纯文字：双栏稿里的反引号、加粗记号不显示
+      steps.push({ k: 'beat', n: b.n, text: b.text.replace(/`|\*\*/g, ''), audio: a.file, start: t, dur: a.dur, end: t + a.dur + gap, card: ci })
       t += a.dur + gap
     })
   })
