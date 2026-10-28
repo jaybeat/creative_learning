@@ -35,3 +35,5 @@ docs/course/storyboard/backup/*
 !docs/course/storyboard/backup/2-1.flat.html
 # Gauth 参考截图（作者录屏截的，只在本地对比页里看）
 docs/course/storyboard/ref/
+# 作者放在仓库根目录的参考视频（录屏、Gauth 课程），只在本地看
+/*.mp4
