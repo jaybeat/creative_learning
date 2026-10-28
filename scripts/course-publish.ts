@@ -22,7 +22,8 @@ function main() {
   const m = page.match(/const DATA = (\{.*?\});<\/script>/s)
   if (!m) throw new Error('播放器页面里找不到 DATA')
   const data = JSON.parse(m[1]) as Data
-  const audio = [...new Set(data.steps.flatMap((s) => (s.audio ? [s.audio] : [])))]
+  // 地址后面的 ?v= 是内容指纹（防缓存），文件名不含它
+  const audio = [...new Set(data.steps.flatMap((s) => (s.audio ? [s.audio.replace(/\?.*$/, '')] : [])))]
 
   const out = path.join(ROOT, 'site/public/course', id)
   fs.rmSync(out, { recursive: true, force: true })

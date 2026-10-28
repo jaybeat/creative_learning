@@ -1,0 +1,6 @@
+/* 引导模块：指示框、框旁批注（scripts/lib/guide/runtime.js）。颜色取主题变量，括号里是没有主题时的兜底 */
+.player .fx-note{position:absolute;z-index:31;pointer-events:none;opacity:0;color:var(--note,#d4412b);font-weight:700;font-size:14px;line-height:20px;white-space:nowrap}
+.player .fx-arrow{position:absolute;left:0;top:0;width:640px;height:360px;z-index:31;pointer-events:none;opacity:0;overflow:visible}
+.player .fx-arrow path{fill:none;stroke:var(--note,#d4412b);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* 指示框：只框住目标，不压暗别处 */
+.player .fx-ring{position:absolute;pointer-events:none;z-index:30;opacity:0;border:2.5px solid var(--c1,#1971c2);border-radius:8px;box-shadow:0 0 0 3px color-mix(in srgb,var(--c1,#1971c2) 18%,transparent)}

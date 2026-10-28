@@ -2,6 +2,9 @@
 // 分镜墙（scripts/storyboard.ts）和动画播放器（scripts/course-player.ts）共用。
 import fs from 'node:fs'
 import path from 'node:path'
+// 念到哪，看到哪：cue 的类型和计算在引导模块里（scripts/lib/guide/），这里转出去，原来的引用不用改
+import { locateCues, type Cue } from './guide/cues'
+export { normSpeech, phraseTime, locateCues, type Cue, type CueAt, type CharTimes } from './guide/cues'
 
 export const ROOT = path.resolve(import.meta.dirname, '../..')
 export const CHARS_PER_SEC = 4.5
@@ -45,14 +48,15 @@ export function parseScript(file: string): { title: string; screens: Screen[] } 
  * - lead：这一拍开头先显示的暗场画面（"前半拍"），之后才是 html。
  */
 type FrameExtra = { pic?: string; dark?: boolean; lead?: string }
-export type Frame = ({ beat: number; html: string; reveal?: 'spread' } & FrameExtra) | ({ after: number; html: string } & Pick<FrameExtra, 'pic'>)
-export type Card = { id: string; screen: number; html: string; beats: Beat[]; pause?: string; reveal?: 'spread' } & FrameExtra
+// cut：换到这一帧时照旧交叉淡入、元素不滑动（闪回、换例子：滑过去会像倒放）；元素的名字照样能用来聚焦
+export type Frame = ({ beat: number; html: string; reveal?: 'spread'; cues?: Cue[]; cut?: boolean } & FrameExtra) | ({ after: number; html: string } & Pick<FrameExtra, 'pic'>)
+export type Card = { id: string; screen: number; html: string; beats: Beat[]; pause?: string; reveal?: 'spread'; cues?: Cue[]; cut?: boolean } & FrameExtra
 
 export function assemble(screens: Screen[], frames: Frame[]): { cards: Card[]; errors: string[] } {
   const errors: string[] = []
   const beatMap = new Map(screens.flatMap((s) => s.beats.map((b) => [b.n, b] as const)))
   const pauseAfter = new Map(screens.flatMap((s) => s.pauses.map((p) => [p.after, p.pic] as const)))
-  const starts = new Map<number, Frame & { beat: number }>()
+  const starts = new Map<number, Extract<Frame, { beat: number }>>()
   const pauses = new Map<number, { html: string; pic?: string }>()
   for (const f of frames) {
     if ('beat' in f) {
@@ -75,7 +79,7 @@ export function assemble(screens: Screen[], frames: Frame[]): { cards: Card[]; e
     for (const b of sc.beats) {
       const fr = starts.get(b.n)
       if (fr !== undefined) {
-        cur = { id: `${sc.n}-${String(++k).padStart(2, '0')}`, screen: sc.n, html: fr.html, beats: [b], reveal: fr.reveal, ...extra(fr) }
+        cur = { id: `${sc.n}-${String(++k).padStart(2, '0')}`, screen: sc.n, html: fr.html, beats: [b], reveal: fr.reveal, ...extra(fr), ...(fr.cues ? { cues: fr.cues } : {}), ...(fr.cut ? { cut: true } : {}) }
         cards.push(cur)
       } else if (!cur) {
         errors.push(`第${sc.n}屏第一拍（第${b.n}拍）没有帧`)
@@ -90,6 +94,8 @@ export function assemble(screens: Screen[], frames: Frame[]): { cards: Card[]; e
       }
     }
   }
+  // 帧的拍收齐以后（"同上"的拍已并进来）再找 cue 的短语
+  for (const c of cards) locateCues(c, errors)
   return { cards, errors }
 }
 

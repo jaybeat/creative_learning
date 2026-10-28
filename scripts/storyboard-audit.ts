@@ -16,7 +16,7 @@ import { ROOT } from './lib/course'
 const STAY = 0.6, KEEP = 0.3
 const PAGES: Record<string, string> = { clean: 'index.html', classic: 'backup/classic.html', sticker: 'backup/sticker.html', desk: 'backup/desk.html' }
 
-type Row = { id: string; keys: string[]; bad: string[]; est: string }
+type Row = { id: string; keys: string[]; bad: string[]; est: string; still: string[] }
 
 async function main() {
   const args = process.argv.slice(2)
@@ -53,23 +53,31 @@ async function main() {
     await document.fonts.ready
     return [...document.querySelectorAll<HTMLElement>('.sb')].map((sb) => {
       const id = sb.dataset.id!
-      const f = sb.querySelector<HTMLElement>('.thumb:not(.lead) .f')!
-      const fr = f.getBoundingClientRect()
+      const fs = [...sb.querySelectorAll<HTMLElement>('.thumb:not(.lead) .f')]
       const keys: string[] = [], bad: string[] = []
-      f.querySelectorAll<HTMLElement>('*').forEach((el) => {
+      // 第一张是帧本身（量版面），后面是拍内状态（cue 的小图，只查出画布和字号）
+      fs.forEach((f, fi) => { const fr = f.getBoundingClientRect(); f.querySelectorAll<HTMLElement>('*').forEach((el) => {
         const cs = getComputedStyle(el)
         if (cs.display === 'none' || cs.visibility === 'hidden' || el.closest('.pause')) return
         const r = el.getBoundingClientRect()
         if (!r.width) return
         const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent!.trim()).join('')
         const cls = String(el.getAttribute('class') ?? '').replace(/\b(new|on|hl|dim|off)\b/g, '').replace(/\s+/g, ' ').trim()
-        if (own || /\b(cell|ed|card|c-row|c-li|c-panel|qc|c-qp|inp|c-scr)\b/.test(cls))
+        if (fi === 0 && (own || /\b(cell|ed|card|c-row|c-li|c-panel|qc|c-qp|inp|c-scr)\b/.test(cls)))
           keys.push(`${own}|${cls}|${Math.round((r.left - fr.left) / 8)}|${Math.round((r.top - fr.top) / 8)}`)
         const short = el.textContent!.trim().slice(0, 12)
         if (own && parseFloat(cs.fontSize) < 12) bad.push(`字号 ${cs.fontSize} "${short}"`)
-        if (r.right > fr.right + 0.5 || r.bottom > fr.bottom + 0.5 || r.left < fr.left - 0.5 || r.top < fr.top - 0.5) bad.push(`出画布 .${cls} "${short}"`)
+        if (r.right > fr.right + 0.5 || r.bottom > fr.bottom + 0.5 || r.left < fr.left - 0.5 || r.top < fr.top - 0.5) bad.push(`出画布${fi ? `（拍内状态 ${fi}）` : ''} .${cls} "${short}"`)
+      }) })
+      // 聚焦的目标要在帧或拍内状态里找得到
+      sb.querySelectorAll<HTMLElement>('.cue[data-focus]').forEach((q) => {
+        for (const k of q.dataset.focus!.split(',').map((x) => x.trim()))
+          if (!fs.some((f) => f.querySelector(`[data-k="${k}"]`))) bad.push(`聚焦的元素 ${k} 不存在`)
       })
-      return { id, keys, bad, est: sb.querySelector('.dur')?.textContent ?? '' }
+      const still = [...sb.querySelectorAll<HTMLElement>('li[data-still]')]
+        .filter((li) => Number(li.dataset.still) / 4.5 >= 4)
+        .map((li) => `${li.querySelector('.bn')!.textContent}（≈${(Number(li.dataset.still) / 4.5).toFixed(0)}秒）`)
+      return { id, keys, bad, est: sb.querySelector('.dur')?.textContent ?? '', still }
     })
   })
 
@@ -111,7 +119,10 @@ async function main() {
   console.log('\n每屏：')
   for (const [sc, s] of screens)
     console.log(`  第${sc}屏 ${s.frames} 帧，${s.cuts.length + 1} 种版面${s.cuts.length ? '，换版面：' + s.cuts.join(' ') : ''}`)
-  console.log(problems.length ? `\n⚠ ${problems.length} 处出画布或字号过小` : '\n没有出画布的元素，没有小于 12px 的字')
+  console.log(problems.length ? `\n⚠ ${problems.length} 处出画布、字号过小或聚焦目标不存在` : '\n没有出画布的元素，没有小于 12px 的字')
+  // 静止拍：念 4 秒以上，画面上既没有新元素也没有 cue（见 visual-spec"念到哪，看到哪"）
+  const still = rows.flatMap((r) => r.still.map((s) => `${r.id}:${s}`))
+  if (still.length) console.log(`\n静止拍 ${still.length} 个（帧:第几拍）：${still.join(' ')}`)
 
   if (shots) {
     fs.mkdirSync(shots, { recursive: true })

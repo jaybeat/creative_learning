@@ -7,10 +7,12 @@ const NAME = '005_ch02_renumber.sql'
 const all = readMigrations()
 let db: Awaited<ReturnType<typeof pgliteDb>>
 let db7: Awaited<ReturnType<typeof pgliteDb>>
+let db8: Awaited<ReturnType<typeof pgliteDb>>
 
 afterAll(async () => {
   await db?.close()
   await db7?.close()
+  await db8?.close()
 })
 
 test('005：评论跟着第2章的改版挪到新的节和页', async () => {
@@ -180,4 +182,70 @@ test('007：链表部分改结构，评论跟着内容挪到新的节和页', as
   expect(at('双向')).toEqual(['/ch02/2-17', '2-17-p5', '2.17 双向链表'])
   expect(at('第1章不动')).toEqual(['/ch01/1-2', '1-2-1', '1.2 第1章'])
   expect(at('题目页不动')).toEqual(['/ch02/ex-1', null, '练习'])
+}, 30_000)
+
+const NAME8 = '008_ch03_postfix_reorder.sql'
+
+test('008：第3章表达式两节重排，求值页挪到 3.7，转换页挪到 3.6', async () => {
+  db8 = await pgliteDb()
+  await migrate(db8, all.filter((m) => m.name < NAME8))
+  const [{ id: uid }] = await db8.query<{ id: string }>(`INSERT INTO users (email) VALUES ('a@e.test') RETURNING id`)
+
+  const T6 = '3.6 栈的应用：后缀表达式求值', T7 = '3.7 栈的应用：中缀表达式转后缀表达式'
+  const rows: [string, string, string | null, string][] = [
+    ['/ch03/3-6', T6, '3-6-p1', '算的顺序'],
+    ['/ch03/3-6', T6, '3-6-p2', '逆波兰'],
+    ['/ch03/3-6', T6, '3-6-p3', '最近放下'],
+    ['/ch03/3-6', T6, '3-6-p4', '右边的数'],
+    ['/ch03/3-6', T6, '3-6-p5', 'Eval'],
+    ['/ch03/3-6', T6, '3-6-p6', '求值练习'],
+    ['/ch03/3-6', T6, '3-6-p7', '写成后缀式'],
+    ['/ch03/3-6', T6, null, '本节问题'],
+    ['/ch03/3-7', T7, '3-7-p1', '数字顺序'],
+    ['/ch03/3-7', T7, '3-7-p2', '读到减号'],
+    ['/ch03/3-7', T7, '3-7-p3', '墙'],
+    ['/ch03/3-7', T7, '3-7-p4', 'ToPostfix'],
+    ['/ch03/3-7', T7, '3-7-p5', '栈里是什么'],
+    ['/ch03/3-7', T7, '3-7-p6', '哪个是后缀式'],
+    ['/ch03/3-7', T7, null, '转换本节问题'],
+    ['/ch03/3-5', '3.5 栈的应用：括号匹配', '3-5-p2', '3.5不动'],
+    ['/ch03/3-8', '3.8 递归', '3-8-p1', '3.8不动'],
+  ]
+  for (const [page, title, heading, quote] of rows) {
+    await db8.query('INSERT INTO comments (user_id, page_path, page_title, heading_id, quote_exact, body) VALUES ($1, $2, $3, $4, $5, $6)', [uid, page, title, heading, quote, 'x'])
+  }
+  // 原 3.6 求值页上的评论挪到 3.7，它的回复也要跟过去
+  const [{ id: pe }] = await db8.query<{ id: string }>(`SELECT id FROM comments WHERE quote_exact = 'Eval'`)
+  await db8.query('INSERT INTO comments (user_id, parent_id, page_path, page_title, body) VALUES ($1, $2, $3, $4, $5)', [uid, pe, '/ch03/3-6', T6, '回复Eval'])
+
+  await migrate(db8, all)
+  const got = await db8.query<{ quote_exact: string | null; body: string; page_path: string; page_title: string; heading_id: string | null }>(
+    'SELECT quote_exact, body, page_path, page_title, heading_id FROM comments',
+  )
+  const at = (q: string) => {
+    const r = got.find((g) => g.quote_exact === q)!
+    return [r.page_path, r.heading_id, r.page_title]
+  }
+  const N6 = '3.6 栈的应用：中缀表达式转后缀表达式', N7 = '3.7 栈的应用：后缀表达式求值'
+  expect(at('算的顺序')).toEqual(['/ch03/3-6', '3-6-p1', N6])
+  expect(at('逆波兰')).toEqual(['/ch03/3-6', '3-6-p2', N6])
+  expect(at('最近放下')).toEqual(['/ch03/3-7', '3-7-p1', N7])
+  expect(at('右边的数')).toEqual(['/ch03/3-7', '3-7-p2', N7])
+  expect(at('Eval')).toEqual(['/ch03/3-7', '3-7-p3', N7])
+  expect(at('求值练习')).toEqual(['/ch03/3-7', '3-7-p5', N7])
+  expect(at('写成后缀式')).toEqual(['/ch03/3-6', '3-6-p4', N6])
+  expect(at('本节问题')).toEqual(['/ch03/3-6', null, N6])
+  // 原 3.7 → 3.6，没有被当成原 3.6 再挪回 3.7
+  expect(at('数字顺序')).toEqual(['/ch03/3-6', '3-6-p5', N6])
+  expect(at('读到减号')).toEqual(['/ch03/3-6', '3-6-p5', N6])
+  expect(at('墙')).toEqual(['/ch03/3-6', '3-6-p6', N6])
+  expect(at('ToPostfix')).toEqual(['/ch03/3-6', '3-6-p7', N6])
+  expect(at('栈里是什么')).toEqual(['/ch03/3-6', '3-6-p8', N6])
+  expect(at('哪个是后缀式')).toEqual(['/ch03/3-6', '3-6-p4', N6])
+  expect(at('转换本节问题')).toEqual(['/ch03/3-6', null, N6])
+  const r = got.find((g) => g.body === '回复Eval')!
+  expect([r.page_path, r.page_title]).toEqual(['/ch03/3-7', N7])
+  expect(at('3.5不动')).toEqual(['/ch03/3-5', '3-5-p2', '3.5 栈的应用：括号匹配'])
+  expect(at('3.8不动')).toEqual(['/ch03/3-8', '3-8-p1', '3.8 递归'])
+  expect(got.some((g) => g.page_path === '/ch03/_3-7')).toBe(false)
 }, 30_000)

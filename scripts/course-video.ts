@@ -66,7 +66,7 @@ function buildAudio(playerDir: string, steps: Step[], total: number, outFile: st
   const pcm = Buffer.alloc(len * 2)
   for (const s of steps) {
     if (s.k !== 'beat') continue
-    const r = spawnSync('ffmpeg', ['-v', 'error', '-i', path.join(playerDir, s.audio), '-f', 's16le', '-ac', '1', '-ar', String(SAMPLE_RATE), '-'], { maxBuffer: 64 << 20 })
+    const r = spawnSync('ffmpeg', ['-v', 'error', '-i', path.join(playerDir, s.audio.replace(/\?.*$/, '')), '-f', 's16le', '-ac', '1', '-ar', String(SAMPLE_RATE), '-'], { maxBuffer: 64 << 20 })
     if (r.status !== 0) throw new Error(`解码失败：${s.audio}`)
     const at = Math.round(s.start * SAMPLE_RATE) * 2
     r.stdout.copy(pcm, at, 0, Math.min(r.stdout.length, pcm.length - at))

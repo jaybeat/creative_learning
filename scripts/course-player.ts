@@ -20,6 +20,8 @@ import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 import { parseQuizzes, type Quiz } from './lib/course-quiz'
 import { ROOT, parseScript, assemble, FRAME_CSS, type Beat, type Card, type Frame, type Screen } from './lib/course'
+import { cueTimeline } from './lib/guide/cues'
+import { charTimes, type Said } from './lib/guide/timing'
 import { stickerCss } from './lib/sticker'
 import { deskCss } from './lib/desk'
 import { cleanCss, CLEAN_SHELL_CSS } from './lib/clean'
@@ -59,7 +61,9 @@ function pronounce(text: string): { spoken: string; uncovered: string[] } {
         if (ENGINE !== 'fish' || !p.py) return w
         const py = p.py.split(/\s+/)
         if (py.length !== w.length) throw new Error(`pronounce.json：「${w}」的拼音个数和字数不一致`)
-        return py.map((s) => `<|phoneme_start|>${s}<|phoneme_end|>`).join('')
+        // 轻声（拼音以 5 结尾）不加标签：fish 不认轻声标注，"的数"标成 de5 shu4 时"的"被念成了 dì。
+        // 不标注的"的""着""了"模型按语境念轻声，词条里只有别的字真正被钉住
+        return py.map((s, i) => (s.endsWith('5') ? w[i] : `<|phoneme_start|>${s}<|phoneme_end|>`)).join('')
       })
     : text
   const uncovered = [...text].flatMap((c, i) => (POLY.includes(c) && !covered.has(i) ? [text.slice(Math.max(0, i - 1), i + 2)] : []))
@@ -133,8 +137,24 @@ function synthesize(id: string, screens: Screen[], say: Record<number, string>, 
     fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 1))
   }
 
+  // 转写比对：这次新合成的拍（COURSE_CHECK=all 时全部拍），报告被截断或念得差太多的拍，只提醒
+  const toCheck = process.env.COURSE_CHECK === 'all'
+    ? beats.map((b) => ({ n: b.n, text: say[b.n] ?? b.text, mp3: path.join(audioDir, `b${String(b.n).padStart(3, '0')}.mp3`) }))
+    : jobs.flatMap((j) => j.beats.map((b) => ({ n: b.n, text: b.text, mp3: b.out })))
+  if (toCheck.length && process.env.COURSE_CHECK !== '0') {
+    const checkFile = path.join(os.tmpdir(), `course-check-${id}.json`)
+    fs.writeFileSync(checkFile, JSON.stringify(toCheck))
+    spawnSync('python', ['-P', path.join(ROOT, 'scripts/course_tts.py'), '--check', checkFile], { stdio: 'inherit' })
+  }
+
+  // 地址带上文件内容的指纹（?v=）：重新合成后文件名不变，浏览器和 CDN 会接着用缓存里的旧录音，
+  // 旧录音比新的长时，播放器按新时长切到下一拍，听起来就是半句被截断
   const out = new Map<number, AudioInfo>()
-  for (const b of beats) out.set(b.n, { file: `audio/b${String(b.n).padStart(3, '0')}.mp3`, dur: manifest[b.n].dur })
+  for (const b of beats) {
+    const name = `b${String(b.n).padStart(3, '0')}.mp3`
+    const v = crypto.createHash('sha1').update(fs.readFileSync(path.join(audioDir, name))).digest('hex').slice(0, 10)
+    out.set(b.n, { file: `audio/${name}?v=${v}`, dur: manifest[b.n].dur })
+  }
   return out
 }
 
@@ -170,7 +190,8 @@ function timeline(cards: Card[], audio: Map<number, AudioInfo>, quizzes: Quiz[])
       const a = audio.get(b.n)!
       const last = bi === c.beats.length - 1
       const gap = !last ? GAP_BEAT : !next ? 1.2 : next.screen !== c.screen ? GAP_SCREEN : GAP_CARD
-      steps.push({ k: 'beat', n: b.n, text: b.text, audio: a.file, start: t, dur: a.dur, end: t + a.dur + gap, card: ci })
+      // 字幕用纯文字：双栏稿里的反引号、加粗记号不显示
+      steps.push({ k: 'beat', n: b.n, text: b.text.replace(/`|\*\*/g, ''), audio: a.file, start: t, dur: a.dur, end: t + a.dur + gap, card: ci })
       t += a.dur + gap
     })
   })
@@ -219,7 +240,8 @@ function wireQuizzes(cards: Card[], quizzes: Quiz[]): Card[] {
 
 // ───────── 页面 ─────────
 
-function render(id: string, title: string, screens: Screen[], cards: Card[], tl: ReturnType<typeof timeline>, quizzes: Quiz[], style: Style, themeCss: string) {
+function render(id: string, title: string, screens: Screen[], cards: Card[], tl: ReturnType<typeof timeline>, quizzes: Quiz[], style: Style, themeCss: string, said: Map<number, Said>) {
+  const beatStep = new Map(tl.steps.flatMap((s) => (s.k === 'beat' ? [[s.n, s] as const] : [])))
   const data = {
     title,
     total: tl.total,
@@ -229,9 +251,12 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
       html: c.html,
       screen: c.screen,
       reveal: c.reveal ?? null,
+      ...(c.cut ? { cut: true } : {}),
       start: tl.cardStart[i],
       // 这一帧旁白（不含停顿）的总长：spread 模式把新元素摊在这段时间里
       speak: tl.steps.filter((s) => s.card === i && s.k === 'beat').reduce((a, s) => a + (s as { dur: number }).dur, 0),
+      // 拍内动作（帧里写了 cues 才有）：后续画面状态和聚焦区间
+      ...(c.cues?.length ? (({ states, focus }) => ({ states: states.slice(1), focus }))(cueTimeline(c, tl.cardStart[i], tl.cardStart[i + 1] ?? tl.total, beatStep, said)) : {}),
     })),
     screens: screens.map((s) => {
       const idx = cards.map((c, i) => (c.screen === s.n ? i : -1)).filter((i) => i >= 0)
@@ -247,7 +272,7 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
   return `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${style === 'clean' ? '' : '<base href="../">'}
 <title>${title}</title>
-<style>${FRAME_CSS}${PLAYER_CSS}${style === 'classic' ? '' : themeCss + SHELL_CSS}${style === 'clean' ? CLEAN_SHELL_CSS : ''}</style></head>
+<style>${FRAME_CSS}${PLAYER_CSS}${GUIDE_CSS}${style === 'classic' ? '' : themeCss + SHELL_CSS}${style === 'clean' ? CLEAN_SHELL_CSS : ''}</style></head>
 <body class="player${style === 'classic' ? '' : ' themed st-' + style}${style === 'clean' ? ' th-clean' : ''}">
 <!-- 由 docs/course/${id}.md 和 docs/course/storyboard/${id}${STYLES.find((s) => s.style === style)!.frames} 生成，不要手改本文件。配音：${VOICE}。 -->
 <main>
@@ -280,7 +305,7 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
   </div>
 </main>
 <script>const DATA = ${json};</script>
-<script>${PLAYER_JS}</script>
+<script>${GUIDE_JS}${PLAYER_JS}</script>
 </body></html>
 `
 }
@@ -459,6 +484,11 @@ body.st-sticker{--sf:"StickerSans","Microsoft YaHei",sans-serif;--tf:"StickerSan
 .themed .think.ans{background:var(--acc-soft);color:var(--acc-line)}
 `
 
+// 引导模块（念到哪，看到哪）：浏览器代码和样式在 scripts/lib/guide/，内联进页面
+const GUIDE_DIR = path.join(ROOT, 'scripts/lib/guide')
+const GUIDE_JS = fs.readFileSync(path.join(GUIDE_DIR, 'runtime.js'), 'utf8').replace(/^export /gm, '')
+const GUIDE_CSS = fs.readFileSync(path.join(GUIDE_DIR, 'guide.css'), 'utf8')
+
 // 浏览器端：画面只由 t 决定（render），播放时 t 跟着音频走（tick），导出时用 __seek(t)。
 const PLAYER_JS = String.raw`
 const FADE = 0.3, POP = 0.45
@@ -520,21 +550,9 @@ DATA.screens.forEach((s) => {
 let scrIdx = 0
 $('next').onclick = () => { const s = DATA.screens[scrIdx + 1]; if (s) goScreen(s) }
 
-// —— 画面层：每帧一个 .f，只在第一次用到时创建 ——
-const layers = new Map()
-function layer(ci) {
-  if (layers.has(ci)) return layers.get(ci)
-  const c = DATA.cards[ci]
-  const el = document.createElement('div'); el.className = 'f'; el.innerHTML = c.html; el.style.display = 'none'
-  stage.appendChild(el)
-  // 按拍填的空位（data-beat）不跟着帧一起出现，到那一拍才淡入；分镜墙上它们也带 new，这里排除
-  const items = [...el.querySelectorAll('.new:not([data-beat])')]
-  const span = c.reveal === 'spread' ? Math.max(0.6, c.speak * 0.85) : Math.min(0.6, 0.12 * items.length)
-  const fills = [...el.querySelectorAll('[data-beat]')].map((node) => ({ node, at: beatStart.get(Number(node.dataset.beat)) ?? 0 }))
-  const L = { el, items: items.map((node, i) => ({ node, at: items.length > 1 ? (span * i) / items.length : 0 })), fills }
-  layers.set(ci, L); return L
-}
-const ease = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : 1 - Math.pow(1 - x, 3))
+// —— 画面层、拍内状态、滑动、指示框、批注：引导模块（scripts/lib/guide/runtime.js，生成页面时内联在上面）——
+const guide = createGuide({ stage, cards: DATA.cards, beatStart, FADE, POP, BLANK_FADE })
+const layer = guide.layer
 
 function stepAt(time) {
   let lo = 0, hi = DATA.steps.length - 1
@@ -543,30 +561,9 @@ function stepAt(time) {
 }
 
 // —— 由时间算画面 ——
-let shown = []
 function render(time) {
-  const sig = []
-  const si = stepAt(time), step = DATA.steps[si], ci = step.card, local = time - DATA.cards[ci].start
-  // 练习暂停时时钟停在暂停帧的第一刻：它不做淡入，直接显示（卡上作答就在这一帧上，淡入会停在全透明）
-  const fade = ci > 0 && step.k !== 'pause'
-  const vis = [ci]; if (fade && local < FADE) vis.push(ci - 1)
-  for (const k of shown) if (!vis.includes(k)) layers.get(k).el.style.display = 'none'
-  shown = vis
-  const cur = layer(ci)
-  cur.el.style.display = ''; cur.el.style.opacity = fade ? String(ease(local / FADE)) : '1'; cur.el.style.zIndex = '2'
-  for (const it of cur.items) {
-    const e = ease((local - it.at) / POP)
-    // data-from：从这个透明度亮起来，原地变亮不上移（"由淡变亮"）；没有就从 0 淡入加上移
-    const from = parseFloat(it.node.dataset.from ?? '0')
-    sig.push(e.toFixed(3)); it.node.style.opacity = String(from + (1 - from) * e)
-    it.node.style.translate = e < 1 && !it.node.dataset.from ? '0 ' + ((1 - e) * 8).toFixed(1) + 'px' : ''
-  }
-  for (const it of cur.fills) {
-    const e = Math.max(0, Math.min(1, (time - it.at) / BLANK_FADE))
-    sig.push('b' + e.toFixed(3)); it.node.style.opacity = String(e)
-  }
-  sig.unshift(ci, cur.el.style.opacity)
-  if (vis.length > 1) { const p = layer(ci - 1); sig.push('p'); p.el.style.display = ''; p.el.style.opacity = String(1 - ease(local / FADE)); p.el.style.zIndex = '1' }
+  const si = stepAt(time), step = DATA.steps[si], ci = step.card
+  const sig = guide.frame(time, ci, step)
 
   // 练习题
   const q = step.k === 'pause' ? step.quiz : -1
@@ -938,18 +935,22 @@ async function main() {
 
   const audio = synthesize(id, screens, mod.say ?? {}, skipTts)
   const tl = timeline(cards, audio, quizzes)
+  // cue 写在质感版帧里
+  const said = charTimes(id, pages.find((p) => p.style === 'clean')?.cards ?? cards, mod.say ?? {}, audio)
   const outDir = path.join(ROOT, 'docs/course/player', id)
   // 页面上除了画面还要显示的字：字幕、练习题、按钮，都要进主题的字体子集
   const strip = (h: string) => h.replace(/<[^>]*>/g, '')
   const more = screens.flatMap((s) => s.beats.map((b) => b.text)).join('') + title + screens.map((s) => s.name).join('') +
     quizzes.map((q) => strip(q.stem + q.explain) + (q.kind === 'fill' ? q.options.join('') : q.options.map((o) => strip(o.html + o.why)).join(''))).join('') +
     (hasFill ? '填空重做正确答案已填好还不对有个空填错了' : '') +
+    pages.flatMap((p) => p.cards.flatMap((c) => (c.cues ?? []).map((q) => q.note ?? ''))).join('') +
     '第屏下一›▾全退出0123456789:/练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕读文字问AI退出色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
   for (const p of pages) {
-    const htmls = p.cards.map((c) => c.html)
+    // 拍内状态里的字也要进字体子集
+    const htmls = p.cards.flatMap((c) => [c.html, ...(c.cues ?? []).flatMap((q) => q.steps ?? [])])
     const themeCss = p.style === 'desk' ? (await deskCss(htmls, more)).css : p.style === 'sticker' ? (await stickerCss(htmls, DEFAULT_PALETTE, more)).css : p.style === 'clean' ? (await cleanCss(htmls, more, { blanks: hasFill })).css : ''
     fs.mkdirSync(path.dirname(path.join(outDir, p.page)), { recursive: true })
-    fs.writeFileSync(path.join(outDir, p.page), render(id, title, screens, p.cards, tl, quizzes, p.style, themeCss))
+    fs.writeFileSync(path.join(outDir, p.page), render(id, title, screens, p.cards, tl, quizzes, p.style, themeCss, said))
   }
   const speak = tl.steps.reduce((a, s) => a + (s.k === 'beat' ? s.dur : 0), 0)
   console.log(

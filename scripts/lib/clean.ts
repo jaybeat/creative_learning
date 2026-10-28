@@ -46,7 +46,7 @@ ${face('CleanSerif', serif, '200 900')}
 ${face('CleanSans', sans, '100 900')}
 ${face('CleanMono', mono)}
 .th-clean{${Object.entries(TOKENS).map(([k, v]) => `${k}:${v}`).join(';')}}
-${CLEAN_CSS}${o.blanks || htmls.some((h) => h.includes('c-blank')) ? BLANK_CSS : ''}${htmls.some((h) => h.includes('c-editor')) ? EDITOR_CSS : ''}${htmls.some((h) => h.includes('data-quiz')) ? QUIZ_CSS : ''}`
+${CLEAN_CSS}${o.blanks || htmls.some((h) => h.includes('c-blank')) ? BLANK_CSS : ''}${htmls.some((h) => h.includes('c-editor')) ? EDITOR_CSS : ''}${htmls.some((h) => h.includes('data-quiz')) ? QUIZ_CSS : ''}${htmls.some((h) => h.includes('c-tape') || h.includes('c-stack')) ? STACK_CSS : ''}`
   const kb = (b: Uint8Array) => (b.length / 1024).toFixed(0)
   return { css, info: `思源宋体 ${kb(serif)} KB + 思源黑体 ${kb(sans)} KB + 更纱 ${kb(mono)} KB（${[...chars].length} 字）` }
 }
@@ -269,6 +269,35 @@ ${C} .ce-ln.cur{background:var(--code-cur)}
 ${C} .ce-ln.cur code::after{content:"";display:inline-block;width:1.5px;height:15px;margin-left:1px;vertical-align:-3px;background:var(--caret)}
 ${C} .ce-ln.fold code{color:var(--shiki-token-comment)}
 ${C} .ce-dots{display:inline-block;margin-left:6px;padding:0 5px;line-height:14px;border:1px solid var(--line);border-radius:4px;font-size:12px;color:var(--faint)}
+`
+
+/** 字符带和竖栈（kit 的 ctape、cstack，3.7 起）：读头用编辑器光标色；读过的格子变淡；错的变灰加划线 */
+const STACK_CSS = `
+/* —— 字符带、竖栈 —— */
+${C} .c-tape{position:relative;display:flex;font-family:${MONO}}
+${C} .c-tape .tc{flex:none;display:flex;align-items:center;justify-content:center;margin-left:-1px;border:1px solid var(--line-cell);background:var(--paper);font-size:16px;color:var(--ink-strong)}
+${C} .c-tape .tc:first-child{margin-left:0;border-radius:6px 0 0 6px}
+${C} .c-tape .tc:last-of-type{border-radius:0 6px 6px 0}
+${C} .c-tape .tc.rd{color:var(--faint)}
+${C} .c-tape .tc.slot{border-style:dashed;border-color:var(--dash);color:var(--faint)}
+${C} .c-tape .tc.off{color:var(--off);text-decoration:line-through}
+${C} .c-tape.bare .tc{border-color:transparent;background:none}
+${C} .c-tape .tu{position:absolute;height:0;border-top:2px solid var(--c1-line)}
+${C} .c-tape .tb{position:absolute;top:-3px;border:1px dashed var(--faint);border-radius:7px}
+${C} .c-tape .tb em{position:absolute;left:0;bottom:100%;margin-bottom:1px;font-style:normal;font-family:${SANS};font-size:12px;color:var(--mute);white-space:nowrap}
+${C} .c-tape .th{position:absolute;width:0;height:0;margin-left:-5px;border:5px solid transparent;border-top:0;border-bottom:7px solid var(--caret)}
+${C} .c-tape .th.end{width:auto;height:auto;margin:0;border:0;padding:0 6px;border-radius:999px;background:var(--c1-soft);color:var(--caret);font-family:${SANS};font-size:12px;line-height:18px;white-space:nowrap}
+${C} .c-stack{position:relative;width:46px;border:1.5px solid var(--line-cell);border-top:0;border-radius:0 0 7px 7px}
+${C} .c-stack.dashed{border-style:dashed;border-color:var(--dash)}
+${C} .c-stack .si{position:absolute;left:4px;right:4px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line-cell);border-radius:5px;background:var(--paper);font-family:${MONO};font-size:16px;color:var(--ink-strong)}
+${C} .c-stack .si.below{opacity:.35}
+${C} .c-stack .si.ring{box-shadow:0 0 0 2px var(--c1-line)}
+${C} .c-stack .si.off{color:var(--off);text-decoration:line-through}
+${C} .c-stack .si.wall{left:-6px;right:-6px;border:0;border-top:3px solid var(--ink);border-radius:0;background:none;align-items:flex-start;justify-content:flex-end;height:16px}
+${C} .c-stack .si.wall em{font-style:normal;font-size:12px;line-height:14px;color:var(--mute);margin-right:-12px}
+${C} .c-stack .sn{position:absolute;left:56px;line-height:26px;font-size:12.5px;color:var(--mute);white-space:nowrap}
+${C} .c-stack .stp{position:absolute;right:100%;margin-right:6px;line-height:26px;font-family:${MONO};font-size:12px;color:var(--faint)}
+${C} .c-stack .sl{position:absolute;left:-30px;right:-30px;top:100%;margin-top:4px;text-align:center;font-size:12.5px;font-weight:600;color:var(--mute)}
 `
 
 /**
