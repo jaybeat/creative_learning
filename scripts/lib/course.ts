@@ -45,14 +45,64 @@ export function parseScript(file: string): { title: string; screens: Screen[] } 
  * - lead：这一拍开头先显示的暗场画面（"前半拍"），之后才是 html。
  */
 type FrameExtra = { pic?: string; dark?: boolean; lead?: string }
-export type Frame = ({ beat: number; html: string; reveal?: 'spread' } & FrameExtra) | ({ after: number; html: string } & Pick<FrameExtra, 'pic'>)
-export type Card = { id: string; screen: number; html: string; beats: Beat[]; pause?: string; reveal?: 'spread' } & FrameExtra
+/**
+ * 拍内动作（念到哪，看到哪）：at 是这一帧旁白里的一个短语，念到它的时候——
+ * - steps：画面依次换成这些状态，均匀摊在这个短语的时长里（读头一格格走、元素入栈出栈）；
+ *   前后两个状态里 data-k 相同的元素从旧位置滑到新位置，带 data-src 的新元素从那个 data-k 元素的位置滑过来；
+ * - focus：聚焦 data-k 是它的元素（逗号分开可以几个），套高亮框、其余变淡，到下一个 focus 或这一帧结束；
+ * - zoom：聚焦时顺带以目标为中心放大（已不用：整屏缩放和压暗一样抢注意力）；
+ * - note：框旁批注，一句"为什么"（四五个字），框到了以后画箭头、写出红字；side 指定写在框的哪一边（默认右边）。
+ * 几个 cue 按顺序写，同一个短语出现两次时，后一个 cue 从前一个找到的位置往后找。
+ */
+export type Cue = { at: string; steps?: string[]; focus?: string; zoom?: number; note?: string; side?: 'r' | 'l' | 'b' }
+// cut：换到这一帧时照旧交叉淡入、元素不滑动（闪回、换例子：滑过去会像倒放）；元素的名字照样能用来聚焦
+export type Frame = ({ beat: number; html: string; reveal?: 'spread'; cues?: Cue[]; cut?: boolean } & FrameExtra) | ({ after: number; html: string } & Pick<FrameExtra, 'pic'>)
+export type Card = { id: string; screen: number; html: string; beats: Beat[]; pause?: string; reveal?: 'spread'; cues?: Cue[]; cut?: boolean } & FrameExtra
+
+// 旁白比对用的文字：去掉标点、反引号、加粗记号和空白，和 scripts/course_tts.py 的 norm 一致
+const PUNCT = new Set('，。、：；？！,.:;?!“”"\'（）() 　…—`*')
+export const normSpeech = (t: string) => [...t].filter((c) => !PUNCT.has(c)).join('').toLowerCase()
+
+/**
+ * 短语在一拍配音里的起止秒数（相对拍首）。times 是这一拍每个字（normSpeech 之后）的 [起, 止]，转写对不上的字是 null；
+ * 没有 times、字数对不上、或短语里的字都没对上时，按字数比例估
+ */
+export type CharTimes = ([number, number] | null)[]
+export function phraseTime(text: string, dur: number, i: number, len: number, times?: CharTimes | null): [number, number] {
+  const n = normSpeech(text).length || 1
+  let a = (dur * i) / n, b = (dur * (i + len)) / n
+  if (times && times.length === n) {
+    const inside = times.slice(i, i + len)
+    const first = inside.find((x) => x), last = [...inside].reverse().find((x) => x)
+    if (first) a = first[0]
+    if (last) b = last[1]
+  }
+  return [Math.max(0, a), Math.max(a + 0.3, Math.min(dur, b))]
+}
+
+/** cue 的短语落在这一帧的哪一拍、norm 之后的第几个字；找不到的记进 errors */
+export type CueAt = { cue: Cue; beat: number; i: number; len: number }
+export function locateCues(c: Card, errors: string[] = []): CueAt[] {
+  const out: CueAt[] = []
+  let bi = 0, from = 0
+  for (const cue of c.cues ?? []) {
+    const p = normSpeech(cue.at)
+    let hit: CueAt | undefined
+    for (let k = bi; k < c.beats.length && !hit; k++) {
+      const i = normSpeech(c.beats[k].text).indexOf(p, k === bi ? from : 0)
+      if (i >= 0) { hit = { cue, beat: c.beats[k].n, i, len: p.length }; bi = k; from = i + 1 }
+    }
+    if (!p || !hit) errors.push(`帧 ${c.id}：cue 的短语「${cue.at}」在这一帧的旁白里（按顺序往后）找不到`)
+    else out.push(hit)
+  }
+  return out
+}
 
 export function assemble(screens: Screen[], frames: Frame[]): { cards: Card[]; errors: string[] } {
   const errors: string[] = []
   const beatMap = new Map(screens.flatMap((s) => s.beats.map((b) => [b.n, b] as const)))
   const pauseAfter = new Map(screens.flatMap((s) => s.pauses.map((p) => [p.after, p.pic] as const)))
-  const starts = new Map<number, Frame & { beat: number }>()
+  const starts = new Map<number, Extract<Frame, { beat: number }>>()
   const pauses = new Map<number, { html: string; pic?: string }>()
   for (const f of frames) {
     if ('beat' in f) {
@@ -75,7 +125,7 @@ export function assemble(screens: Screen[], frames: Frame[]): { cards: Card[]; e
     for (const b of sc.beats) {
       const fr = starts.get(b.n)
       if (fr !== undefined) {
-        cur = { id: `${sc.n}-${String(++k).padStart(2, '0')}`, screen: sc.n, html: fr.html, beats: [b], reveal: fr.reveal, ...extra(fr) }
+        cur = { id: `${sc.n}-${String(++k).padStart(2, '0')}`, screen: sc.n, html: fr.html, beats: [b], reveal: fr.reveal, ...extra(fr), ...(fr.cues ? { cues: fr.cues } : {}), ...(fr.cut ? { cut: true } : {}) }
         cards.push(cur)
       } else if (!cur) {
         errors.push(`第${sc.n}屏第一拍（第${b.n}拍）没有帧`)
@@ -90,6 +140,8 @@ export function assemble(screens: Screen[], frames: Frame[]): { cards: Card[]; e
       }
     }
   }
+  // 帧的拍收齐以后（"同上"的拍已并进来）再找 cue 的短语
+  for (const c of cards) locateCues(c, errors)
   return { cards, errors }
 }
 

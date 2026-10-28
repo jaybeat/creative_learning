@@ -19,7 +19,7 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 import { parseQuizzes, type Quiz } from './lib/course-quiz'
-import { ROOT, parseScript, assemble, FRAME_CSS, type Beat, type Card, type Frame, type Screen } from './lib/course'
+import { ROOT, parseScript, assemble, locateCues, phraseTime, normSpeech, FRAME_CSS, type Beat, type Card, type CharTimes, type Frame, type Screen } from './lib/course'
 import { stickerCss } from './lib/sticker'
 import { deskCss } from './lib/desk'
 import { cleanCss, CLEAN_SHELL_CSS } from './lib/clean'
@@ -59,7 +59,9 @@ function pronounce(text: string): { spoken: string; uncovered: string[] } {
         if (ENGINE !== 'fish' || !p.py) return w
         const py = p.py.split(/\s+/)
         if (py.length !== w.length) throw new Error(`pronounce.json：「${w}」的拼音个数和字数不一致`)
-        return py.map((s) => `<|phoneme_start|>${s}<|phoneme_end|>`).join('')
+        // 轻声（拼音以 5 结尾）不加标签：fish 不认轻声标注，"的数"标成 de5 shu4 时"的"被念成了 dì。
+        // 不标注的"的""着""了"模型按语境念轻声，词条里只有别的字真正被钉住
+        return py.map((s, i) => (s.endsWith('5') ? w[i] : `<|phoneme_start|>${s}<|phoneme_end|>`)).join('')
       })
     : text
   const uncovered = [...text].flatMap((c, i) => (POLY.includes(c) && !covered.has(i) ? [text.slice(Math.max(0, i - 1), i + 2)] : []))
@@ -133,9 +135,77 @@ function synthesize(id: string, screens: Screen[], say: Record<number, string>, 
     fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 1))
   }
 
+  // 转写比对：这次新合成的拍（COURSE_CHECK=all 时全部拍），报告被截断或念得差太多的拍，只提醒
+  const toCheck = process.env.COURSE_CHECK === 'all'
+    ? beats.map((b) => ({ n: b.n, text: say[b.n] ?? b.text, mp3: path.join(audioDir, `b${String(b.n).padStart(3, '0')}.mp3`) }))
+    : jobs.flatMap((j) => j.beats.map((b) => ({ n: b.n, text: b.text, mp3: b.out })))
+  if (toCheck.length && process.env.COURSE_CHECK !== '0') {
+    const checkFile = path.join(os.tmpdir(), `course-check-${id}.json`)
+    fs.writeFileSync(checkFile, JSON.stringify(toCheck))
+    spawnSync('python', ['-P', path.join(ROOT, 'scripts/course_tts.py'), '--check', checkFile], { stdio: 'inherit' })
+  }
+
+  // 地址带上文件内容的指纹（?v=）：重新合成后文件名不变，浏览器和 CDN 会接着用缓存里的旧录音，
+  // 旧录音比新的长时，播放器按新时长切到下一拍，听起来就是半句被截断
   const out = new Map<number, AudioInfo>()
-  for (const b of beats) out.set(b.n, { file: `audio/b${String(b.n).padStart(3, '0')}.mp3`, dur: manifest[b.n].dur })
+  for (const b of beats) {
+    const name = `b${String(b.n).padStart(3, '0')}.mp3`
+    const v = crypto.createHash('sha1').update(fs.readFileSync(path.join(audioDir, name))).digest('hex').slice(0, 10)
+    out.set(b.n, { file: `audio/${name}?v=${v}`, dur: manifest[b.n].dur })
+  }
   return out
+}
+
+// 每拍每个字的时间（念到哪，看到哪）：faster-whisper 转写这一拍的配音，存在 bNNN.t.json。
+// 只在帧里写了 cue 的拍才需要；旁白（或念法）改过、配音重新合成过，就重新转写。COURSE_TIMES=0 跳过，按字数比例估
+type Said = { text: string; times: CharTimes | null }
+function charTimes(id: string, cards: Card[], say: Record<number, string>, audio: Map<number, AudioInfo>): Map<number, Said> {
+  const audioDir = path.join(ROOT, 'docs/course/player', id, 'audio')
+  const out = new Map<number, Said>()
+  const jobs: { text: string; mp3: string; out: string }[] = []
+  for (const b of cards.filter((c) => c.cues?.length).flatMap((c) => c.beats)) {
+    const text = say[b.n] ?? b.text
+    const mp3 = path.join(ROOT, 'docs/course/player', id, audio.get(b.n)!.file.replace(/\?.*$/, ''))
+    const tf = path.join(audioDir, `b${String(b.n).padStart(3, '0')}.t.json`)
+    const fresh = fs.existsSync(tf) && fs.statSync(tf).mtimeMs >= fs.statSync(mp3).mtimeMs && JSON.parse(fs.readFileSync(tf, 'utf8')).text === text
+    if (!fresh) jobs.push({ text, mp3, out: tf })
+    out.set(b.n, { text, times: null })
+  }
+  if (jobs.length && process.env.COURSE_TIMES !== '0') {
+    console.log(`[player] 转写 ${jobs.length} 拍配音，记下每个字的时间（cue 对齐用）…`)
+    const jobsFile = path.join(os.tmpdir(), `course-times-${id}.json`)
+    fs.writeFileSync(jobsFile, JSON.stringify(jobs))
+    const r = spawnSync('python', ['-P', path.join(ROOT, 'scripts/course_tts.py'), '--times', jobsFile], { stdio: 'inherit' })
+    if (r.status !== 0) throw new Error('转写配音失败（COURSE_TIMES=0 可以跳过，按字数比例估）')
+  }
+  for (const [n, s] of out) {
+    const tf = path.join(audioDir, `b${String(n).padStart(3, '0')}.t.json`)
+    if (fs.existsSync(tf)) { const j = JSON.parse(fs.readFileSync(tf, 'utf8')); if (j.text === s.text) s.times = j.times }
+  }
+  return out
+}
+
+/**
+ * 一帧的拍内动作换成绝对时间：states 是这一帧的各个画面状态（第一个是帧本身）和它们开始的秒数；
+ * focus 是聚焦区间（到下一个 focus 或这一帧结束）
+ */
+function cueTimeline(c: Card, start: number, end: number, beatStep: Map<number, { start: number; dur: number }>, said: Map<number, Said>) {
+  const states = [{ html: c.html, at: start }]
+  const focus: { k: string; t0: number; t1: number; z: number; note?: string; side?: string }[] = []
+  for (const h of locateCues(c)) {
+    const st = beatStep.get(h.beat)!, b = c.beats.find((x) => x.n === h.beat)!, s = said.get(h.beat)
+    // 配音念的是念法表换过的文字时，先在那段文字里找短语用转写时间；找不到就按原文字数比例估
+    const j = s ? normSpeech(s.text).indexOf(normSpeech(h.cue.at)) : -1
+    const [a, z] = j >= 0 ? phraseTime(s!.text, st.dur, j, h.len, s!.times) : phraseTime(b.text, st.dur, h.i, h.len, null)
+    const t0 = st.start + a, t1 = st.start + z
+    h.cue.steps?.forEach((html, k, all) => states.push({ html, at: t0 + ((t1 - t0) * k) / all.length }))
+    if (h.cue.focus) {
+      const last = focus.at(-1)
+      if (last && last.t1 > t0) last.t1 = t0
+      focus.push({ k: h.cue.focus, t0, t1: end, z: h.cue.zoom ?? 1, ...(h.cue.note ? { note: h.cue.note, side: h.cue.side } : {}) })
+    }
+  }
+  return { states, focus }
 }
 
 function probeDuration(file: string): number {
@@ -220,7 +290,8 @@ function wireQuizzes(cards: Card[], quizzes: Quiz[]): Card[] {
 
 // ───────── 页面 ─────────
 
-function render(id: string, title: string, screens: Screen[], cards: Card[], tl: ReturnType<typeof timeline>, quizzes: Quiz[], style: Style, themeCss: string) {
+function render(id: string, title: string, screens: Screen[], cards: Card[], tl: ReturnType<typeof timeline>, quizzes: Quiz[], style: Style, themeCss: string, said: Map<number, Said>) {
+  const beatStep = new Map(tl.steps.flatMap((s) => (s.k === 'beat' ? [[s.n, s] as const] : [])))
   const data = {
     title,
     total: tl.total,
@@ -230,9 +301,12 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], tl:
       html: c.html,
       screen: c.screen,
       reveal: c.reveal ?? null,
+      ...(c.cut ? { cut: true } : {}),
       start: tl.cardStart[i],
       // 这一帧旁白（不含停顿）的总长：spread 模式把新元素摊在这段时间里
       speak: tl.steps.filter((s) => s.card === i && s.k === 'beat').reduce((a, s) => a + (s as { dur: number }).dur, 0),
+      // 拍内动作（帧里写了 cues 才有）：后续画面状态和聚焦区间
+      ...(c.cues?.length ? (({ states, focus }) => ({ states: states.slice(1), focus }))(cueTimeline(c, tl.cardStart[i], tl.cardStart[i + 1] ?? tl.total, beatStep, said)) : {}),
     })),
     screens: screens.map((s) => {
       const idx = cards.map((c, i) => (c.screen === s.n ? i : -1)).filter((i) => i >= 0)
@@ -358,6 +432,11 @@ body.fs #exit{display:none!important}
 .stage{position:absolute;left:0;top:0;width:640px;height:360px;transform-origin:0 0}
 .stage .f{position:absolute;left:0;top:0}
 .player .new{outline:none!important}
+/* 聚焦框：只框住目标，不压暗别处；颜色取主题变量 */
+.player .fx-note{position:absolute;z-index:31;pointer-events:none;opacity:0;color:var(--note,#d4412b);font-weight:700;font-size:14px;line-height:20px;white-space:nowrap}
+.player .fx-arrow{position:absolute;left:0;top:0;width:640px;height:360px;z-index:31;pointer-events:none;opacity:0;overflow:visible}
+.player .fx-arrow path{fill:none;stroke:var(--note,#d4412b);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.player .fx-ring{position:absolute;pointer-events:none;z-index:30;opacity:0;border:2.5px solid var(--c1,#1971c2);border-radius:8px;box-shadow:0 0 0 3px color-mix(in srgb,var(--c1,#1971c2) 18%,transparent)}
 .f .pause{display:none}
 .cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(250,250,248,.85);z-index:20}
 .cover[hidden]{display:none}
@@ -521,18 +600,23 @@ DATA.screens.forEach((s) => {
 let scrIdx = 0
 $('next').onclick = () => { const s = DATA.screens[scrIdx + 1]; if (s) goScreen(s) }
 
-// —— 画面层：每帧一个 .f，只在第一次用到时创建 ——
+// —— 画面层：每帧一个 .f，只在第一次用到时创建；帧里写了 cue 的，拍内的每个画面状态也各是一个 .f ——
+const MOVE = 0.35, FOCUS_IN = 0.25
 const layers = new Map()
-function layer(ci) {
-  if (layers.has(ci)) return layers.get(ci)
-  const c = DATA.cards[ci]
-  const el = document.createElement('div'); el.className = 'f'; el.innerHTML = c.html; el.style.display = 'none'
+function mkState(c, html, at, spread) {
+  const el = document.createElement('div'); el.className = 'f'; el.innerHTML = html; el.style.display = 'none'
   stage.appendChild(el)
   // 按拍填的空位（data-beat）不跟着帧一起出现，到那一拍才淡入；分镜墙上它们也带 new，这里排除
   const items = [...el.querySelectorAll('.new:not([data-beat])')]
-  const span = c.reveal === 'spread' ? Math.max(0.6, c.speak * 0.85) : Math.min(0.6, 0.12 * items.length)
+  const span = spread ? Math.max(0.6, c.speak * 0.85) : Math.min(0.6, 0.12 * items.length)
   const fills = [...el.querySelectorAll('[data-beat]')].map((node) => ({ node, at: beatStart.get(Number(node.dataset.beat)) ?? 0 }))
-  const L = { el, items: items.map((node, i) => ({ node, at: items.length > 1 ? (span * i) / items.length : 0 })), fills }
+  return { el, at, items: items.map((node, i) => ({ node, at: items.length > 1 ? (span * i) / items.length : 0 })), fills, pos: null, ring: null }
+}
+function layer(ci) {
+  if (layers.has(ci)) return layers.get(ci)
+  const c = DATA.cards[ci]
+  const states = [mkState(c, c.html, c.start, c.reveal === 'spread'), ...(c.states || []).map((s) => mkState(c, s.html, s.at, false))]
+  const L = { el: states[0].el, states, keyed: states.some((s) => s.el.querySelector('[data-k]')) }
   layers.set(ci, L); return L
 }
 const ease = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : 1 - Math.pow(1 - x, 3))
@@ -543,19 +627,171 @@ function stepAt(time) {
   return lo
 }
 
+// —— 移动要量元素在画布里的位置：用 offset（不受缩放和 translate 影响），量一次记下来 ——
+// offsetLeft 是相对上一层边框以内算的，每过一层要补上那层的边框宽（clientLeft），不然套了几层卡片就偏几像素
+function posOf(node, root) {
+  let x = 0, y = 0, n = node
+  while (n && n !== root) {
+    x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent
+    if (n && n !== root) { x += n.clientLeft; y += n.clientTop }
+  }
+  return { x, y, w: node.offsetWidth, h: node.offsetHeight }
+}
+function measure(st) {
+  if (st.pos) return st.pos
+  const hidden = st.el.style.display === 'none'
+  if (hidden) { st.el.style.visibility = 'hidden'; st.el.style.display = '' }
+  const pos = new Map()
+  for (const node of st.el.querySelectorAll('[data-k]')) pos.set(node.dataset.k, posOf(node, st.el))
+  if (hidden) { st.el.style.display = 'none'; st.el.style.visibility = '' }
+  // 字体还没加载完时量的不准，下次再量
+  if (document.fonts.status === 'loaded') st.pos = pos
+  return pos
+}
+// 从 prev 换到 cur 的第 e（0–1）程：data-k 相同的元素从旧位置滑过来；带 data-src 的新元素从那个元素的位置滑过来
+const moved = new Set()
+function slide(prev, cur, e, sig) {
+  const P = measure(prev), C = measure(cur)
+  for (const node of cur.el.querySelectorAll('[data-k],[data-src]')) {
+    const k = node.dataset.k
+    let from = k ? P.get(k) : undefined
+    if (!from && node.dataset.src && !(k && P.has(k))) from = P.get(node.dataset.src)
+    const to = k ? C.get(k) : posOf(node, cur.el)
+    if (!from || !to) continue
+    const dx = from.x - to.x, dy = from.y - to.y
+    if (Math.abs(dx) + Math.abs(dy) < 0.5) continue
+    node.style.translate = (dx * (1 - e)).toFixed(1) + 'px ' + (dy * (1 - e)).toFixed(1) + 'px'
+    node.style.opacity = '1'; moved.add(node); sig.push('m' + e.toFixed(3))
+  }
+}
+// 聚焦：指示框跟着旁白走（像激光笔）。不压暗别的东西——大面积的明暗变化比目标本身更抢眼；
+// 换目标时框从上一个目标滑过去，不熄灭；到达时从略大收到贴合；一串聚焦只在开头淡入、结尾淡出。
+// 一次点名几个分开的东西（栈里的 * 和输入带的 -）时各框一个；挨着的格子（一行 4 2 *）合成一个框
+const GLIDE = 0.3, SETTLE = 0.45
+function rectsOf(st, keys) {
+  const hidden = st.el.style.display === 'none'
+  if (hidden) { st.el.style.visibility = 'hidden'; st.el.style.display = '' }
+  // 聚焦框按屏幕上的实际位置量（边框、正在滑动的 translate 都算进去，框跟着元素走），再换回画布坐标
+  const base = st.el.getBoundingClientRect(), sc = base.width / 640 || 1
+  const rs = keys.split(',').flatMap((k) => [...st.el.querySelectorAll('[data-k="' + k.trim() + '"]')])
+    .map((n) => n.getBoundingClientRect())
+    .map((r) => ({ x0: (r.left - base.left) / sc, y0: (r.top - base.top) / sc, x1: (r.right - base.left) / sc, y1: (r.bottom - base.top) / sc }))
+    .sort((p, q) => p.x0 - q.x0)
+  if (hidden) { st.el.style.display = 'none'; st.el.style.visibility = '' }
+  const groups = []
+  for (const r of rs) {
+    const g = groups.find((u) => r.y0 < u.y1 - 4 && r.y1 > u.y0 + 4 && r.x0 <= u.x1 + 6)
+    if (g) Object.assign(g, { x0: Math.min(g.x0, r.x0), y0: Math.min(g.y0, r.y0), x1: Math.max(g.x1, r.x1), y1: Math.max(g.y1, r.y1) })
+    else groups.push({ ...r })
+  }
+  return groups
+}
+const near = (a, b) => Math.abs(a - b) < 0.05
+const mid = (r) => [(r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2]
+function focusOn(st, ci, time, sig) {
+  st.rings = st.rings || []
+  const card = DATA.cards[ci], F = card.focus || []
+  const i = F.findIndex((f) => time >= f.t0 && time < f.t1)
+  const f = F[i], R = f ? rectsOf(st, f.k) : []
+  while (st.rings.length < R.length) { const d = document.createElement('div'); d.className = 'fx-ring'; st.el.appendChild(d); st.rings.push(d) }
+  st.rings.forEach((d, j) => { if (j >= R.length) d.style.opacity = '0' })
+  if (!R.length) { noteOn(st, null, 0, 0, false, time, sig); return }
+  // 前一组框：同一帧里紧挨着的上一个聚焦，或同一屏上一帧最后一个聚焦正好在这一帧开头结束
+  let R0 = []
+  if (i > 0 && near(F[i - 1].t1, f.t0)) R0 = rectsOf(st, F[i - 1].k)
+  else if (i === 0 && ci > 0) {
+    const pc = DATA.cards[ci - 1], pf = pc.focus && pc.focus[pc.focus.length - 1]
+    if (pf && pc.screen === card.screen && near(pf.t1, f.t0)) R0 = rectsOf(layer(ci - 1).states[layer(ci - 1).states.length - 1], pf.k)
+  }
+  // 后面接着还有聚焦（同一帧或同一屏下一帧开头），这一个结束时就不淡出
+  const nc = DATA.cards[ci + 1], nf = nc && nc.focus && nc.focus[0]
+  const goesOn = (F[i + 1] && near(F[i + 1].t0, f.t1)) || (i === F.length - 1 && nf && nc.screen === card.screen && near(nf.t0, f.t1))
+  const g = R0.length ? ease((time - f.t0) / GLIDE) : 1
+  const pad = 4 + 5 * (1 - ease((time - f.t0) / SETTLE)) // 到达：从略大收到贴合
+  const a = ease(Math.max(0, Math.min(R0.length ? 1 : (time - f.t0) / FOCUS_IN, goesOn ? 1 : (f.t1 - time) / FOCUS_IN)))
+  R.forEach((r, j) => {
+    // 每个框从上一组里离它最近的那个滑过来
+    const c = mid(r)
+    const from = R0.length ? R0.reduce((p, q) => (Math.hypot(...mid(q).map((v, t) => v - c[t])) < Math.hypot(...mid(p).map((v, t) => v - c[t])) ? q : p)) : r
+    const L = (k) => from[k] + (r[k] - from[k]) * g
+    Object.assign(st.rings[j].style, { left: L('x0') - pad + 'px', top: L('y0') - pad + 'px', width: L('x1') - L('x0') + 2 * pad + 'px', height: L('y1') - L('y0') + 2 * pad + 'px', opacity: String(a) })
+  })
+  sig.push('f' + i + ':' + R.length + ':' + g.toFixed(3) + ':' + pad.toFixed(2) + ':' + a.toFixed(3))
+  noteOn(st, f, R0.length ? GLIDE : 0, a, goesOn, time, sig)
+}
+
+// 框旁批注：老师顺手写的一句"为什么"。框到了以后，先画一根短弯箭头指向框，再沿书写方向写出红字；
+// 框要滑向下一个目标前 0.2 秒淡出。默认写在第一个目标的右边，放不下就写到左边或下面
+const NOTE_ARROW = 0.2, NOTE_FADE = 0.2
+function noteOn(st, f, delay, a, goesOn, time, sig) {
+  if (!st.note) {
+    st.note = document.createElement('div'); st.note.className = 'fx-note'; st.el.appendChild(st.note)
+    st.arrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); st.arrow.setAttribute('class', 'fx-arrow'); st.arrow.setAttribute('viewBox', '0 0 640 360')
+    st.arrow.innerHTML = '<path class="ln" pathLength="1" stroke-dasharray="1"/><path class="hd"/>'; st.el.appendChild(st.arrow)
+  }
+  const note = st.note, arrow = st.arrow
+  if (!f || !f.note) { note.style.opacity = '0'; arrow.style.opacity = '0'; return }
+  const R = rectsOf(st, f.k.split(',')[0])[0]
+  if (!R) { note.style.opacity = '0'; arrow.style.opacity = '0'; return }
+  if (note.textContent !== f.note) note.textContent = f.note
+  const w = note.offsetWidth, h = note.offsetHeight, cy = (R.y0 + R.y1) / 2, gap = 26
+  let side = f.side || 'r'
+  if (side === 'r' && R.x1 + gap + w > 632) side = R.x0 - gap - w > 8 ? 'l' : 'b'
+  // 字的位置；箭头从字边指向框边，带一点弯
+  let tx, ty, ax, ay, bx, by
+  if (side === 'r') { tx = R.x1 + gap; ty = cy - h / 2 - 6; ax = tx - 3; ay = cy - 4; bx = R.x1 + 7; by = cy }
+  else if (side === 'l') { tx = R.x0 - gap - w; ty = cy - h / 2 - 6; ax = R.x0 - gap + 3; ay = cy - 4; bx = R.x0 - 7; by = cy }
+  // 写在下面时和目标左边对齐（居中会越过卡片边）
+  else { tx = Math.min(632 - w, Math.max(8, R.x0)); ty = R.y1 + gap - 4; ax = tx + 14; ay = ty - 2; bx = Math.min(R.x1 - 6, tx + 8); by = R.y1 + 7 }
+  const cx = (ax + bx) / 2, cyc = Math.min(ay, by) - 10
+  const t0 = f.t0 + delay
+  const pa = Math.max(0, Math.min(1, (time - t0) / NOTE_ARROW))
+  const write = Math.min(0.6, 0.3 + 0.04 * f.note.length)
+  const pw = Math.max(0, Math.min(1, (time - t0 - NOTE_ARROW) / write))
+  const out = goesOn ? Math.max(0, Math.min(1, (f.t1 - time) / NOTE_FADE)) : 1
+  const op = Math.min(a, out)
+  const ln = arrow.querySelector('.ln'), hd = arrow.querySelector('.hd')
+  ln.setAttribute('d', 'M' + ax + ' ' + ay + ' Q' + cx + ' ' + cyc + ' ' + bx + ' ' + by)
+  ln.style.strokeDashoffset = String(1 - ease(pa))
+  // 箭头尖：沿最后一段的方向画两笔
+  const ang = Math.atan2(by - cyc, bx - cx), L = 6
+  const p1 = [bx - L * Math.cos(ang - 0.5), by - L * Math.sin(ang - 0.5)], p2 = [bx - L * Math.cos(ang + 0.5), by - L * Math.sin(ang + 0.5)]
+  hd.setAttribute('d', 'M' + p1.join(' ') + ' L' + bx + ' ' + by + ' L' + p2.join(' '))
+  hd.style.opacity = pa >= 1 ? '1' : '0'
+  arrow.style.opacity = String(op)
+  Object.assign(note.style, { left: tx + 'px', top: ty + 'px', opacity: String(op), clipPath: 'inset(0 ' + ((1 - ease(pw)) * 100).toFixed(1) + '% 0 0)' })
+  sig.push('n' + pa.toFixed(2) + ':' + pw.toFixed(2) + ':' + op.toFixed(2))
+}
+
 // —— 由时间算画面 ——
 let shown = []
 function render(time) {
   const sig = []
-  const si = stepAt(time), step = DATA.steps[si], ci = step.card, local = time - DATA.cards[ci].start
+  const si = stepAt(time), step = DATA.steps[si], ci = step.card, card = DATA.cards[ci]
+  const L = layer(ci)
+  let sk = 0
+  while (sk + 1 < L.states.length && L.states[sk + 1].at <= time) sk++
+  const cur = L.states[sk], local = time - cur.at
+  // 前一个画面：同一帧的上一个状态（拍内换状态，直接换、元素滑过去），或上一帧的最后一个状态（换帧）。
   // 练习暂停时时钟停在暂停帧的第一刻：它不做淡入，直接显示（卡上作答就在这一帧上，淡入会停在全透明）
-  const fade = ci > 0 && step.k !== 'pause'
-  const vis = [ci]; if (fade && local < FADE) vis.push(ci - 1)
-  for (const k of shown) if (!vis.includes(k)) layers.get(k).el.style.display = 'none'
+  let prev = null, fade = false
+  if (sk > 0) prev = L.states[sk - 1]
+  else if (ci > 0 && step.k !== 'pause') {
+    const P = layer(ci - 1)
+    prev = P.states[P.states.length - 1]
+    // 同一屏里、两帧都有带名字的元素：不交叉淡化，直接换，元素滑过去（读头、栈连续地动）；否则照旧淡化
+    fade = card.cut || !(L.keyed && P.keyed && DATA.cards[ci - 1].screen === card.screen)
+  }
+  const vis = [cur]; if (prev && fade && local < FADE) vis.push(prev)
+  for (const s of shown) if (!vis.includes(s)) s.el.style.display = 'none'
   shown = vis
-  const cur = layer(ci)
+  for (const node of moved) { node.style.translate = ''; node.style.opacity = '' }
+  moved.clear()
   cur.el.style.display = ''; cur.el.style.opacity = fade ? String(ease(local / FADE)) : '1'; cur.el.style.zIndex = '2'
+  // 上一个画面里就有的元素（同名）不算新出现：不淡入
+  const had = prev && !fade ? measure(prev) : null
   for (const it of cur.items) {
+    if (had && it.node.dataset.k && had.has(it.node.dataset.k)) { it.node.style.opacity = ''; it.node.style.translate = ''; continue }
     const e = ease((local - it.at) / POP)
     // data-from：从这个透明度亮起来，原地变亮不上移（"由淡变亮"）；没有就从 0 淡入加上移
     const from = parseFloat(it.node.dataset.from ?? '0')
@@ -566,8 +802,10 @@ function render(time) {
     const e = Math.max(0, Math.min(1, (time - it.at) / BLANK_FADE))
     sig.push('b' + e.toFixed(3)); it.node.style.opacity = String(e)
   }
-  sig.unshift(ci, cur.el.style.opacity)
-  if (vis.length > 1) { const p = layer(ci - 1); sig.push('p'); p.el.style.display = ''; p.el.style.opacity = String(1 - ease(local / FADE)); p.el.style.zIndex = '1' }
+  if (prev && !fade && local < MOVE) slide(prev, cur, ease(local / MOVE), sig)
+  sig.unshift(ci, sk, cur.el.style.opacity)
+  if (vis.length > 1) { sig.push('p'); prev.el.style.display = ''; prev.el.style.opacity = String(1 - ease(local / FADE)); prev.el.style.zIndex = '1' }
+  focusOn(cur, ci, time, sig)
 
   // 练习题
   const q = step.k === 'pause' ? step.quiz : -1
@@ -939,18 +1177,22 @@ async function main() {
 
   const audio = synthesize(id, screens, mod.say ?? {}, skipTts)
   const tl = timeline(cards, audio, quizzes)
+  // cue 写在质感版帧里
+  const said = charTimes(id, pages.find((p) => p.style === 'clean')?.cards ?? cards, mod.say ?? {}, audio)
   const outDir = path.join(ROOT, 'docs/course/player', id)
   // 页面上除了画面还要显示的字：字幕、练习题、按钮，都要进主题的字体子集
   const strip = (h: string) => h.replace(/<[^>]*>/g, '')
   const more = screens.flatMap((s) => s.beats.map((b) => b.text)).join('') + title + screens.map((s) => s.name).join('') +
     quizzes.map((q) => strip(q.stem + q.explain) + (q.kind === 'fill' ? q.options.join('') : q.options.map((o) => strip(o.html + o.why)).join(''))).join('') +
     (hasFill ? '填空重做正确答案已填好还不对有个空填错了' : '') +
+    pages.flatMap((p) => p.cards.flatMap((c) => (c.cues ?? []).map((q) => q.note ?? ''))).join('') +
     '第屏下一›▾全退出0123456789:/练习多选单选检查看答案继续再试一次答对了不对再想想选错了个还有漏选的暂停一下自己想想答案开始播放接着播放重新播放倍速字幕读文字问AI退出色系工作台贴纸原版质感由和生成不要手改本文件配音：⏮⏭⏸▶↻✓✗'
   for (const p of pages) {
-    const htmls = p.cards.map((c) => c.html)
+    // 拍内状态里的字也要进字体子集
+    const htmls = p.cards.flatMap((c) => [c.html, ...(c.cues ?? []).flatMap((q) => q.steps ?? [])])
     const themeCss = p.style === 'desk' ? (await deskCss(htmls, more)).css : p.style === 'sticker' ? (await stickerCss(htmls, DEFAULT_PALETTE, more)).css : p.style === 'clean' ? (await cleanCss(htmls, more, { blanks: hasFill })).css : ''
     fs.mkdirSync(path.dirname(path.join(outDir, p.page)), { recursive: true })
-    fs.writeFileSync(path.join(outDir, p.page), render(id, title, screens, p.cards, tl, quizzes, p.style, themeCss))
+    fs.writeFileSync(path.join(outDir, p.page), render(id, title, screens, p.cards, tl, quizzes, p.style, themeCss, said))
   }
   const speak = tl.steps.reduce((a, s) => a + (s.k === 'beat' ? s.dur : 0), 0)
   console.log(

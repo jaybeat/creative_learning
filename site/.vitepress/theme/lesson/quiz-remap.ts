@@ -10,7 +10,7 @@
  *   - 原 2.9 的 q2、q3（漏接、C 表示）→ 新 2.10 的 q1、q2；2.9 q1 不动，2.9 q2 是新题，原记录不能留在这个位置。
  * 2026-10-27 第3章表达式两节重排（和 008 迁移对应）：
  *   - 原 3.6（后缀式求值）q1（栈里是什么）→ 3.7 q1；原 3.6 q2（写成后缀式）删掉，3.7 q2 是新题；
- *   - 原 3.7（中缀转后缀）q1、q2 → 3.6 q1、q2。
+ *   - 原 3.7（中缀转后缀）q1（栈里是什么）→ 3.6 q2，q2（写成后缀式）→ 3.6 q1：手工转换的练习挪到了加括号法后面。
  * 每次重排是一步，带一个版本标记；记下跑到了哪一步，以后只跑后面的步。
  */
 
@@ -56,8 +56,8 @@ function ch03Postfix(s: Store) {
   // 两节互换，先把原 3.6 的记录取出来，再挪原 3.7
   const old6q1 = s.getItem(qk(6, 1))
   for (const q of qsOf(s, `${PREFIX}ch03-3-6-q`)) s.removeItem(qk(6, q)) // 原 3.6 q2 删掉
-  move(s, qk(7, 1), qk(6, 1))
-  move(s, qk(7, 2), qk(6, 2))
+  move(s, qk(7, 1), qk(6, 2))
+  move(s, qk(7, 2), qk(6, 1))
   for (const q of qsOf(s, `${PREFIX}ch03-3-7-q`)) s.removeItem(qk(7, q))
   if (old6q1 !== null) s.setItem(qk(7, 1), old6q1)
 }

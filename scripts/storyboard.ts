@@ -17,7 +17,7 @@ import { paperTheme } from './lib/paper'
 import { stickerTheme } from './lib/sticker'
 import { deskTheme } from './lib/desk'
 import { cleanTheme } from './lib/clean'
-import { ROOT, CHARS_PER_SEC, esc, md, parseScript, assemble, secs, fmt, FRAME_CSS, type Screen, type Card, type Frame } from './lib/course'
+import { ROOT, CHARS_PER_SEC, esc, md, parseScript, assemble, locateCues, secs, fmt, FRAME_CSS, type Screen, type Card, type Frame } from './lib/course'
 
 // 按拍填的空位（kit 的 cblank/cblanks，data-beat）：分镜墙一帧只画一张图，这一帧里的拍填上的空带 new 描边，
 // 还没到的拍的空藏起来（播放器里到那一拍才淡入）。帧里没有按拍填的空位时原样返回
@@ -36,16 +36,23 @@ function render(id: string, title: string, screens: Screen[], cards: Card[], the
 
   const cardHtml = (c: Card) => {
     const range = c.pause ? '暂停' : c.beats.length === 1 ? `拍 ${c.beats[0].n}` : `拍 ${c.beats[0].n}–${c.beats.at(-1)!.n}`
+    // 静止拍：念这一拍时画面上什么都没变（这一帧的第一拍却没有新元素，或"同上"的拍），也没有 cue 带眼睛
+    const cued = new Set(locateCues(c).map((h) => h.beat))
+    const still = (i: number) => !cued.has(c.beats[i].n) && (i > 0 || !/class="[^"]*\bnew\b/.test(c.html))
     const lines = c.beats
-      .map((b) => `<li><span class="src s-${b.src}">${b.src}</span><span class="bn">${b.n}</span>${esc(b.text)}</li>`)
+      .map((b, i) => `<li${still(i) ? ` data-still="${b.chars}"` : ''}><span class="src s-${b.src}">${b.src}</span><span class="bn">${b.n}</span>${esc(b.text)}</li>`)
       .join('')
+    // 拍内动作：念到哪个短语，换成哪些状态（小图）、聚焦哪个元素
+    const cues = (c.cues ?? []).map((q) => `<div class="cue"${q.focus ? ` data-focus="${esc(q.focus)}"` : ''}><span class="ca">念到「${md(q.at)}」</span>${
+      q.focus ? `<span class="cf">聚焦 ${esc(q.focus)}${q.zoom ? ` · 放大 ${q.zoom}×` : ''}${q.note ? ` · 批注「${esc(q.note)}」` : ''}</span>` : ''}${
+      (q.steps ?? []).map((h) => `<div class="thumb cue"><div class="f">${h}</div></div>`).join('')}</div>`).join('')
     // 纸面版帧可以自带画面说明（pic）、暗场（dark）和前半拍暗场（lead）；原版帧没有这些字段，输出不变
     const pic = c.pic !== undefined ? md(c.pic) : c.pause ? md(c.pause) : md(c.beats[0].pic)
     const lead = c.lead !== undefined ? `<div class="thumb lead"><div class="f dark">${c.lead}</div></div>` : ''
     return `<article class="sb${c.pause ? ' is-pause' : ''}" data-id="${c.id}">
   <header><b class="fid">${c.id}</b><span>${range}</span><span class="dur">${c.pause ? '⏸' : '≈' + fmt(secs(c.beats))}</span></header>
   ${lead}<div class="thumb"><div class="f${c.dark ? ' dark' : ''}">${beatFills(c.html, c)}</div></div>
-  <p class="pic">${pic}</p>
+  ${cues ? `<div class="cues">${cues}</div>` : ''}<p class="pic">${pic}</p>
   <ol class="vo">${lines}</ol>
 </article>`
   }
@@ -93,6 +100,11 @@ h2{font-size:17px;margin:14px 0 10px}h2 small{font-weight:400;color:#888;margin-
 .thumb{width:320px;height:180px;overflow:hidden;border-radius:4px;border:1px solid #ddd}
 .thumb .f{transform:scale(.5);transform-origin:0 0}
 .pic{font-size:12px;color:#888;margin:6px 0 4px}
+.cues{margin-top:6px;display:flex;flex-direction:column;gap:4px}
+.cue{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:12px;color:#555}
+.cue .ca{color:#1971c2}.cue .cf{background:#e7f5ff;border-radius:3px;padding:0 4px}
+.thumb.cue{width:96px;height:54px}.thumb.cue .f{transform:scale(.15)}
+.vo li[data-still]{color:#999}
 .vo{list-style:none;margin:0;padding:0;font-size:13px}.vo li{margin:2px 0}
 .bn{color:#aaa;font-size:11px;margin-right:4px}
 .src{display:inline-block;font-size:10px;padding:0 4px;border-radius:3px;margin-right:4px;vertical-align:1px}
@@ -129,7 +141,7 @@ async function main() {
     console.error(`[storyboard] ${errors.length} 处对不上：\n  ` + errors.join('\n  '))
     process.exit(1)
   }
-  const htmls = cards.flatMap((c) => (c.lead !== undefined ? [c.lead, c.html] : [c.html]))
+  const htmls = cards.flatMap((c) => [...(c.lead !== undefined ? [c.lead] : []), c.html, ...(c.cues ?? []).flatMap((q) => [...(q.steps ?? []), q.note ?? ''])])
   const theme =
     variant === 'paper' ? await paperTheme(htmls) :
     variant === 'sticker' ? await stickerTheme(htmls, palette) :

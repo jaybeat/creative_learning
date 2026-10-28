@@ -1,6 +1,8 @@
 """按任务清单合成配音：fish（默认）或 edge-tts（云希，兜底）。
 
 用法：python -P scripts/course_tts.py jobs.json
+      python -P scripts/course_tts.py --times jobs.json   只给已有配音补每字时间（见 times_main）
+      python -P scripts/course_tts.py --check jobs.json   逐拍转写比对，报告被截断或差异大的拍（见 check_main）
 jobs.json 是段的列表，由 scripts/course-player.ts 生成，只含需要（重新）合成的段：
   [{"engine": "fish"|"edge", "model": ..., "voice": ..., "rate": "+0%",
     "beats": [{"n": 1, "text": 原文, "spoken": 按多音字词表处理过的文字, "out": "绝对路径.mp3"}, ...]}, ...]
@@ -78,7 +80,8 @@ async def speak(seg: dict, text: str, out: Path) -> None:
 
 # ───────── 整段切拍 ─────────
 
-PUNCT = set("，。、：；？！,.:;?!“”\"'（）() 　…—")
+# 和 scripts/lib/course.ts 的 normSpeech 一致（反引号、加粗记号也去掉）
+PUNCT = set("，。、：；？！,.:;?!“”\"'（）() 　…—`*")
 _model = None
 _model_lock = threading.Lock()
 
@@ -153,6 +156,60 @@ def align_cut(src: Path, texts: list[str], outs: list[Path]) -> list[dict]:
     return report
 
 
+def char_times(mp3: Path, text: str) -> list:
+    """一拍配音里每个字（norm 之后）的起止秒数，转写对不上的字是 None。播放器按它把"念到哪"和画面对齐。"""
+    hyp = []
+    for seg in transcribe(pcm(mp3), True):
+        for w in seg.words:
+            cs = norm(w.word)
+            for i, c in enumerate(cs):
+                d = (w.end - w.start) / len(cs)
+                hyp.append((c, w.start + i * d, w.start + (i + 1) * d))
+    ref = norm(text)
+    out: list = [None] * len(ref)
+    for blk in difflib.SequenceMatcher(None, ref, "".join(h[0] for h in hyp), autojunk=False).get_matching_blocks():
+        for i in range(blk.size):
+            _, a, b = hyp[blk.b + i]
+            out[blk.a + i] = [round(a, 2), round(b, 2)]
+    return out
+
+
+def times_main(jobs_file: str) -> None:
+    """--times：只给已有的配音补每字时间，不合成。jobs 是 [{"text", "mp3", "out"}]，结果写到 out（JSON）。"""
+    with open(jobs_file, encoding="utf-8") as f:
+        jobs = json.load(f)
+    for j in jobs:
+        t = char_times(Path(j["mp3"]), j["text"])
+        Path(j["out"]).write_text(json.dumps({"text": j["text"], "times": t}, ensure_ascii=False), "utf-8")
+        ok = sum(1 for x in t if x) / max(1, len(t))
+        print(f"  时间 {Path(j['mp3']).name}  对上 {ok:.0%}", flush=True)
+
+
+# 比对转写和旁白时，数字、运算符、常见同音字统一写法（转写会把"三"写成 3、把"它"写成"他"）
+_SAME = str.maketrans({"零": "0", "一": "1", "二": "2", "三": "3", "四": "4", "五": "5", "六": "6", "七": "7", "八": "8", "九": "9",
+                       "+": "加", "-": "减", "*": "乘", "/": "除", "他": "它", "她": "它", "地": "的", "得": "的"})
+
+
+def check_main(jobs_file: str) -> None:
+    """--check：逐拍转写配音，和念的文字比对。报告差异率大的拍，以及结尾几个字没念出来的拍（被截断）。
+    jobs 是 [{"n", "text", "mp3"}]；有问题的拍打印出来，退出码不变（只提醒）。"""
+    with open(jobs_file, encoding="utf-8") as f:
+        jobs = json.load(f)
+    bad = 0
+    for j in jobs:
+        ref = norm(j["text"]).translate(_SAME)
+        got = norm("".join(s.text for s in transcribe(pcm(Path(j["mp3"])), False))).translate(_SAME)
+        sm = difflib.SequenceMatcher(None, ref, got, autojunk=False)
+        covered = {blk.a + i for blk in sm.get_matching_blocks() for i in range(blk.size)}
+        tail_cut = len(ref) >= 6 and not any(i in covered for i in range(len(ref) - 3, len(ref)))
+        diff = 1 - sm.ratio()
+        if tail_cut or diff > 0.3:
+            bad += 1
+            why = "结尾没念出来（可能被截断）" if tail_cut else f"差异 {diff:.0%}"
+            print(f"  ⚠ b{j['n']:03d} {why}\n      稿：{j['text']}\n      听：{got}", flush=True)
+    print(f"[check] 转写比对 {len(jobs)} 拍，{bad} 拍要听一下", flush=True)
+
+
 async def run_segment(seg: dict, sem: asyncio.Semaphore) -> None:
     beats = seg["beats"]
     async with sem:
@@ -185,4 +242,9 @@ async def main() -> None:
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
-    asyncio.run(main())
+    if sys.argv[1] == "--times":
+        times_main(sys.argv[2])
+    elif sys.argv[1] == "--check":
+        check_main(sys.argv[2])
+    else:
+        asyncio.run(main())

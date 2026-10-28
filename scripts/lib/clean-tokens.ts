@@ -18,6 +18,7 @@ export const TOKENS: Record<string, string> = {
   '--c2-soft': '#e5f5f2', '--c2': '#0f6e5a', // 绿标签
   '--warm-soft': '#fbebe3', '--warm': '#97412a', // 练习、问题小标签
   '--ok': '#1d8a66', // 勾
+  '--note': '#d4412b', // 动画里框旁的批注（老师的红笔）
   '--off': '#9b9b9b', // 错：变灰加划线
   '--caret': '#2f6bd8', // 编辑器光标
   '--btn': '#ececee',
@@ -56,6 +57,7 @@ export const DARK_TOKENS: Record<string, string> = {
   '--c2-soft': '#17302b', '--c2': '#86d4c1',
   '--warm-soft': '#3a251d', '--warm': '#f0ae93',
   '--ok': '#4fc499',
+  '--note': '#ff8a72',
   '--off': '#6e6e6e',
   '--caret': '#6c9cf0',
   '--btn': '#2f2f35',

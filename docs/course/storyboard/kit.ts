@@ -472,16 +472,21 @@ export function cblanks(rows: string[][], fill: Record<number, number | [number,
  * - rd：前几格已经读过（变淡）；cls：每格另加的类（hl、off、new、slot 虚线空位）
  * - under：[i, j] 第 i–j 格下面画一条下划线；box：[i, j, 标签] 第 i–j 格套虚线框，标签写在框上方
  * - w、h：格子宽高（默认 26×30）
+ * - k：给元素起名（播放器的移动和聚焦用）：第 i 格 data-k="k-i"，读头 "k-head"，下划线 "k-u"，虚线框 "k-box"；
+ *   names：第 i 格单独起的名字（覆盖 "k-i"，比如运算符按字起名，出栈时能从栈里滑到输出带）；
+ *   src：第 i 格是新出现的、要从哪个元素的位置滑过来（{ i: 那个元素的 data-k }）
  */
-export function ctape(chars: string[], o: { head?: number; rd?: number; cls?: string[]; under?: [number, number, string?]; box?: [number, number, string, string?]; w?: number; h?: number; tcls?: string } = {}) {
+export const dk = (k: string | undefined, name: string | number, src?: string, full?: string) =>
+  (full !== undefined ? ` data-k="${full}"` : k === undefined ? '' : ` data-k="${k}-${name}"`) + (src ? ` data-src="${src}"` : '')
+export function ctape(chars: string[], o: { head?: number; rd?: number; cls?: string[]; under?: [number, number, string?]; box?: [number, number, string, string?]; w?: number; h?: number; tcls?: string; k?: string; names?: (string | undefined)[]; src?: Record<number, string> } = {}) {
   const w = o.w ?? 26, h = o.h ?? 30, pitch = w - 1
-  const cells = chars.map((c, i) => `<span class="tc ${i < (o.rd ?? 0) ? 'rd' : ''} ${o.cls?.[i] ?? ''}" style="width:${w}px;height:${h}px">${c}</span>`).join('')
+  const cells = chars.map((c, i) => `<span class="tc ${i < (o.rd ?? 0) ? 'rd' : ''} ${o.cls?.[i] ?? ''}"${dk(o.k, i, o.src?.[i], o.names?.[i])} style="width:${w}px;height:${h}px">${c}</span>`).join('')
   const x = (i: number) => i * pitch
-  const under = o.under ? `<i class="tu ${o.under[2] ?? ''}" style="left:${x(o.under[0]) + 3}px;width:${x(o.under[1] + 1) - x(o.under[0]) - 5}px;top:${h + 1}px"></i>` : ''
-  const box = o.box ? `<i class="tb ${o.box[3] ?? ''}" style="left:${x(o.box[0]) - 3}px;width:${x(o.box[1] + 1) - x(o.box[0]) + 7}px;height:${h + 6}px"><em>${o.box[2]}</em></i>` : ''
+  const under = o.under ? `<i class="tu ${o.under[2] ?? ''}"${dk(o.k, 'u')} style="left:${x(o.under[0]) + 3}px;width:${x(o.under[1] + 1) - x(o.under[0]) - 5}px;top:${h + 1}px"></i>` : ''
+  const box = o.box ? `<i class="tb ${o.box[3] ?? ''}"${dk(o.k, 'box')} style="left:${x(o.box[0]) - 3}px;width:${x(o.box[1] + 1) - x(o.box[0]) + 7}px;height:${h + 6}px"><em>${o.box[2]}</em></i>` : ''
   const head = o.head === undefined ? '' : o.head >= chars.length
-    ? `<i class="th end" style="left:${x(chars.length) + 6}px;top:${h / 2 - 9}px">读完</i>`
-    : `<i class="th" style="left:${o.head < 0 ? -8 : x(o.head) + w / 2}px;top:${h + 6}px"></i>`
+    ? `<i class="th end"${dk(o.k, 'end')} style="left:${x(chars.length) + 6}px;top:${h / 2 - 9}px">读完</i>`
+    : `<i class="th"${dk(o.k, 'head')} style="left:${o.head < 0 ? -8 : x(o.head) + w / 2}px;top:${h + 6}px"></i>`
   return `<div class="c-tape ${o.tcls ?? ''}">${cells}${under}${box}${head}</div>`
 }
 /**
@@ -489,16 +494,17 @@ export function ctape(chars: string[], o: { head?: number; rd?: number; cls?: st
  * - slots：槽位数（默认 3），决定栈的高度；dashed：还没命名时画虚线（"放着"）；label：栈下面的名字
  * - wall：第几个元素是墙（"("，画成一道粗横线，墙下面的元素变淡）；ring：第几个元素套框（正在比的栈顶）
  * - cls：每个元素另加的类；notes：每个元素右边的小注；top：栈顶标记
+ * - k：给元素起名（播放器用）：第 i 个元素 data-k="k-i"，它的小注 "k-ni"，栈顶标记 "k-top"；names、src：同 ctape
  */
-export function cstack(items: string[], o: { slots?: number; dashed?: boolean; label?: string; lcls?: string; wall?: number; ring?: number; cls?: string[]; notes?: (string | undefined)[]; top?: boolean; scls?: string } = {}) {
+export function cstack(items: string[], o: { slots?: number; dashed?: boolean; label?: string; lcls?: string; wall?: number; ring?: number; cls?: string[]; notes?: (string | undefined)[]; top?: boolean; scls?: string; k?: string; names?: (string | undefined)[]; src?: Record<number, string> } = {}) {
   const n = o.slots ?? 3, H = n * 30 + 4
   const y = (k: number) => H - 30 - k * 30
   const els = items.map((s, k) => {
     const below = o.wall !== undefined && k < o.wall ? 'below' : ''
     const kind = k === o.wall ? 'wall' : ''
-    return `<span class="si ${kind} ${below} ${k === o.ring ? 'ring' : ''} ${o.cls?.[k] ?? ''}" style="top:${y(k)}px">${kind ? '<em>(</em>' : s}</span>` +
-      (o.notes?.[k] ? `<span class="sn" style="top:${y(k)}px">${o.notes[k]}</span>` : '')
+    return `<span class="si ${kind} ${below} ${k === o.ring ? 'ring' : ''} ${o.cls?.[k] ?? ''}"${dk(o.k, k, o.src?.[k], o.names?.[k])} style="top:${y(k)}px">${kind ? '<em>(</em>' : s}</span>` +
+      (o.notes?.[k] ? `<span class="sn"${dk(o.k, 'n' + k)} style="top:${y(k)}px">${o.notes[k]}</span>` : '')
   }).join('')
-  const top = o.top && items.length ? `<span class="stp" style="top:${y(items.length - 1)}px">top</span>` : ''
+  const top = o.top && items.length ? `<span class="stp"${dk(o.k, 'top')} style="top:${y(items.length - 1)}px">top</span>` : ''
   return `<div class="c-stack ${o.dashed ? 'dashed' : ''} ${o.scls ?? ''}" style="height:${H}px">${els}${top}${o.label ? `<span class="sl ${o.lcls ?? ''}">${o.label}</span>` : ''}</div>`
 }

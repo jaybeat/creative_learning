@@ -293,7 +293,7 @@ ${C} .c-stack .si{position:absolute;left:4px;right:4px;height:26px;display:flex;
 ${C} .c-stack .si.below{opacity:.35}
 ${C} .c-stack .si.ring{box-shadow:0 0 0 2px var(--c1-line)}
 ${C} .c-stack .si.off{color:var(--off);text-decoration:line-through}
-${C} .c-stack .si.wall{left:-6px;right:-6px;border:0;border-top:3px solid var(--ink);border-radius:0;background:none;align-items:flex-start;justify-content:flex-end}
+${C} .c-stack .si.wall{left:-6px;right:-6px;border:0;border-top:3px solid var(--ink);border-radius:0;background:none;align-items:flex-start;justify-content:flex-end;height:16px}
 ${C} .c-stack .si.wall em{font-style:normal;font-size:12px;line-height:14px;color:var(--mute);margin-right:-12px}
 ${C} .c-stack .sn{position:absolute;left:56px;line-height:26px;font-size:12.5px;color:var(--mute);white-space:nowrap}
 ${C} .c-stack .stp{position:absolute;right:100%;margin-right:6px;line-height:26px;font-family:${MONO};font-size:12px;color:var(--faint)}
