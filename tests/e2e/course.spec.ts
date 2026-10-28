@@ -132,3 +132,17 @@ test('网址末尾没有 / 时配音也找得到（线上 Vercel 把 /course/2-1
   expect(r.status()).toBeLessThan(400)
   expect(r.headers()['content-type']).toMatch(/^audio\//)
 })
+
+test('3.6 有动画；配音地址带内容指纹（重新合成后浏览器不会放缓存里的旧录音）', async ({ page, browserName }) => {
+  await page.goto('ch03/3-6')
+  await expect(page.locator('.cs-player iframe')).toBeVisible()
+  // Playwright 的 WebKit 不带 mp3 解码，根本不发配音请求：只查到有动画为止
+  if (browserName === 'webkit') return
+  await page.goto('course/3-6?embed')
+  const audio = page.waitForResponse((r) => /\/audio\/b001\.mp3$/.test(new URL(r.url()).pathname))
+  await page.locator('#start').click()
+  const r = await audio
+  expect(new URL(r.url()).searchParams.get('v')).toMatch(/^[0-9a-f]{10}$/)
+  expect(r.status()).toBeLessThan(400)
+  expect(r.headers()['content-type']).toMatch(/^audio\//)
+})
