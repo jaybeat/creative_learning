@@ -21,4 +21,7 @@ chapters:
     problems: ch02-poly.md
   - file: ch03.md
     draft: false
+  - file: ch04.md
+    draft: false
+    question: 层层嵌套的数据怎么表示、怎么走遍
   # draft: true 的章完全隐藏（不生成页面、不进目录和首页），但仍参与字体字符校验

@@ -11,6 +11,7 @@ import LinkStackFigure from './components/LinkStackFigure.vue'
 import QueueFigure from './components/QueueFigure.vue'
 import SqQueueFigure from './components/SqQueueFigure.vue'
 import LinkQueueFigure from './components/LinkQueueFigure.vue'
+import TreeFigure from './components/TreeFigure.vue'
 import AdminComments from './comments/AdminComments.vue'
 import ProblemLayout from './problem/ProblemLayout.vue'
 import SampleCase from './problem/SampleCase.vue'
@@ -47,6 +48,7 @@ export default {
     app.component('QueueFigure', QueueFigure)
     app.component('SqQueueFigure', SqQueueFigure)
     app.component('LinkQueueFigure', LinkQueueFigure)
+    app.component('TreeFigure', TreeFigure)
     // 题目页：frontmatter.layout: problem 时由默认主题的 VPContent 渲染这个组件
     app.component('problem', ProblemLayout)
     app.component('SampleCase', SampleCase)
