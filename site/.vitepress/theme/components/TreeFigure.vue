@@ -115,7 +115,12 @@ const layout = computed(() => {
     place(r)
   })
   const maxDepth = Math.max(...all.map((n) => n.depth))
-  const right = Math.max(...all.map((n) => n.x + n.w / 2))
+  // 结点旁边的小字也要算进宽度，否则最右边的会被裁掉
+  const tagW = (n: TNode) => {
+    const t = words(props.label).find((w) => w.startsWith(n.name + ':'))
+    return t ? textW(t.slice(n.name.length + 1)) + 4 : 0
+  }
+  const right = Math.max(...all.map((n) => n.x + n.w / 2 + tagW(n)))
   return { roots, all, W: Math.ceil(right + 8), H: top + (maxDepth - 1) * levelGap + nodeH + 8, maxDepth }
 })
 
@@ -285,6 +290,10 @@ svg {
   font-size: 12px;
   font-weight: 600;
   fill: var(--vp-c-brand-1);
+  /* 压在连线上时也看得清 */
+  paint-order: stroke;
+  stroke: var(--vp-c-bg);
+  stroke-width: 3px;
 }
 .lvl text {
   font-size: 12px;
