@@ -8,11 +8,13 @@ const all = readMigrations()
 let db: Awaited<ReturnType<typeof pgliteDb>>
 let db7: Awaited<ReturnType<typeof pgliteDb>>
 let db8: Awaited<ReturnType<typeof pgliteDb>>
+let db9: Awaited<ReturnType<typeof pgliteDb>>
 
 afterAll(async () => {
   await db?.close()
   await db7?.close()
   await db8?.close()
+  await db9?.close()
 })
 
 test('005：评论跟着第2章的改版挪到新的节和页', async () => {
@@ -248,4 +250,58 @@ test('008：第3章表达式两节重排，求值页挪到 3.7，转换页挪到
   expect(at('3.5不动')).toEqual(['/ch03/3-5', '3-5-p2', '3.5 栈的应用：括号匹配'])
   expect(at('3.8不动')).toEqual(['/ch03/3-8', '3-8-p1', '3.8 递归'])
   expect(got.some((g) => g.page_path === '/ch03/_3-7')).toBe(false)
+}, 30_000)
+
+const NAME9 = '009_ch04_storage_split.sql'
+
+test('009：第4章树的存储拆成两节，代码页挪到 4.4', async () => {
+  db9 = await pgliteDb()
+  await migrate(db9, all.filter((m) => m.name < NAME9))
+  const [{ id: uid }] = await db9.query<{ id: string }>(`INSERT INTO users (email) VALUES ('a@e.test') RETURNING id`)
+
+  const T3 = '4.3 树的存储与实现'
+  const rows: [string, string, string | null, string][] = [
+    ['/ch04/4-3', T3, '4-3-p1', '双亲表'],
+    ['/ch04/4-3', T3, '4-3-p2', '48格'],
+    ['/ch04/4-3', T3, '4-3-p3', '数指针'],
+    ['/ch04/4-3', T3, '4-3-p4', '比一比'],
+    ['/ch04/4-3', T3, '4-3-p5', '结构体'],
+    ['/ch04/4-3', T3, '4-3-p6', '插入'],
+    ['/ch04/4-3', T3, '4-3-p7', '递归释放'],
+    ['/ch04/4-3', T3, '4-3-p8', 'main'],
+    ['/ch04/4-3', T3, '4-3-p9', '菜谱'],
+    ['/ch04/4-3', T3, '4-3-p10', '少一步'],
+    ['/ch04/4-3', T3, null, '本节问题'],
+    ['/ch04/4-2', '4.2 树的操作', '4-2-p1', '4.2不动'],
+  ]
+  for (const [page, title, heading, quote] of rows) {
+    await db9.query('INSERT INTO comments (user_id, page_path, page_title, heading_id, quote_exact, body) VALUES ($1, $2, $3, $4, $5, $6)', [uid, page, title, heading, quote, 'x'])
+  }
+  // 挪到 4.4 的评论，它的回复也要跟过去
+  const [{ id: pe }] = await db9.query<{ id: string }>(`SELECT id FROM comments WHERE quote_exact = '递归释放'`)
+  await db9.query('INSERT INTO comments (user_id, parent_id, page_path, page_title, body) VALUES ($1, $2, $3, $4, $5)', [uid, pe, '/ch04/4-3', T3, '回复递归'])
+
+  await migrate(db9, all)
+  const got = await db9.query<{ quote_exact: string | null; body: string; page_path: string; page_title: string; heading_id: string | null }>(
+    'SELECT quote_exact, body, page_path, page_title, heading_id FROM comments',
+  )
+  const at = (q: string) => {
+    const r = got.find((g) => g.quote_exact === q)!
+    return [r.page_path, r.heading_id, r.page_title]
+  }
+  const N3 = '4.3 树的存储结构', N4 = '4.4 树的存储结构的实现'
+  expect(at('双亲表')).toEqual(['/ch04/4-3', '4-3-p1', N3])
+  expect(at('48格')).toEqual(['/ch04/4-3', '4-3-p2', N3])
+  expect(at('数指针')).toEqual(['/ch04/4-3', '4-3-p5', N3])
+  expect(at('比一比')).toEqual(['/ch04/4-3', '4-3-p6', N3])
+  expect(at('结构体')).toEqual(['/ch04/4-4', '4-4-p3', N4])
+  expect(at('插入')).toEqual(['/ch04/4-4', '4-4-p4', N4])
+  expect(at('递归释放')).toEqual(['/ch04/4-4', '4-4-p5', N4])
+  expect(at('main')).toEqual(['/ch04/4-4', '4-4-p6', N4])
+  expect(at('菜谱')).toEqual(['/ch04/4-3', '4-3-p7', N3])
+  expect(at('少一步')).toEqual(['/ch04/4-4', '4-4-p8', N4])
+  expect(at('本节问题')).toEqual(['/ch04/4-3', null, N3])
+  const r = got.find((g) => g.body === '回复递归')!
+  expect([r.page_path, r.page_title]).toEqual(['/ch04/4-4', N4])
+  expect(at('4.2不动')).toEqual(['/ch04/4-2', '4-2-p1', '4.2 树的操作'])
 }, 30_000)

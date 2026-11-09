@@ -10,6 +10,13 @@ import { computed } from 'vue'
  * hi：高亮的结点名，空格分开。
  * circle：圈出以这个结点为根的子树，空格分开可以圈几棵。
  * path：从根到这个结点的路径加粗。
+ * 孩子兄弟表示法的分步图（颜色在 custom.css 的 --tree-first、--tree-sib、--tree-cut）：
+ *   keep：留下的长子边，`父-子`，画成绿色粗线；
+ *   cut：要删掉的父子边，画成橙色虚线；
+ *   drop：已经删掉的父子边，不画；
+ *   sib：新连上的兄弟边，`甲-乙`，画成紫色粗线，带箭头；
+ *   compact：结点名只有一个字母时用，结点框窄一些，成对的两张图才放得进一行。
+ *   spread：兄弟之间留宽一点。分步图里每一张都要加，原树和变换后的图才一样大、位置对得上。
  * extra：反例里多出来的父子关系，`父-子` 用空格分开，画成红色虚线，子结点描红。
  * levels：左边标"第1层""第2层"……
  * label：结点旁边的小字，`名:文字` 用空格分开，例如 `文档:4 工作:3`。
@@ -26,8 +33,14 @@ const props = withDefaults(
     levels?: boolean
     label?: string
     dim?: string
+    cut?: string
+    sib?: string
+    keep?: string
+    drop?: string
+    spread?: boolean
+    compact?: boolean
   }>(),
-  { folders: false, hi: '', circle: '', path: '', extra: '', levels: false, label: '', dim: '' },
+  { folders: false, hi: '', circle: '', path: '', extra: '', levels: false, label: '', dim: '', cut: '', sib: '', keep: '', drop: '', spread: false, compact: false },
 )
 
 interface TNode {
@@ -83,7 +96,8 @@ const textW = (t: string) => [...t].reduce((a, c) => a + (/[　-鿿＀-￯]/.tes
 
 const levelGap = 58
 const nodeH = 26
-const gapX = 10
+// 要画兄弟横箭头时，兄弟之间多留些地方
+const gapX = computed(() => (props.spread || props.sib.trim() ? 22 : 10))
 const top = 8
 
 const layout = computed(() => {
@@ -94,19 +108,19 @@ const layout = computed(() => {
     n.kids.forEach(walk)
   }
   roots.forEach(walk)
-  for (const n of all) n.w = Math.max(36, textW(n.name) + 16)
+  for (const n of all) n.w = Math.max(props.compact ? 28 : 36, textW(n.name) + 16)
   // 叶子从左到右排，父结点放在第一个和最后一个孩子的正中
   const left0 = props.levels ? 52 : 8
   let cursor = left0
   const place = (n: TNode) => {
     if (!n.kids.length) {
       n.x = cursor + n.w / 2
-      cursor += n.w + gapX
+      cursor += n.w + gapX.value
     } else {
       n.kids.forEach(place)
       n.x = (n.kids[0].x + n.kids[n.kids.length - 1].x) / 2
       // 父结点比孩子们宽时，右边的兄弟要让开
-      cursor = Math.max(cursor, n.x + n.w / 2 + gapX)
+      cursor = Math.max(cursor, n.x + n.w / 2 + gapX.value)
     }
     n.y = top + (n.depth - 1) * levelGap
   }
@@ -149,6 +163,22 @@ const extras = computed(() =>
     return { p, c }
   }),
 )
+const cutSet = computed(() => new Set(words(props.cut)))
+const keepSet = computed(() => new Set(words(props.keep)))
+const dropSet = computed(() => new Set(words(props.drop)))
+// 兄弟之间的横箭头：从甲的右边到乙的左边
+const sibs = computed(() =>
+  words(props.sib).map((w) => {
+    const [a, b] = w.split('-')
+    const p = byName(a)
+    const c = byName(b)
+    if (!p || !c) throw new Error(`TreeFigure: sib 里找不到结点「${w}」`)
+    const x1 = p.x + p.w / 2 + 2
+    const x2 = c.x - c.w / 2 - 2
+    const y = p.y + nodeH / 2
+    return { x1, x2, y, head: `${x2},${y} ${x2 - 8},${y - 4} ${x2 - 8},${y + 4}` }
+  }),
+)
 const extraKids = computed(() => new Set(extras.value.map((e) => e.c)))
 // 圈出的子树：取子树里所有结点的外框
 const circles = computed(() =>
@@ -180,7 +210,9 @@ function bend(p: TNode, c: TNode) {
   const cy = (y1 + y2) / 2 + ((x2 - x1) / len) * 36
   return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`
 }
-const edges = computed(() => layout.value.all.flatMap((n) => n.kids.map((c) => ({ p: n, c }))))
+const edges = computed(() =>
+  layout.value.all.flatMap((n) => n.kids.map((c) => ({ p: n, c }))).filter((e) => !dropSet.value.has(`${e.p.name}-${e.c.name}`)),
+)
 
 function aria() {
   const show = (n: TNode): string => (n.kids.length ? `${n.name}（${n.kids.map(show).join('，')}）` : n.name)
@@ -199,12 +231,16 @@ function aria() {
         v-for="(e, k) in edges"
         :key="'e' + k"
         class="edge"
-        :class="{ on: pathSet.has(e.c) && pathSet.has(e.p), dim: dimSet.has(e.p.name) }"
+        :class="{ on: pathSet.has(e.c) && pathSet.has(e.p), dim: dimSet.has(e.p.name), cut: cutSet.has(`${e.p.name}-${e.c.name}`), keep: keepSet.has(`${e.p.name}-${e.c.name}`) }"
         :x1="e.p.x"
         :y1="e.p.y + nodeH"
         :x2="e.c.x"
         :y2="e.c.y"
       />
+      <g v-for="(e, k) in sibs" :key="'s' + k" class="sib">
+        <line :x1="e.x1" :y1="e.y" :x2="e.x2 - 4" :y2="e.y" />
+        <polygon :points="e.head" />
+      </g>
       <path v-for="(e, k) in extras" :key="'x' + k" class="edge bad" :d="bend(e.p, e.c)" />
       <g
         v-for="n in layout.all"
@@ -248,6 +284,22 @@ svg {
   stroke: var(--vp-c-danger-1);
   stroke-dasharray: 5 3;
   stroke-width: 2;
+}
+.edge.cut {
+  stroke: var(--tree-cut);
+  stroke-dasharray: 5 4;
+  stroke-width: 1.8;
+}
+.edge.keep {
+  stroke: var(--tree-first);
+  stroke-width: 3;
+}
+.sib line {
+  stroke: var(--tree-sib);
+  stroke-width: 3;
+}
+.sib polygon {
+  fill: var(--tree-sib);
 }
 .edge.dim {
   stroke: var(--vp-c-text-3);

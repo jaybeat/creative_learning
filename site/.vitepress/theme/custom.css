@@ -692,3 +692,38 @@ html[data-font-size='l'] {
 .figure-pair > * {
   margin: 0;
 }
+
+/* 树的孩子兄弟表示法：长子边、兄弟边、要删的边各一种颜色（TreeFigure 和图例共用） */
+:root {
+  --tree-first: #1d9e75;
+  --tree-sib: #7f77dd;
+  --tree-cut: #d85a30;
+}
+.dark {
+  --tree-first: #3bbd8c;
+  --tree-sib: #a096eb;
+  --tree-cut: #ec835a;
+}
+.tree-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  margin: 12px 0 4px;
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+.tree-legend span::before {
+  content: '';
+  display: inline-block;
+  width: 22px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-top: 3px solid var(--tree-first);
+}
+.tree-legend .sib::before {
+  border-top-color: var(--tree-sib);
+}
+.tree-legend .cut::before {
+  border-top: 2px dashed var(--tree-cut);
+}
