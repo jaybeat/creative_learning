@@ -21,6 +21,11 @@ import { computed } from 'vue'
  * levels：左边标"第1层""第2层"……
  * label：结点旁边的小字，`名:文字` 用空格分开，例如 `文档:4 工作:3`。
  * dim：画成灰色的结点名（比如去掉的根）。
+ * binary：二叉树。每个结点的孩子写成"左,右"两个位置，空着的一边不写，例如 `-(,3)` 只有右孩子、`!(3,)` 只有左孩子。
+ *   只有一个孩子时画在左下或右下，不居中。tree 为空串时画一个"空"字（空二叉树）。
+ * slots：二叉树里把空着的位置画成虚线小框。
+ * lr：二叉树里左边按长子边的颜色（--tree-first）、右边按兄弟边的颜色（--tree-sib）上色，接 4.3 的分步图。
+ * caption：图下面的一行说明。
  */
 const props = withDefaults(
   defineProps<{
@@ -39,8 +44,12 @@ const props = withDefaults(
     drop?: string
     spread?: boolean
     compact?: boolean
+    binary?: boolean
+    slots?: boolean
+    lr?: boolean
+    caption?: string
   }>(),
-  { folders: false, hi: '', circle: '', path: '', extra: '', levels: false, label: '', dim: '', cut: '', sib: '', keep: '', drop: '', spread: false, compact: false },
+  { folders: false, hi: '', circle: '', path: '', extra: '', levels: false, label: '', dim: '', cut: '', sib: '', keep: '', drop: '', spread: false, compact: false, binary: false, slots: false, lr: false, caption: '' },
 )
 
 interface TNode {
@@ -52,6 +61,7 @@ interface TNode {
   y: number
   w: number
   parent: TNode | null
+  empty?: boolean // 二叉树里空着的位置
 }
 
 function parse(src: string): TNode[] {
@@ -72,10 +82,14 @@ function parse(src: string): TNode[] {
         i++
         n.kids = list(depth + 1, n)
         if (s[i] !== ')') throw new Error(`TreeFigure: 括号不配对「${src}」`)
+        if (props.binary && n.kids.length !== 2) throw new Error(`TreeFigure: 二叉树的孩子要写成"左,右"两个位置「${src}」`)
         i++
         n.folder = true
       }
-      if (!n.name) throw new Error(`TreeFigure: 有结点没写名字「${src}」`)
+      if (!n.name) {
+        if (!props.binary || n.kids.length) throw new Error(`TreeFigure: 有结点没写名字「${src}」`)
+        n.empty = true
+      }
       out.push(n)
       if (s[i] === ',') {
         i++
@@ -98,17 +112,24 @@ const levelGap = 58
 const nodeH = 26
 // 要画兄弟横箭头时，兄弟之间多留些地方
 const gapX = computed(() => (props.spread || props.sib.trim() ? 22 : 10))
-const top = 8
+// 结点旁有小字时，根上面的小字要留地方
+const top = computed(() => (props.label.trim() ? 18 : 8))
+
+// 图的宽度：树的宽度，和下面那行说明（13px 字，按 14px 字宽估的 0.93）里大的那个
+const figW = computed(() => Math.max(layout.value.W, props.caption ? Math.ceil(textW(props.caption) * 0.93) + 8 : 0))
+
+const isEmptyTree = computed(() => props.binary && props.tree.trim() === '')
 
 const layout = computed(() => {
-  const roots = parse(props.tree)
+  // 空二叉树：画一个占位的结点，模板里换成"空"字
+  const roots = isEmptyTree.value ? parse('空') : parse(props.tree)
   const all: TNode[] = []
   const walk = (n: TNode) => {
     all.push(n)
     n.kids.forEach(walk)
   }
   roots.forEach(walk)
-  for (const n of all) n.w = Math.max(props.compact ? 28 : 36, textW(n.name) + 16)
+  for (const n of all) n.w = n.empty ? (props.compact ? 24 : 30) : Math.max(props.compact ? 28 : 36, textW(n.name) + 16)
   // 叶子从左到右排，父结点放在第一个和最后一个孩子的正中
   const left0 = props.levels ? 52 : 8
   let cursor = left0
@@ -122,7 +143,7 @@ const layout = computed(() => {
       // 父结点比孩子们宽时，右边的兄弟要让开
       cursor = Math.max(cursor, n.x + n.w / 2 + gapX.value)
     }
-    n.y = top + (n.depth - 1) * levelGap
+    n.y = top.value + (n.depth - 1) * levelGap
   }
   roots.forEach((r, k) => {
     if (k) cursor += 28 // 森林里几棵树之间多空一点
@@ -135,7 +156,7 @@ const layout = computed(() => {
     return t ? textW(t.slice(n.name.length + 1)) + 4 : 0
   }
   const right = Math.max(...all.map((n) => n.x + n.w / 2 + tagW(n)))
-  return { roots, all, W: Math.ceil(right + 8), H: top + (maxDepth - 1) * levelGap + nodeH + 8, maxDepth }
+  return { roots, all, W: Math.ceil(right + 8), H: top.value + (maxDepth - 1) * levelGap + nodeH + 8, maxDepth }
 })
 
 const byName = (name: string) => layout.value.all.find((n) => n.name === name)
@@ -211,18 +232,23 @@ function bend(p: TNode, c: TNode) {
   return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`
 }
 const edges = computed(() =>
-  layout.value.all.flatMap((n) => n.kids.map((c) => ({ p: n, c }))).filter((e) => !dropSet.value.has(`${e.p.name}-${e.c.name}`)),
+  layout.value.all
+    .flatMap((n) => n.kids.map((c, k) => ({ p: n, c, side: k === 0 ? 'left' : 'right' })))
+    .filter((e) => (!e.c.empty || props.slots) && !dropSet.value.has(`${e.p.name}-${e.c.name}`)),
 )
+const shown = computed(() => (isEmptyTree.value ? [] : layout.value.all.filter((n) => !n.empty)))
+const slotNodes = computed(() => (props.slots ? layout.value.all.filter((n) => n.empty) : []))
 
 function aria() {
-  const show = (n: TNode): string => (n.kids.length ? `${n.name}（${n.kids.map(show).join('，')}）` : n.name)
-  return `树：${layout.value.roots.map(show).join('；')}`
+  if (isEmptyTree.value) return '空二叉树'
+  const show = (n: TNode): string => (n.empty ? '空' : n.kids.length ? `${n.name}（${n.kids.map(show).join('，')}）` : n.name)
+  return `${props.binary ? '二叉树' : '树'}：${layout.value.roots.map(show).join('；')}`
 }
 </script>
 
 <template>
-  <figure class="tree-figure" :style="{ width: `${layout.W}px` }">
-    <svg :viewBox="`0 0 ${layout.W} ${layout.H}`" role="img" :aria-label="aria()">
+  <figure class="tree-figure" :style="{ width: `${figW}px` }">
+    <svg :viewBox="`0 0 ${layout.W} ${layout.H}`" :style="{ width: `${layout.W}px` }" role="img" :aria-label="aria()">
       <g v-if="levels" class="lvl">
         <text v-for="d in layout.maxDepth" :key="d" x="4" :y="top + (d - 1) * levelGap + nodeH / 2 + 4">第{{ d }}层</text>
       </g>
@@ -231,7 +257,7 @@ function aria() {
         v-for="(e, k) in edges"
         :key="'e' + k"
         class="edge"
-        :class="{ on: pathSet.has(e.c) && pathSet.has(e.p), dim: dimSet.has(e.p.name), cut: cutSet.has(`${e.p.name}-${e.c.name}`), keep: keepSet.has(`${e.p.name}-${e.c.name}`) }"
+        :class="{ on: pathSet.has(e.c) && pathSet.has(e.p), dim: dimSet.has(e.p.name), cut: cutSet.has(`${e.p.name}-${e.c.name}`), keep: keepSet.has(`${e.p.name}-${e.c.name}`) || (lr && e.side === 'left'), lsib: lr && e.side === 'right', slot: e.c.empty }"
         :x1="e.p.x"
         :y1="e.p.y + nodeH"
         :x2="e.c.x"
@@ -243,7 +269,7 @@ function aria() {
       </g>
       <path v-for="(e, k) in extras" :key="'x' + k" class="edge bad" :d="bend(e.p, e.c)" />
       <g
-        v-for="n in layout.all"
+        v-for="n in shown"
         :key="n.name + n.depth + n.x"
         class="node"
         :class="{ hi: hiSet.has(n.name), on: pathSet.has(n), bad: extraKids.has(n), dim: dimSet.has(n.name), file: folders && !n.folder }"
@@ -257,7 +283,14 @@ function aria() {
         <text class="name" :x="n.x" :y="n.y + nodeH / 2 + 6" text-anchor="middle">{{ n.name }}</text>
         <text v-if="labels.get(n.name)" class="tag" :x="n.x + n.w / 2 + 2" :y="n.y - 1">{{ labels.get(n.name) }}</text>
       </g>
+      <!-- 二叉树里空着的位置 -->
+      <rect v-for="(n, k) in slotNodes" :key="'s' + k" class="slot" :x="n.x - n.w / 2" :y="n.y" :width="n.w" :height="nodeH" rx="5" />
+      <g v-if="isEmptyTree" class="node">
+        <rect class="slot" :x="layout.all[0].x - 18" :y="top" width="36" :height="nodeH" rx="5" />
+        <text class="name empty" :x="layout.all[0].x" :y="top + nodeH / 2 + 6" text-anchor="middle">空</text>
+      </g>
     </svg>
+    <figcaption v-if="caption">{{ caption }}</figcaption>
   </figure>
 </template>
 
@@ -268,8 +301,29 @@ function aria() {
 }
 svg {
   display: block;
-  width: 100%;
+  max-width: 100%;
   height: auto;
+  margin: 0 auto;
+}
+.edge.slot,
+.slot {
+  fill: none;
+  stroke: var(--vp-c-text-3);
+  stroke-dasharray: 3 3;
+  stroke-width: 1.2;
+}
+.name.empty {
+  fill: var(--vp-c-text-3);
+}
+.edge.lsib {
+  stroke: var(--tree-sib);
+  stroke-width: 3;
+}
+figcaption {
+  margin-top: 4px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--vp-c-text-2);
 }
 .edge {
   stroke: var(--vp-c-text-2);
