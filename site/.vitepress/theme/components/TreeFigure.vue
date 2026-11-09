@@ -98,7 +98,8 @@ const levelGap = 58
 const nodeH = 26
 // 要画兄弟横箭头时，兄弟之间多留些地方
 const gapX = computed(() => (props.spread || props.sib.trim() ? 22 : 10))
-const top = 8
+// 结点旁有小字时，根上面的小字要留地方
+const top = computed(() => (props.label.trim() ? 18 : 8))
 
 const layout = computed(() => {
   const roots = parse(props.tree)
@@ -122,7 +123,7 @@ const layout = computed(() => {
       // 父结点比孩子们宽时，右边的兄弟要让开
       cursor = Math.max(cursor, n.x + n.w / 2 + gapX.value)
     }
-    n.y = top + (n.depth - 1) * levelGap
+    n.y = top.value + (n.depth - 1) * levelGap
   }
   roots.forEach((r, k) => {
     if (k) cursor += 28 // 森林里几棵树之间多空一点
@@ -135,7 +136,7 @@ const layout = computed(() => {
     return t ? textW(t.slice(n.name.length + 1)) + 4 : 0
   }
   const right = Math.max(...all.map((n) => n.x + n.w / 2 + tagW(n)))
-  return { roots, all, W: Math.ceil(right + 8), H: top + (maxDepth - 1) * levelGap + nodeH + 8, maxDepth }
+  return { roots, all, W: Math.ceil(right + 8), H: top.value + (maxDepth - 1) * levelGap + nodeH + 8, maxDepth }
 })
 
 const byName = (name: string) => layout.value.all.find((n) => n.name === name)
