@@ -11,6 +11,8 @@
  * 2026-10-27 第3章表达式两节重排（和 008 迁移对应）：
  *   - 原 3.6（后缀式求值）q1（栈里是什么）→ 3.7 q1；原 3.6 q2（写成后缀式）删掉，3.7 q2 是新题；
  *   - 原 3.7（中缀转后缀）q1（栈里是什么）→ 3.6 q2，q2（写成后缀式）→ 3.6 q1：手工转换的练习挪到了加括号法后面。
+ * 2026-11-09 第4章树的存储拆成两节（和 009 迁移对应）：
+ *   - 4.3 q1（存一棵小树）不动；原 4.3 q2（摘下来时少了一步）→ 4.4 q2；4.3 q2、4.4 q1 是新题。
  * 每次重排是一步，带一个版本标记；记下跑到了哪一步，以后只跑后面的步。
  */
 
@@ -62,10 +64,16 @@ function ch03Postfix(s: Store) {
   if (old6q1 !== null) s.setItem(qk(7, 1), old6q1)
 }
 
+function ch04Storage(s: Store) {
+  const qk = (sec: number, q: number) => `${PREFIX}ch04-4-${sec}-q${q}`
+  move(s, qk(3, 2), qk(4, 2))
+}
+
 // 按时间顺序排列；新加的重排接在最后
 const STEPS: [string, (s: Store) => void][] = [
   ['2026-10-ch02-linked', ch02Linked],
   ['2026-10-ch03-postfix', ch03Postfix],
+  ['2026-11-ch04-storage', ch04Storage],
 ]
 
 export function remapQuizKeys(s: Store): void {

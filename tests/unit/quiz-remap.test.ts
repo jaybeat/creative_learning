@@ -48,7 +48,7 @@ test('练习题记录跟着第2章链表部分改结构挪到新位置，只跑�
     [K('2-16-q4')]: 'k',
     [K('2-17-q1')]: 'l',
     'ds-book:font-size': 'large',
-    [REMAP_FLAG]: '2026-10-ch03-postfix',
+    [REMAP_FLAG]: '2026-11-ch04-storage',
   })
   // 已经挪过：之后新答的题不会再被挪走
   s.setItem(K('2-9-q2'), 'new')
@@ -72,7 +72,7 @@ test('第3章表达式两节互换：原 3.6 求值题 → 3.7，原 3.7 转换�
   })
   remapQuizKeys(s)
   expect(Object.fromEntries(s.m)).toEqual({
-    [REMAP_FLAG]: '2026-10-ch03-postfix',
+    [REMAP_FLAG]: '2026-11-ch04-storage',
     [K('2-9-q2')]: '第2章挪过以后新答的',
     [K3('3-5-q1')]: 'p',
     [K3('3-6-q1')]: 'd',
@@ -84,4 +84,28 @@ test('第3章表达式两节互换：原 3.6 求值题 → 3.7，原 3.7 转换�
   s.setItem(K3('3-6-q2'), 'new')
   remapQuizKeys(s)
   expect(s.getItem(K3('3-6-q2'))).toBe('new')
+})
+
+const K4 = (s: string) => `ds-book:quiz:ch04-${s}`
+
+test('第4章树的存储拆节：原 4.3 q2 → 4.4 q2，4.3 q1 不动；前面的重排不再跑', () => {
+  const s = store({
+    [REMAP_FLAG]: '2026-10-ch03-postfix',
+    [K3('3-6-q1')]: '第3章挪过以后新答的', // 不能再被第3章那一步挪走
+    [K4('4-2-q1')]: 'x',
+    [K4('4-3-q1')]: 'a', // 存一棵小树：不动
+    [K4('4-3-q2')]: 'b', // 摘下来时少了一步 → 4.4 q2
+  })
+  remapQuizKeys(s)
+  expect(Object.fromEntries(s.m)).toEqual({
+    [REMAP_FLAG]: '2026-11-ch04-storage',
+    [K3('3-6-q1')]: '第3章挪过以后新答的',
+    [K4('4-2-q1')]: 'x',
+    [K4('4-3-q1')]: 'a',
+    [K4('4-4-q2')]: 'b',
+  })
+  // 只跑一次：之后在新 4.3 q2 答的题不会被挪走
+  s.setItem(K4('4-3-q2'), 'new')
+  remapQuizKeys(s)
+  expect(s.getItem(K4('4-3-q2'))).toBe('new')
 })
