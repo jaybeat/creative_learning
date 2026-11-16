@@ -303,3 +303,19 @@ test('4.7：十一页，顺序存储和链式存储；数组图、二叉链表�
   await expect(figs.nth(3).locator('.nil')).toHaveCount(7)
   for (const i of [8, 9, 10]) await expect(page.locator(pages).nth(i).locator('.quiz-badge')).toHaveText('填空')
 })
+
+test('4.8：十一页，先序、中序、后序；绕一圈的点按经过次序编号，和正文的序列一致', async ({ page }) => {
+  await page.goto('ch04/4-8')
+  await expect(page.locator(pages)).toHaveCount(11)
+  const titles = ['三种顺序从哪来', '先序遍历', '中序遍历', '后序遍历', '绕一圈写出三种序列', '算式树', '写成函数']
+  for (const [i, text] of titles.entries()) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toContainText(text)
+  // 先序逐步：最后一步的序列格子写满 ABDCG
+  await expect(page.locator(pages).nth(1).locator('.array-figure').last().locator('.val')).toHaveText(['A', 'B', 'D', 'C', 'G'])
+  // 绕一圈：全部点 15 个（5 个结点各 3 次），先序、中序、后序各 5 个编号
+  const tour = page.locator(pages).nth(4).locator('.tree-figure')
+  await expect(tour.nth(0).locator('.tour-dot')).toHaveCount(15)
+  for (const [i, kind] of [[2, 'pre'], [3, 'in'], [4, 'post']] as const) await expect(tour.nth(i).locator(`.tour-dot.${kind} text`)).toHaveCount(5)
+  await expect(page.locator(pages).nth(8).locator('.quiz-badge')).toHaveText('填空')
+  await expect(page.locator(pages).nth(9).locator('.quiz-badge')).toHaveText('单选')
+  await expect(page.locator(pages).nth(10).locator('.quiz-badge')).toHaveText('填空')
+})

@@ -29,6 +29,9 @@ import { computed } from 'vue'
  *   parent：再加一格双亲指针（三叉链表），画成"左指针 | 值 | 双亲 | 右指针"，虚线箭头连回双亲；根的双亲写 ∧。
  *   nulls：把 ∧ 标成高亮色（数空指针）。ptrs：把非空的指针线标成高亮色（数非空指针）。
  *   地址写在 label 里，例如 `A:200 B:340`。
+ * tour：二叉树遍历的"绕一圈"。沿外圈从根的左边出发，绕过每个结点，最后回到根的右边，每个结点经过三次（左边、下边、右边）。
+ *   `path` 只画路线；`all` 再在三处各画一个小点；`pre`、`in`、`post` 只在左边、下边、右边画点，并标上第几个经过。
+ *   upto：只画到第几个点（分步图），不给时画全。
  * caption：图下面的一行说明。
  */
 const props = withDefaults(
@@ -55,9 +58,11 @@ const props = withDefaults(
     parent?: boolean
     nulls?: boolean
     ptrs?: boolean
+    tour?: string
+    upto?: number | string
     caption?: string
   }>(),
-  { linked: false, parent: false, nulls: false, ptrs: false, folders: false, hi: '', circle: '', path: '', extra: '', levels: false, label: '', dim: '', cut: '', sib: '', keep: '', drop: '', spread: false, compact: false, binary: false, slots: false, lr: false, caption: '' },
+  { tour: '', upto: 0, linked: false, parent: false, nulls: false, ptrs: false, folders: false, hi: '', circle: '', path: '', extra: '', levels: false, label: '', dim: '', cut: '', sib: '', keep: '', drop: '', spread: false, compact: false, binary: false, slots: false, lr: false, caption: '' },
 )
 
 interface TNode {
@@ -145,7 +150,7 @@ const layout = computed(() => {
     if (props.linked && !n.empty) n.w = dataW(n) + ptrW * (props.parent ? 3 : 2)
   }
   // 叶子从左到右排，父结点放在第一个和最后一个孩子的正中
-  const left0 = props.levels ? 52 : 8
+  const left0 = (props.levels ? 52 : 8) + (props.tour ? 22 : 0)
   let cursor = left0
   const place = (n: TNode) => {
     if (!n.kids.length) {
@@ -169,8 +174,8 @@ const layout = computed(() => {
     const t = words(props.label).find((w) => w.startsWith(n.name + ':'))
     return t ? textW(t.slice(n.name.length + 1)) + 4 : 0
   }
-  const right = Math.max(...all.map((n) => n.x + n.w / 2 + tagW(n)))
-  return { roots, all, W: Math.ceil(right + 8), H: top.value + (maxDepth - 1) * levelGap + nodeH + 8, maxDepth }
+  const right = Math.max(...all.map((n) => n.x + n.w / 2 + tagW(n) + (props.tour ? 22 : 0)))
+  return { roots, all, W: Math.ceil(right + 8), H: top.value + (maxDepth - 1) * levelGap + nodeH + 8 + (props.tour ? 16 : 0), maxDepth }
 })
 
 const byName = (name: string) => layout.value.all.find((n) => n.name === name)
@@ -296,6 +301,65 @@ const links = computed(() => {
   return out
 })
 
+// 绕一圈：每个结点的左边、下边、右边各一个点，按"左 → 左子树 → 下 → 右子树 → 右"的次序连起来
+interface TourPt {
+  x: number
+  y: number
+  kind: 'pre' | 'in' | 'post'
+  n: TNode
+}
+const tourPts = computed<TourPt[]>(() => {
+  if (!props.tour || isEmptyTree.value) return []
+  const out: TourPt[] = []
+  const gap = 9
+  const walk = (n: TNode | undefined) => {
+    if (!n || n.empty) return
+    out.push({ x: n.x - n.w / 2 - gap, y: n.y + nodeH / 2, kind: 'pre', n })
+    walk(n.kids[0])
+    out.push({ x: n.x, y: n.y + nodeH + gap, kind: 'in', n })
+    walk(n.kids[1])
+    out.push({ x: n.x + n.w / 2 + gap, y: n.y + nodeH / 2, kind: 'post', n })
+  }
+  layout.value.roots.forEach(walk)
+  return out
+})
+const tourLimit = computed(() => Number(props.upto) || tourPts.value.length)
+// 路线：相邻两点之间用二次曲线，拐角圆一些
+const tourPath = computed(() => {
+  const pts = tourPts.value.slice(0, tourLimit.value)
+  if (pts.length < 2) return ''
+  let d = `M ${pts[0].x} ${pts[0].y}`
+  for (let k = 1; k < pts.length; k++) {
+    const a = pts[k - 1]
+    const b = pts[k]
+    // 往外鼓一点：同一个结点上的两点之间绕着结点走
+    const cx = (a.x + b.x) / 2 + (a.n === b.n ? 0 : 0)
+    const cy = a.n === b.n ? Math.max(a.y, b.y) + 4 : (a.y + b.y) / 2
+    d += ` Q ${cx} ${cy} ${b.x} ${b.y}`
+  }
+  return d
+})
+const tourHead = computed(() => {
+  const pts = tourPts.value.slice(0, tourLimit.value)
+  if (pts.length < 2) return ''
+  const b = pts[pts.length - 1]
+  const a = pts[pts.length - 2]
+  const cx = (a.x + b.x) / 2
+  const cy = a.n === b.n ? Math.max(a.y, b.y) + 4 : (a.y + b.y) / 2
+  const len = Math.hypot(b.x - cx, b.y - cy) || 1
+  const [ux, uy] = [(b.x - cx) / len, (b.y - cy) / len]
+  const [bx, by] = [b.x - ux * 7, b.y - uy * 7]
+  return `${b.x},${b.y} ${bx - uy * 3.5},${by + ux * 3.5} ${bx + uy * 3.5},${by - ux * 3.5}`
+})
+// 要画的点：all 画全部（不编号）；pre/in/post 只画那一种，按经过的先后编号
+const tourDots = computed(() => {
+  const shown = tourPts.value.slice(0, tourLimit.value)
+  if (props.tour === 'all') return shown.map((p) => ({ ...p, no: 0 }))
+  if (!['pre', 'in', 'post'].includes(props.tour)) return []
+  let no = 0
+  return shown.filter((p) => p.kind === props.tour).map((p) => ({ ...p, no: ++no }))
+})
+
 const shown = computed(() => (isEmptyTree.value ? [] : layout.value.all.filter((n) => !n.empty)))
 const slotNodes = computed(() => (props.slots && !props.linked ? layout.value.all.filter((n) => n.empty) : []))
 
@@ -332,6 +396,10 @@ function aria() {
         <path :d="l.d" />
         <polygon :points="l.head" />
       </g>
+      <g v-if="tourPath" class="tour">
+        <path :d="tourPath" />
+        <polygon :points="tourHead" />
+      </g>
       <path v-for="(e, k) in extras" :key="'x' + k" class="edge bad" :d="bend(e.p, e.c)" />
       <g
         v-for="n in shown"
@@ -354,6 +422,15 @@ function aria() {
         <rect v-else class="box" :x="n.x - n.w / 2" :y="n.y" :width="n.w" :height="nodeH" rx="5" />
         <text v-if="!linked" class="name" :x="n.x" :y="n.y + nodeH / 2 + 6" text-anchor="middle">{{ n.name }}</text>
         <text v-if="labels.get(n.name)" class="tag" :x="n.x + n.w / 2 + 2" :y="n.y - 1">{{ labels.get(n.name) }}</text>
+      </g>
+      <g v-for="(p, k) in tourDots" :key="'t' + k" class="tour-dot" :class="p.kind">
+        <circle :cx="p.x" :cy="p.y" :r="p.no ? 4.5 : 3" />
+        <text
+          v-if="p.no"
+          :x="p.kind === 'pre' ? p.x - 8 : p.kind === 'post' ? p.x + 8 : p.x + 7"
+          :y="p.kind === 'in' ? p.y + 12 : p.y - 6"
+          :text-anchor="p.kind === 'pre' ? 'end' : 'start'"
+        >{{ p.no }}</text>
       </g>
       <!-- 二叉树里空着的位置 -->
       <rect v-for="(n, k) in slotNodes" :key="'s' + k" class="slot" :x="n.x - n.w / 2" :y="n.y" :width="n.w" :height="nodeH" rx="5" />
@@ -506,6 +583,29 @@ figcaption {
 .link.on polygon,
 .link.on circle {
   fill: var(--vp-c-brand-1);
+}
+.tour path {
+  fill: none;
+  stroke: var(--tree-sib);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 3;
+  opacity: 0.8;
+}
+.tour polygon {
+  fill: var(--tree-sib);
+}
+.tour-dot circle {
+  fill: var(--vp-c-brand-1);
+  stroke: var(--vp-c-bg);
+  stroke-width: 1.5;
+}
+.tour-dot text {
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--vp-c-brand-1);
+  paint-order: stroke;
+  stroke: var(--vp-c-bg);
+  stroke-width: 3px;
 }
 .lvl text {
   font-size: 12px;
