@@ -286,3 +286,18 @@ test('4.6：九页，先讲性质再讲满二叉树、完全二叉树；窄屏�
   await expect(page.locator(pages).nth(7).locator('.quiz-badge')).toHaveText('多选')
   await expect(page.locator(pages).nth(8).locator('.quiz-badge')).toHaveText('填空')
 })
+
+test('4.7：十一页，顺序存储和链式存储；数组图、二叉链表图的空指针个数对得上正文', async ({ page }) => {
+  await page.goto('ch04/4-7')
+  await expect(page.locator(pages)).toHaveCount(11)
+  const titles = ['按编号放进数组', '从编号算出孩子和双亲', '不是完全二叉树的时候', '顺序存储：用C语言表示', '把关系记在结点里', '链式存储：用C语言表示', '空指针和双亲', '两种存法比一比']
+  for (const [i, text] of titles.entries()) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toContainText(text)
+  // 4.5节那棵按编号存：7格，5号、6号空着
+  await expect(page.locator(pages).nth(2).locator('.array-figure').nth(1).locator('.cell.empty:not(.zero)')).toHaveCount(2)
+  // 二叉链表：5个结点，非空指针4个、空指针6个；三叉链表空指针7个
+  const figs = page.locator(pages).nth(6).locator('.tree-figure')
+  await expect(figs.nth(1).locator('.link.on')).toHaveCount(4)
+  await expect(figs.nth(2).locator('.nil.on')).toHaveCount(6)
+  await expect(figs.nth(3).locator('.nil')).toHaveCount(7)
+  for (const i of [8, 9, 10]) await expect(page.locator(pages).nth(i).locator('.quiz-badge')).toHaveText('填空')
+})
