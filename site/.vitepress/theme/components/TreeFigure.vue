@@ -32,6 +32,11 @@ import { computed } from 'vue'
  * tour：二叉树遍历的"绕一圈"。沿外圈从根的左边出发，绕过每个结点，最后回到根的右边，每个结点经过三次（左边、下边、右边）。
  *   `path` 只画路线；`all` 再在三处各画一个小点；`pre`、`in`、`post` 只在左边、下边、右边画点，并标上第几个经过。
  *   upto：只画到第几个点（分步图），不给时画全。
+ * 递归求值的"递"和"归"（二叉树，画在边的两旁）：
+ *   ask：结点名，空格分开。从这些结点到它们孩子的每条边旁，画一个朝下的虚线小箭头和"?"：问题交下去。
+ *     有 slots 时，通往空子树的边也画。叶子要画到空子树，tree 里写成 `D(,)`。
+ *   ret：`名:值`，空格分开。从这个结点到它双亲的边旁，画一个朝上的实线小箭头和值：这棵子树带回的答案。
+ *   zero：结点名，空格分开。它通往空子树的边旁，画朝上的箭头和 empty 的值（空树带回的答案，默认 0）。
  * caption：图下面的一行说明。
  */
 const props = withDefaults(
@@ -60,9 +65,13 @@ const props = withDefaults(
     ptrs?: boolean
     tour?: string
     upto?: number | string
+    ask?: string
+    ret?: string
+    zero?: string
+    empty?: string
     caption?: string
   }>(),
-  { tour: '', upto: 0, linked: false, parent: false, nulls: false, ptrs: false, folders: false, hi: '', circle: '', path: '', extra: '', levels: false, label: '', dim: '', cut: '', sib: '', keep: '', drop: '', spread: false, compact: false, binary: false, slots: false, lr: false, caption: '' },
+  { ask: '', ret: '', zero: '', empty: '0', tour: '', upto: 0, linked: false, parent: false, nulls: false, ptrs: false, folders: false, hi: '', circle: '', path: '', extra: '', levels: false, label: '', dim: '', cut: '', sib: '', keep: '', drop: '', spread: false, compact: false, binary: false, slots: false, lr: false, caption: '' },
 )
 
 interface TNode {
@@ -150,7 +159,8 @@ const layout = computed(() => {
     if (props.linked && !n.empty) n.w = dataW(n) + ptrW * (props.parent ? 3 : 2)
   }
   // 叶子从左到右排，父结点放在第一个和最后一个孩子的正中
-  const left0 = (props.levels ? 52 : 8) + (props.tour ? 22 : 0)
+  const flow = props.ask.trim() || props.ret.trim() || props.zero.trim() ? 16 : 0
+  const left0 = (props.levels ? 52 : 8) + (props.tour ? 22 : 0) + flow
   let cursor = left0
   const place = (n: TNode) => {
     if (!n.kids.length) {
@@ -174,7 +184,7 @@ const layout = computed(() => {
     const t = words(props.label).find((w) => w.startsWith(n.name + ':'))
     return t ? textW(t.slice(n.name.length + 1)) + 4 : 0
   }
-  const right = Math.max(...all.map((n) => n.x + n.w / 2 + tagW(n) + (props.tour ? 22 : 0)))
+  const right = Math.max(...all.map((n) => n.x + n.w / 2 + tagW(n) + (props.tour ? 22 : 0) + flow))
   return { roots, all, W: Math.ceil(right + 8), H: top.value + (maxDepth - 1) * levelGap + nodeH + 8 + (props.tour ? 16 : 0), maxDepth }
 })
 
@@ -280,6 +290,47 @@ function arrow(x1: number, y1: number, x2: number, y2: number) {
   const [bx, by] = [x2 - ux * 7, y2 - uy * 7]
   return { d: `M ${x1} ${y1} L ${bx} ${by}`, head: `${x2},${y2} ${bx - uy * 3.5},${by + ux * 3.5} ${bx + uy * 3.5},${by - ux * 3.5}` }
 }
+// 递和归：沿着父子边，在边的两旁各画一个短箭头。朝下的在左手边，朝上的在右手边（从双亲看向孩子）
+const flows = computed(() => {
+  const askSet = new Set(words(props.ask))
+  const zeroSet = new Set(words(props.zero))
+  const rets = new Map<string, string>()
+  for (const w of words(props.ret)) {
+    const k = w.indexOf(':')
+    if (k > 0) rets.set(w.slice(0, k), w.slice(k + 1))
+  }
+  const out: { d: string; head: string; up: boolean; text: string; tx: number; ty: number }[] = []
+  for (const n of layout.value.all) {
+    if (n.empty) continue
+    for (const c of n.kids) {
+      if (c.empty && !props.slots) continue
+      const x1 = n.x
+      const y1 = n.y + nodeH
+      const x2 = c.x
+      const y2 = c.y
+      const len = Math.hypot(x2 - x1, y2 - y1) || 1
+      const [ux, uy] = [(x2 - x1) / len, (y2 - y1) / len]
+      // 法向量：沿边往下看的左手边
+      const [nx, ny] = [uy, -ux]
+      const seg = (side: number, down: boolean, text: string) => {
+        const off = 8 * side
+        const a = 0.28
+        const b = 0.72
+        const p1 = [x1 + (x2 - x1) * a + nx * off, y1 + (y2 - y1) * a + ny * off]
+        const p2 = [x1 + (x2 - x1) * b + nx * off, y1 + (y2 - y1) * b + ny * off]
+        const [s1, s2] = down ? [p1, p2] : [p2, p1]
+        const ar = arrow(s1[0], s1[1], s2[0], s2[1])
+        const mx = (p1[0] + p2[0]) / 2 + nx * 9 * side
+        const my = (p1[1] + p2[1]) / 2 + ny * 9 * side + 4
+        out.push({ ...ar, up: !down, text, tx: mx, ty: my })
+      }
+      if (askSet.has(n.name)) seg(1, true, '?')
+      if (c.empty ? zeroSet.has(n.name) : rets.has(c.name)) seg(-1, false, c.empty ? props.empty : rets.get(c.name)!)
+    }
+  }
+  return out
+})
+
 const links = computed(() => {
   if (!props.linked) return []
   const out: { d: string; head: string; up: boolean; x: number; y: number }[] = []
@@ -399,6 +450,11 @@ function aria() {
       <g v-if="tourPath" class="tour">
         <path :d="tourPath" />
         <polygon :points="tourHead" />
+      </g>
+      <g v-for="(f, k) in flows" :key="'f' + k" class="flow" :class="{ up: f.up }">
+        <path :d="f.d" />
+        <polygon :points="f.head" />
+        <text :x="f.tx" :y="f.ty" text-anchor="middle">{{ f.text }}</text>
       </g>
       <path v-for="(e, k) in extras" :key="'x' + k" class="edge bad" :d="bend(e.p, e.c)" />
       <g
@@ -583,6 +639,34 @@ figcaption {
 .link.on polygon,
 .link.on circle {
   fill: var(--vp-c-brand-1);
+}
+.flow path {
+  fill: none;
+  stroke: var(--vp-c-text-3);
+  stroke-width: 1.4;
+  stroke-dasharray: 3 2;
+}
+.flow polygon {
+  fill: var(--vp-c-text-3);
+}
+.flow text {
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--vp-c-text-2);
+  paint-order: stroke;
+  stroke: var(--vp-c-bg);
+  stroke-width: 3px;
+}
+.flow.up path {
+  stroke: var(--tree-first);
+  stroke-width: 1.8;
+  stroke-dasharray: none;
+}
+.flow.up polygon {
+  fill: var(--tree-first);
+}
+.flow.up text {
+  fill: var(--tree-first);
 }
 .tour path {
   fill: none;
