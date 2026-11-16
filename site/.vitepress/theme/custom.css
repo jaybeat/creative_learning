@@ -693,6 +693,52 @@ html[data-font-size='l'] {
   margin: 0;
 }
 
+/* 图文按行配对（::: side，scripts/lib/side-plugin.ts）：宽屏文字在左、图在右，窄屏图落到文字下面 */
+.side {
+  margin: 16px 0;
+}
+.side-row {
+  display: grid;
+  /* 图最多占一半宽，几张图放不下时自己换行，文字不被挤成窄条 */
+  grid-template-columns: minmax(0, 1fr) fit-content(50%);
+  align-items: center;
+  gap: 8px 24px;
+  padding: 10px 0;
+  border-top: 1px solid var(--vp-c-divider);
+}
+.side-row:first-child {
+  border-top: none;
+}
+.side-row-text {
+  display: block;
+}
+.side-text > :first-child,
+.side-row-text > :first-child {
+  margin-top: 0;
+}
+.side-text > :last-child,
+.side-row-text > :last-child {
+  margin-bottom: 0;
+}
+.side-fig {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+}
+.side-fig > *,
+.side-fig .figure-pair {
+  margin: 0;
+}
+.side-fig .figure-pair {
+  gap: 8px 16px;
+}
+@media (max-width: 639px) {
+  .side-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* 树的孩子兄弟表示法：长子边、兄弟边、要删的边各一种颜色（TreeFigure 和图例共用） */
 :root {
   --tree-first: #1d9e75;

@@ -25,6 +25,10 @@ import { computed } from 'vue'
  *   只有一个孩子时画在左下或右下，不居中。tree 为空串时画一个"空"字（空二叉树）。
  * slots：二叉树里把空着的位置画成虚线小框。
  * lr：二叉树里左边按长子边的颜色（--tree-first）、右边按兄弟边的颜色（--tree-sib）上色，接 4.3 的分步图。
+ * linked：二叉链表（要和 binary 一起用）。结点画成"左指针 | 值 | 右指针"三格，指针从格子里连到孩子，空指针写 ∧。
+ *   parent：再加一格双亲指针（三叉链表），画成"左指针 | 值 | 双亲 | 右指针"，虚线箭头连回双亲；根的双亲写 ∧。
+ *   nulls：把 ∧ 标成高亮色（数空指针）。ptrs：把非空的指针线标成高亮色（数非空指针）。
+ *   地址写在 label 里，例如 `A:200 B:340`。
  * caption：图下面的一行说明。
  */
 const props = withDefaults(
@@ -47,9 +51,13 @@ const props = withDefaults(
     binary?: boolean
     slots?: boolean
     lr?: boolean
+    linked?: boolean
+    parent?: boolean
+    nulls?: boolean
+    ptrs?: boolean
     caption?: string
   }>(),
-  { folders: false, hi: '', circle: '', path: '', extra: '', levels: false, label: '', dim: '', cut: '', sib: '', keep: '', drop: '', spread: false, compact: false, binary: false, slots: false, lr: false, caption: '' },
+  { linked: false, parent: false, nulls: false, ptrs: false, folders: false, hi: '', circle: '', path: '', extra: '', levels: false, label: '', dim: '', cut: '', sib: '', keep: '', drop: '', spread: false, compact: false, binary: false, slots: false, lr: false, caption: '' },
 )
 
 interface TNode {
@@ -109,6 +117,9 @@ const words = (v: string) => v.trim().split(/\s+/).filter(Boolean)
 const textW = (t: string) => [...t].reduce((a, c) => a + (/[　-鿿＀-￯]/.test(c) ? 14 : 8), 0)
 
 const levelGap = 58
+// 二叉链表里一个指针格的宽度，值那一格的宽度
+const ptrW = 18
+const dataW = (n: { name: string }) => Math.max(26, textW(n.name) + 12)
 const nodeH = 26
 // 要画兄弟横箭头时，兄弟之间多留些地方
 const gapX = computed(() => (props.spread || props.sib.trim() ? 22 : 10))
@@ -129,7 +140,10 @@ const layout = computed(() => {
     n.kids.forEach(walk)
   }
   roots.forEach(walk)
-  for (const n of all) n.w = n.empty ? (props.compact ? 24 : 30) : Math.max(props.compact ? 28 : 36, textW(n.name) + 16)
+  for (const n of all) {
+    n.w = n.empty ? (props.compact ? 24 : 30) : Math.max(props.compact ? 28 : 36, textW(n.name) + 16)
+    if (props.linked && !n.empty) n.w = dataW(n) + ptrW * (props.parent ? 3 : 2)
+  }
   // 叶子从左到右排，父结点放在第一个和最后一个孩子的正中
   const left0 = props.levels ? 52 : 8
   let cursor = left0
@@ -234,10 +248,56 @@ function bend(p: TNode, c: TNode) {
 const edges = computed(() =>
   layout.value.all
     .flatMap((n) => n.kids.map((c, k) => ({ p: n, c, side: k === 0 ? 'left' : 'right' })))
-    .filter((e) => (!e.c.empty || props.slots) && !dropSet.value.has(`${e.p.name}-${e.c.name}`)),
+    .filter((e) => !props.linked && (!e.c.empty || props.slots) && !dropSet.value.has(`${e.p.name}-${e.c.name}`)),
 )
+// 二叉链表：每个结点的几格（左、值、[双亲]、右），以及从指针格连出去的线
+interface Field {
+  x: number
+  w: number
+  kind: 'l' | 'd' | 'p' | 'r'
+  nil: boolean
+}
+function fields(n: TNode): Field[] {
+  const x0 = n.x - n.w / 2
+  const dw = dataW(n)
+  const kid = (k: number) => n.kids[k] && !n.kids[k].empty
+  const out: Field[] = [
+    { x: x0, w: ptrW, kind: 'l', nil: !kid(0) },
+    { x: x0 + ptrW, w: dw, kind: 'd', nil: false },
+  ]
+  if (props.parent) out.push({ x: x0 + ptrW + dw, w: ptrW, kind: 'p', nil: !n.parent })
+  out.push({ x: x0 + n.w - ptrW, w: ptrW, kind: 'r', nil: !kid(1) })
+  return out
+}
+function arrow(x1: number, y1: number, x2: number, y2: number) {
+  const len = Math.hypot(x2 - x1, y2 - y1) || 1
+  const [ux, uy] = [(x2 - x1) / len, (y2 - y1) / len]
+  const [bx, by] = [x2 - ux * 7, y2 - uy * 7]
+  return { d: `M ${x1} ${y1} L ${bx} ${by}`, head: `${x2},${y2} ${bx - uy * 3.5},${by + ux * 3.5} ${bx + uy * 3.5},${by - ux * 3.5}` }
+}
+const links = computed(() => {
+  if (!props.linked) return []
+  const out: { d: string; head: string; up: boolean; x: number; y: number }[] = []
+  for (const n of layout.value.all) {
+    if (n.empty) continue
+    for (const f of fields(n)) {
+      const cx = f.x + f.w / 2
+      const cy = n.y + nodeH / 2
+      if ((f.kind === 'l' || f.kind === 'r') && !f.nil) {
+        const c = n.kids[f.kind === 'l' ? 0 : 1]
+        out.push({ ...arrow(cx, cy, c.x, c.y - 1), up: false, x: cx, y: cy })
+      }
+      if (f.kind === 'p' && n.parent) {
+        const p = n.parent
+        out.push({ ...arrow(cx, n.y, p.x + (cx < p.x ? -6 : 6), p.y + nodeH + 1), up: true, x: cx, y: cy })
+      }
+    }
+  }
+  return out
+})
+
 const shown = computed(() => (isEmptyTree.value ? [] : layout.value.all.filter((n) => !n.empty)))
-const slotNodes = computed(() => (props.slots ? layout.value.all.filter((n) => n.empty) : []))
+const slotNodes = computed(() => (props.slots && !props.linked ? layout.value.all.filter((n) => n.empty) : []))
 
 function aria() {
   if (isEmptyTree.value) return '空二叉树'
@@ -267,6 +327,11 @@ function aria() {
         <line :x1="e.x1" :y1="e.y" :x2="e.x2 - 4" :y2="e.y" />
         <polygon :points="e.head" />
       </g>
+      <g v-for="(l, k) in links" :key="'l' + k" class="link" :class="{ up: l.up, on: ptrs && !l.up }">
+        <circle :cx="l.x" :cy="l.y" r="2.5" />
+        <path :d="l.d" />
+        <polygon :points="l.head" />
+      </g>
       <path v-for="(e, k) in extras" :key="'x' + k" class="edge bad" :d="bend(e.p, e.c)" />
       <g
         v-for="n in shown"
@@ -279,8 +344,15 @@ function aria() {
           class="box"
           :d="`M ${n.x - n.w / 2} ${n.y + 4} h ${Math.min(18, n.w / 3)} l 3 -4 h ${n.w - Math.min(18, n.w / 3) - 3} v ${nodeH} h ${-n.w} z`"
         />
+        <template v-else-if="linked">
+          <rect v-for="(f, k) in fields(n)" :key="k" class="box field" :class="{ ptr: f.kind !== 'd' }" :x="f.x" :y="n.y" :width="f.w" :height="nodeH" />
+          <template v-for="(f, k) in fields(n)" :key="'t' + k">
+            <text v-if="f.kind === 'd'" class="name" :x="f.x + f.w / 2" :y="n.y + nodeH / 2 + 6" text-anchor="middle">{{ n.name }}</text>
+            <text v-else-if="f.nil" class="nil" :class="{ on: nulls }" :x="f.x + f.w / 2" :y="n.y + nodeH / 2 + 5" text-anchor="middle">∧</text>
+          </template>
+        </template>
         <rect v-else class="box" :x="n.x - n.w / 2" :y="n.y" :width="n.w" :height="nodeH" rx="5" />
-        <text class="name" :x="n.x" :y="n.y + nodeH / 2 + 6" text-anchor="middle">{{ n.name }}</text>
+        <text v-if="!linked" class="name" :x="n.x" :y="n.y + nodeH / 2 + 6" text-anchor="middle">{{ n.name }}</text>
         <text v-if="labels.get(n.name)" class="tag" :x="n.x + n.w / 2 + 2" :y="n.y - 1">{{ labels.get(n.name) }}</text>
       </g>
       <!-- 二叉树里空着的位置 -->
@@ -400,6 +472,40 @@ figcaption {
   paint-order: stroke;
   stroke: var(--vp-c-bg);
   stroke-width: 3px;
+}
+.field.ptr {
+  fill: var(--vp-c-bg);
+}
+.node.hi .field.ptr {
+  fill: var(--vp-c-bg);
+}
+.nil {
+  font-size: 13px;
+  fill: var(--vp-c-text-2);
+}
+.nil.on {
+  fill: var(--vp-c-danger-1);
+  font-weight: 700;
+}
+.link path {
+  fill: none;
+  stroke: var(--vp-c-text-2);
+  stroke-width: 1.5;
+}
+.link polygon,
+.link circle {
+  fill: var(--vp-c-text-2);
+}
+.link.up path {
+  stroke-dasharray: 4 3;
+}
+.link.on path {
+  stroke: var(--vp-c-brand-1);
+  stroke-width: 2.2;
+}
+.link.on polygon,
+.link.on circle {
+  fill: var(--vp-c-brand-1);
 }
 .lvl text {
   font-size: 12px;
