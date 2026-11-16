@@ -13,6 +13,9 @@
  *   - 原 3.7（中缀转后缀）q1（栈里是什么）→ 3.6 q2，q2（写成后缀式）→ 3.6 q1：手工转换的练习挪到了加括号法后面。
  * 2026-11-09 第4章树的存储拆成两节（和 009 迁移对应）：
  *   - 4.3 q1（存一棵小树）不动；原 4.3 q2（摘下来时少了一步）→ 4.4 q2；4.3 q2、4.4 q1 是新题。
+ * 2026-11-16 第4章二叉树重写（和 010 迁移对应）：
+ *   - 4.5 q1（哪些可以看成二叉树）不动；q2（(5-2)*3）的空换了，q3（3个结点的形态）改成了例题，两条记录删掉；
+ *   - 4.5 q2、q3 和 4.6 的题都是新题。
  * 每次重排是一步，带一个版本标记；记下跑到了哪一步，以后只跑后面的步。
  */
 
@@ -69,11 +72,16 @@ function ch04Storage(s: Store) {
   move(s, qk(3, 2), qk(4, 2))
 }
 
+function ch04BinaryTree(s: Store) {
+  for (const q of [2, 3]) s.removeItem(`${PREFIX}ch04-4-5-q${q}`)
+}
+
 // 按时间顺序排列；新加的重排接在最后
 const STEPS: [string, (s: Store) => void][] = [
   ['2026-10-ch02-linked', ch02Linked],
   ['2026-10-ch03-postfix', ch03Postfix],
   ['2026-11-ch04-storage', ch04Storage],
+  ['2026-11-ch04-binary-tree', ch04BinaryTree],
 ]
 
 export function remapQuizKeys(s: Store): void {

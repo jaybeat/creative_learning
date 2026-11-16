@@ -9,12 +9,14 @@ let db: Awaited<ReturnType<typeof pgliteDb>>
 let db7: Awaited<ReturnType<typeof pgliteDb>>
 let db8: Awaited<ReturnType<typeof pgliteDb>>
 let db9: Awaited<ReturnType<typeof pgliteDb>>
+let db10: Awaited<ReturnType<typeof pgliteDb>>
 
 afterAll(async () => {
   await db?.close()
   await db7?.close()
   await db8?.close()
   await db9?.close()
+  await db10?.close()
 })
 
 test('005：评论跟着第2章的改版挪到新的节和页', async () => {
@@ -304,4 +306,53 @@ test('009：第4章树的存储拆成两节，代码页挪到 4.4', async () => 
   const r = got.find((g) => g.body === '回复递归')!
   expect([r.page_path, r.page_title]).toEqual(['/ch04/4-4', N4])
   expect(at('4.2不动')).toEqual(['/ch04/4-2', '4-2-p1', '4.2 树的操作'])
+}, 30_000)
+
+const NAME10 = '010_ch04_binary_tree_rewrite.sql'
+
+test('010：第4章二叉树重写，性质挪到 4.6', async () => {
+  db10 = await pgliteDb()
+  await migrate(db10, all.filter((m) => m.name < NAME10))
+  const [{ id: uid }] = await db10.query<{ id: string }>(`INSERT INTO users (email) VALUES ('a@e.test') RETURNING id`)
+
+  const T5 = '4.5 二叉树'
+  const rows: [string, string, string | null, string][] = [
+    ['/ch04/4-5', T5, '4-5-p1', '转45度'],
+    ['/ch04/4-5', T5, '4-5-p2', '递归定义'],
+    ['/ch04/4-5', T5, '4-5-p3', '一个孩子'],
+    ['/ch04/4-5', T5, '4-5-p4', 'n0'],
+    ['/ch04/4-5', T5, '4-5-p5', '淘汰赛'],
+    ['/ch04/4-5', T5, '4-5-p6', '哪些'],
+    ['/ch04/4-5', T5, '4-5-p7', '算式'],
+    ['/ch04/4-5', T5, '4-5-p8', '3个结点'],
+    ['/ch04/4-5', T5, null, '本节问题'],
+    ['/ch04/4-4', '4.4 树的存储结构的实现', '4-4-p1', '4.4不动'],
+  ]
+  for (const [page, title, heading, quote] of rows) {
+    await db10.query('INSERT INTO comments (user_id, page_path, page_title, heading_id, quote_exact, body) VALUES ($1, $2, $3, $4, $5, $6)', [uid, page, title, heading, quote, 'x'])
+  }
+  const [{ id: pe }] = await db10.query<{ id: string }>(`SELECT id FROM comments WHERE quote_exact = 'n0'`)
+  await db10.query('INSERT INTO comments (user_id, parent_id, page_path, page_title, body) VALUES ($1, $2, $3, $4, $5)', [uid, pe, '/ch04/4-5', T5, '回复n0'])
+
+  await migrate(db10, all)
+  const got = await db10.query<{ quote_exact: string | null; body: string; page_path: string; page_title: string; heading_id: string | null }>(
+    'SELECT quote_exact, body, page_path, page_title, heading_id FROM comments',
+  )
+  const at = (q: string) => {
+    const r = got.find((g) => g.quote_exact === q)!
+    return [r.page_path, r.heading_id, r.page_title]
+  }
+  const N6 = '4.6 二叉树的性质'
+  expect(at('转45度')).toEqual(['/ch04/4-5', null, T5])
+  expect(at('递归定义')).toEqual(['/ch04/4-5', '4-5-p1', T5])
+  expect(at('一个孩子')).toEqual(['/ch04/4-5', '4-5-p4', T5])
+  expect(at('n0')).toEqual(['/ch04/4-6', '4-6-p5', N6])
+  expect(at('淘汰赛')).toEqual(['/ch04/4-6', '4-6-p6', N6])
+  expect(at('哪些')).toEqual(['/ch04/4-5', '4-5-p7', T5])
+  expect(at('算式')).toEqual(['/ch04/4-5', '4-5-p8', T5])
+  expect(at('3个结点')).toEqual(['/ch04/4-5', '4-5-p6', T5])
+  expect(at('本节问题')).toEqual(['/ch04/4-5', null, T5])
+  const r = got.find((g) => g.body === '回复n0')!
+  expect([r.page_path, r.page_title]).toEqual(['/ch04/4-6', N6])
+  expect(at('4.4不动')).toEqual(['/ch04/4-4', '4-4-p1', '4.4 树的存储结构的实现'])
 }, 30_000)
