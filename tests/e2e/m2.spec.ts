@@ -17,8 +17,8 @@ test.describe('搜索', () => {
   const cases: Array<[string, RegExp]> = [
     ['头结点', /2\.14/],
     ['扩容', /2\.8/],
-    // 第3章链栈的 Push 也讲 malloc
-    ['malloc', /2\.(8|9|1[0-3])|3\.4/],
+    // 第3章链栈的 Push、4.7 二叉链表搭树也讲 malloc
+    ['malloc', /2\.(8|9|1[0-3])|3\.4|4\.7/],
     ['值传递', /2\.5/],
   ]
   for (const [kw, expected] of cases) {

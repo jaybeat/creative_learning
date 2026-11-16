@@ -262,11 +262,13 @@ test('4.5：九页，概念页图文按行配对（宽屏左文右图）；练�
   const first = page.locator(pages).nth(0)
   await expect(first.locator('.side-row')).toHaveCount(4)
   await expect(first.locator('.side-row .side-fig .tree-figure')).toHaveCount(4)
-  // 宽屏时图在文字右边
-  const row = first.locator('.side-row').first()
-  const t = await row.locator('.side-text').boundingBox()
-  const f = await row.locator('.side-fig').boundingBox()
-  expect(f!.x).toBeGreaterThan(t!.x + t!.width - 1)
+  // 宽屏时图在文字右边（窄于 640px 时图落到文字下面，4.6 的用例查那一种）
+  if ((page.viewportSize()?.width ?? 1280) >= 640) {
+    const row = first.locator('.side-row').first()
+    const t = await row.locator('.side-text').boundingBox()
+    const f = await row.locator('.side-fig').boundingBox()
+    expect(f!.x).toBeGreaterThan(t!.x + t!.width - 1)
+  }
   await expect(page.locator(pages).nth(6).locator('.quiz-badge')).toHaveText('多选')
   await expect(page.locator(pages).nth(7).locator('.quiz-badge')).toHaveText('填空')
   await expect(page.locator(pages).nth(8).locator('.quiz-badge')).toHaveText('单选')
