@@ -356,3 +356,34 @@ test('010：第4章二叉树重写，性质挪到 4.6', async () => {
   expect([r.page_path, r.page_title]).toEqual(['/ch04/4-6', N6])
   expect(at('4.4不动')).toEqual(['/ch04/4-4', '4-4-p1', '4.4 树的存储结构的实现'])
 }, 30_000)
+
+const NAME11 = '011_ch04_traversal_trim.sql'
+let db11: Awaited<ReturnType<typeof pgliteDb>>
+
+test('011：4.8 删掉两页，后面的页前移', async () => {
+  db11 = await pgliteDb()
+  await migrate(db11, all.filter((m) => m.name < NAME11))
+  const [{ id: uid }] = await db11.query<{ id: string }>(`INSERT INTO users (email) VALUES ('a@e.test') RETURNING id`)
+  const T8 = '4.8 二叉树的遍历'
+  const rows: [string, string | null, string][] = [
+    ['/ch04/4-8', '4-8-p4', '后序'],
+    ['/ch04/4-8', '4-8-p5', '绕一圈'],
+    ['/ch04/4-8', '4-8-p6', '算式树'],
+    ['/ch04/4-8', '4-8-p7', '写成函数'],
+    ['/ch04/4-8', '4-8-p11', '练习3'],
+    ['/ch04/4-7', '4-7-p5', '4.7不动'],
+  ]
+  for (const [page, heading, quote] of rows) {
+    await db11.query('INSERT INTO comments (user_id, page_path, page_title, heading_id, quote_exact, body) VALUES ($1, $2, $3, $4, $5, $6)', [uid, page, T8, heading, quote, 'x'])
+  }
+  await migrate(db11, all)
+  const got = await db11.query<{ quote_exact: string; heading_id: string | null; page_path: string }>('SELECT quote_exact, heading_id, page_path FROM comments')
+  const at = (q: string) => got.find((g) => g.quote_exact === q)!.heading_id
+  expect(at('后序')).toBe('4-8-p4')
+  expect(at('绕一圈')).toBeNull()
+  expect(at('算式树')).toBeNull()
+  expect(at('写成函数')).toBe('4-8-p5')
+  expect(at('练习3')).toBe('4-8-p9')
+  expect(at('4.7不动')).toBe('4-7-p5')
+  await db11.close()
+}, 30_000)

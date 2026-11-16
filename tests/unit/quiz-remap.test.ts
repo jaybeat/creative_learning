@@ -48,7 +48,7 @@ test('练习题记录跟着第2章链表部分改结构挪到新位置，只跑�
     [K('2-16-q4')]: 'k',
     [K('2-17-q1')]: 'l',
     'ds-book:font-size': 'large',
-    [REMAP_FLAG]: '2026-11-ch04-binary-tree',
+    [REMAP_FLAG]: '2026-11-ch04-traversal-trim',
   })
   // 已经挪过：之后新答的题不会再被挪走
   s.setItem(K('2-9-q2'), 'new')
@@ -72,7 +72,7 @@ test('第3章表达式两节互换：原 3.6 求值题 → 3.7，原 3.7 转换�
   })
   remapQuizKeys(s)
   expect(Object.fromEntries(s.m)).toEqual({
-    [REMAP_FLAG]: '2026-11-ch04-binary-tree',
+    [REMAP_FLAG]: '2026-11-ch04-traversal-trim',
     [K('2-9-q2')]: '第2章挪过以后新答的',
     [K3('3-5-q1')]: 'p',
     [K3('3-6-q1')]: 'd',
@@ -98,7 +98,7 @@ test('第4章树的存储拆节：原 4.3 q2 → 4.4 q2，4.3 q1 不动；前面
   })
   remapQuizKeys(s)
   expect(Object.fromEntries(s.m)).toEqual({
-    [REMAP_FLAG]: '2026-11-ch04-binary-tree',
+    [REMAP_FLAG]: '2026-11-ch04-traversal-trim',
     [K3('3-6-q1')]: '第3章挪过以后新答的',
     [K4('4-2-q1')]: 'x',
     [K4('4-3-q1')]: 'a',
@@ -120,11 +120,28 @@ test('第4章二叉树重写：4.5 q2、q3 的记录删掉，q1 不动', () => {
   })
   remapQuizKeys(s)
   expect(Object.fromEntries(s.m)).toEqual({
-    [REMAP_FLAG]: '2026-11-ch04-binary-tree',
+    [REMAP_FLAG]: '2026-11-ch04-traversal-trim',
     [K4('4-4-q2')]: 'b',
     [K4('4-5-q1')]: 'a',
   })
   s.setItem(K4('4-5-q2'), 'new')
   remapQuizKeys(s)
   expect(s.getItem(K4('4-5-q2'))).toBe('new')
+})
+
+test('4.8 删两页：q3 换了题，记录删掉；q1、q2 不动', () => {
+  const s = store({
+    [REMAP_FLAG]: '2026-11-ch04-binary-tree',
+    [K4('4-5-q2')]: 'x', // 不能再被二叉树那一步删掉
+    [K4('4-8-q1')]: 'a',
+    [K4('4-8-q2')]: 'b',
+    [K4('4-8-q3')]: 'c',
+  })
+  remapQuizKeys(s)
+  expect(Object.fromEntries(s.m)).toEqual({
+    [REMAP_FLAG]: '2026-11-ch04-traversal-trim',
+    [K4('4-5-q2')]: 'x',
+    [K4('4-8-q1')]: 'a',
+    [K4('4-8-q2')]: 'b',
+  })
 })
