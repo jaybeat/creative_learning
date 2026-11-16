@@ -319,3 +319,36 @@ test('4.8：九页，先序、中序、后序按规则逐步走；写成函数�
   await expect(page.locator(pages).nth(7).locator('.quiz-badge')).toHaveText('单选')
   await expect(page.locator(pages).nth(8).locator('.quiz-badge')).toHaveText('单选')
 })
+
+test('4.9：八页，先往下交（虚线?）再往上合（实线带数字）；三问框架和函数', async ({ page }) => {
+  await page.goto('ch04/4-9')
+  await expect(page.locator(pages)).toHaveCount(8)
+  const titles = ['结点数：先往下交，再往上合', '叶子数和高度', '递下去，归上来', '写成函数', '例题：度为2', '练习1', '练习2', '练习3']
+  for (const [i, text] of titles.entries()) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toContainText(text)
+  const figs = page.locator(pages).nth(0).locator('.tree-figure')
+  // 第一张只有往下交的问题：每条边一个"?"，没有带回的答案
+  await expect(figs.nth(0).locator('.flow:not(.up)')).toHaveCount(10)
+  await expect(figs.nth(0).locator('.flow.up')).toHaveCount(0)
+  // 最后一张：B、C 各带回 2，A 标 5
+  await expect(figs.nth(4).locator('.flow.up text').filter({ hasText: '2' })).toHaveCount(2)
+  await expect(figs.nth(4).locator('.tag')).toHaveText('5')
+  for (const i of [5, 7]) await expect(page.locator(pages).nth(i).locator('.quiz-badge')).toHaveText('填空')
+  await expect(page.locator(pages).nth(6).locator('.quiz-badge')).toHaveText('单选')
+})
+
+test('4.10：九页，先序定根、中序分左右；序列分段着色，待定子树画成虚线框', async ({ page }) => {
+  await page.goto('ch04/4-10')
+  await expect(page.locator(pages)).toHaveCount(9)
+  const titles = ['只有先序，定不出这棵树', '第一步：先序定根，中序分左右', '左子树', '右子树和整棵树', '后序加中序', '写成函数', '练习1', '练习2', '练习3']
+  for (const [i, text] of titles.entries()) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toContainText(text)
+  const step1 = page.locator(pages).nth(1)
+  // 中序按 左 / 根 / 右 分成三段：左 4 格、根 1 格、右 2 格
+  const inorder = step1.locator('.array-figure').nth(1)
+  await expect(inorder.locator('.group text')).toHaveText(['左', '根', '右'])
+  await expect(inorder.locator('.cell.g-left')).toHaveCount(4)
+  await expect(inorder.locator('.cell.g-right')).toHaveCount(2)
+  // 还没拆开的两棵子树
+  await expect(step1.locator('.tree-figure').nth(1).locator('.node.dim')).toHaveCount(2)
+  for (const i of [6, 7]) await expect(page.locator(pages).nth(i).locator('.quiz-badge')).toHaveText('填空')
+  await expect(page.locator(pages).nth(8).locator('.quiz-badge')).toHaveText('单选')
+})
