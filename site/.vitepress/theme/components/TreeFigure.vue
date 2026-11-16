@@ -37,6 +37,7 @@ import { computed } from 'vue'
  *     有 slots 时，通往空子树的边也画。叶子要画到空子树，tree 里写成 `D(,)`。
  *   ret：`名:值`，空格分开。从这个结点到它双亲的边旁，画一个朝上的实线小箭头和值：这棵子树带回的答案。
  *   zero：结点名，空格分开。它通往空子树的边旁，画朝上的箭头和 empty 的值（空树带回的答案，默认 0）。
+ * bits：二叉树的编码树。每条通往左孩子的边旁标 0，通往右孩子的边旁标 1（空子树不标）。
  * caption：图下面的一行说明。
  */
 const props = withDefaults(
@@ -65,13 +66,14 @@ const props = withDefaults(
     ptrs?: boolean
     tour?: string
     upto?: number | string
+    bits?: boolean
     ask?: string
     ret?: string
     zero?: string
     empty?: string
     caption?: string
   }>(),
-  { ask: '', ret: '', zero: '', empty: '0', tour: '', upto: 0, linked: false, parent: false, nulls: false, ptrs: false, folders: false, hi: '', circle: '', path: '', extra: '', levels: false, label: '', dim: '', cut: '', sib: '', keep: '', drop: '', spread: false, compact: false, binary: false, slots: false, lr: false, caption: '' },
+  { bits: false, ask: '', ret: '', zero: '', empty: '0', tour: '', upto: 0, linked: false, parent: false, nulls: false, ptrs: false, folders: false, hi: '', circle: '', path: '', extra: '', levels: false, label: '', dim: '', cut: '', sib: '', keep: '', drop: '', spread: false, compact: false, binary: false, slots: false, lr: false, caption: '' },
 )
 
 interface TNode {
@@ -331,6 +333,21 @@ const flows = computed(() => {
   return out
 })
 
+// 编码树：边的中点往外侧挪一点，写 0 或 1
+const bitMarks = computed(() => {
+  if (!props.bits) return []
+  const out: { x: number; y: number; t: string }[] = []
+  for (const n of layout.value.all) {
+    n.kids.forEach((c, k) => {
+      if (c.empty) return
+      const mx = (n.x + c.x) / 2
+      const my = (n.y + nodeH + c.y) / 2
+      out.push({ x: mx + (k === 0 ? -8 : 8), y: my, t: k === 0 ? '0' : '1' })
+    })
+  }
+  return out
+})
+
 const links = computed(() => {
   if (!props.linked) return []
   const out: { d: string; head: string; up: boolean; x: number; y: number }[] = []
@@ -451,6 +468,7 @@ function aria() {
         <path :d="tourPath" />
         <polygon :points="tourHead" />
       </g>
+      <text v-for="(b, k) in bitMarks" :key="'b' + k" class="bit" :x="b.x" :y="b.y" text-anchor="middle">{{ b.t }}</text>
       <g v-for="(f, k) in flows" :key="'f' + k" class="flow" :class="{ up: f.up }">
         <path :d="f.d" />
         <polygon :points="f.head" />
@@ -639,6 +657,14 @@ figcaption {
 .link.on polygon,
 .link.on circle {
   fill: var(--vp-c-brand-1);
+}
+.bit {
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--tree-sib);
+  paint-order: stroke;
+  stroke: var(--vp-c-bg);
+  stroke-width: 3px;
 }
 .flow path {
   fill: none;

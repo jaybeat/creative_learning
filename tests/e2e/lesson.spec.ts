@@ -352,3 +352,21 @@ test('4.10：九页，先序定根、中序分左右；序列分段着色，待�
   for (const i of [6, 7]) await expect(page.locator(pages).nth(i).locator('.quiz-badge')).toHaveText('填空')
   await expect(page.locator(pages).nth(8).locator('.quiz-badge')).toHaveText('单选')
 })
+
+test('4.11：十一页，从定长编码推到哈夫曼树；编码树边上标 0/1，合并逐步画出森林', async ({ page }) => {
+  await page.goto('ch04/4-11')
+  await expect(page.locator(pages)).toHaveCount(11)
+  const titles = ['一段文字要多少位', '常用的字用短码', '前缀编码', '前缀编码就是一棵二叉树', '总长度就是带权路径长度', '哈夫曼的办法', '哈夫曼编码', '写成函数']
+  for (const [i, text] of titles.entries()) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toContainText(text)
+  // 编码树：4 个内部结点、8 条边，左 0 右 1
+  const code = page.locator(pages).nth(3).locator('.tree-figure').first()
+  await expect(code.locator('.bit')).toHaveCount(8)
+  // 合并：最后一步只剩一棵树，根是 11
+  const merge = page.locator(pages).nth(5).locator('.tree-figure').last()
+  await expect(merge.locator('.node.hi .name')).toHaveText('11')
+  // 解码 B：路径 11 → 6 → 4 → B
+  await expect(page.locator(pages).nth(6).locator('.tree-figure').nth(2).locator('.node.on .name')).toHaveText(['11', '6', '4', 'B'])
+  await expect(page.locator(pages).nth(8).locator('.quiz-badge')).toHaveText('填空')
+  await expect(page.locator(pages).nth(9).locator('.quiz-badge')).toHaveText('单选')
+  await expect(page.locator(pages).nth(10).locator('.quiz-badge')).toHaveText('填空')
+})
