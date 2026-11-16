@@ -9,6 +9,9 @@ import { computed } from 'vue'
  * zero：在最前面多画一格下标 0，灰色、写"不用"（下标从 1 开始存时）。
  * hi：高亮的下标，空格分开。
  * arcs：格子上方的弧线箭头，`从-到` 空格分开，例如 `2-4 2-5`：从 2 号格指向 4 号格。
+ * groups：分段着色，`名:从-到` 或 `名:第几个`，空格分开，下标同上，例如 `根:1 左:2-5 右:6-7`。
+ *   名字是"根"的段用强调色，"左"用长子边的绿色，"右"用兄弟边的紫色，别的名字用灰色；段下面画括号、写名字。
+ * plain：不标下标（只当一个序列看）。
  * caption：图下面的一行说明。
  */
 const props = withDefaults(
@@ -18,9 +21,11 @@ const props = withDefaults(
     zero?: boolean
     hi?: string
     arcs?: string
+    groups?: string
+    plain?: boolean
     caption?: string
   }>(),
-  { from: 1, zero: false, hi: '', arcs: '', caption: '' },
+  { from: 1, zero: false, hi: '', arcs: '', groups: '', plain: false, caption: '' },
 )
 
 const words = (v: string) => v.trim().split(/\s+/).filter(Boolean)
@@ -44,6 +49,19 @@ const cells = computed<Cell[]>(() => {
   out.forEach((c, k) => (c.x = left + k * cellW))
   return out
 })
+const kindOf = (name: string) => (name === '根' ? 'root' : name === '左' ? 'left' : name === '右' ? 'right' : 'other')
+const groupList = computed(() =>
+  words(props.groups).map((w) => {
+    const k = w.lastIndexOf(':')
+    const name = w.slice(0, k)
+    const [a, b] = w.slice(k + 1).split('-').map(Number)
+    const first = byIdx(a)
+    const last = byIdx(Number.isNaN(b) || b === undefined ? a : b)
+    if (!first || !last) throw new Error(`ArrayFigure: groups 里找不到下标「${w}」`)
+    return { name, kind: kindOf(name), x1: first.x + 2, x2: last.x + cellW - 2, a, b: Number.isNaN(b) || b === undefined ? a : b }
+  }),
+)
+const groupOf = (i: number) => groupList.value.find((g) => i >= g.a && i <= g.b)?.kind ?? ''
 const hiSet = computed(() => new Set(words(props.hi).map(Number)))
 const byIdx = (i: number) => cells.value.find((c) => c.idx === i)
 
@@ -62,7 +80,9 @@ const arcList = computed(() =>
 )
 const top = computed(() => (arcList.value.length ? Math.ceil(Math.max(...arcList.value.map((a) => a.h))) + 8 : 4))
 const W = computed(() => left * 2 + cells.value.length * cellW)
-const H = computed(() => top.value + cellH + 20)
+const idxH = computed(() => (props.plain ? 4 : 20))
+const H = computed(() => top.value + cellH + idxH.value + (groupList.value.length ? 26 : 0))
+const groupY = computed(() => top.value + cellH + idxH.value + 4)
 
 function arcPath(a: { x1: number; x2: number; h: number }) {
   const y = top.value - 2
@@ -89,10 +109,14 @@ const aria = computed(() => `数组：${cells.value.map((c) => `${c.idx}号${c.z
         <path :d="arcPath(a)" />
         <polygon :points="arcHead(a)" />
       </g>
-      <g v-for="c in cells" :key="c.idx" class="cell" :class="{ hi: hiSet.has(c.idx), empty: c.empty, zero: c.zero }">
+      <g v-for="c in cells" :key="c.idx" class="cell" :class="['g-' + groupOf(c.idx), { hi: hiSet.has(c.idx), empty: c.empty, zero: c.zero }]">
         <rect :x="c.x" :y="top" :width="cellW" :height="cellH" />
         <text class="val" :x="c.x + cellW / 2" :y="top + cellH / 2 + 5" text-anchor="middle">{{ c.zero ? '不用' : c.value }}</text>
-        <text class="idx" :x="c.x + cellW / 2" :y="top + cellH + 15" text-anchor="middle">{{ c.idx }}</text>
+        <text v-if="!plain" class="idx" :x="c.x + cellW / 2" :y="top + cellH + 15" text-anchor="middle">{{ c.idx }}</text>
+      </g>
+      <g v-for="(g, k) in groupList" :key="'g' + k" class="group" :class="'g-' + g.kind">
+        <path :d="`M ${g.x1} ${groupY} v 4 H ${g.x2} v -4`" />
+        <text :x="(g.x1 + g.x2) / 2" :y="groupY + 18" text-anchor="middle">{{ g.name }}</text>
       </g>
     </svg>
     <figcaption v-if="caption">{{ caption }}</figcaption>
@@ -148,6 +172,34 @@ rect {
   fill: var(--vp-c-brand-1);
   font-weight: 600;
 }
+.cell.g-root rect {
+  fill: var(--vp-c-brand-soft);
+  stroke: var(--vp-c-brand-1);
+}
+.cell.g-left rect {
+  fill: color-mix(in srgb, var(--tree-first) 16%, var(--vp-c-bg));
+  stroke: var(--tree-first);
+}
+.cell.g-right rect {
+  fill: color-mix(in srgb, var(--tree-sib) 16%, var(--vp-c-bg));
+  stroke: var(--tree-sib);
+}
+.group path {
+  fill: none;
+  stroke-width: 1.4;
+  stroke: var(--vp-c-text-3);
+}
+.group text {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--vp-c-text-2);
+}
+.group.g-root path { stroke: var(--vp-c-brand-1); }
+.group.g-root text { fill: var(--vp-c-brand-1); }
+.group.g-left path { stroke: var(--tree-first); }
+.group.g-left text { fill: var(--tree-first); }
+.group.g-right path { stroke: var(--tree-sib); }
+.group.g-right text { fill: var(--tree-sib); }
 .arc path {
   fill: none;
   stroke: var(--vp-c-brand-1);
