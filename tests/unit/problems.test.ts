@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { parseProblemSet, renderProblemPage } from '../../scripts/lib/problems'
+import { parseProblemSet, placeProblems, renderProblemPage } from '../../scripts/lib/problems'
 import { buildSidebar, linkPrevNext, listPages } from '../../scripts/lib/nav'
 import { parseChapter } from '../../scripts/lib/splitter'
 import { fixture } from './helpers'
@@ -90,5 +90,46 @@ describe('练习页进阅读顺序与侧栏', () => {
         { text: '第二问：加减', link: '/ch02/ex-2' },
       ],
     })
+  })
+})
+
+describe('练习按节挂（after）', () => {
+  const ch02 = parseChapter(fixture('ch02-mini.md'), 'ch02.md')
+  const ch03 = parseChapter(fixture('ch03-mini.md'), 'ch03.md')
+  const placed = placeProblems(set, ch02, ['2.1', '2.2'])
+  const entries = [
+    { chapter: ch02, draft: false, problems: placed },
+    { chapter: ch03, draft: false },
+  ]
+
+  test('每问紧跟在它挂的那一节后面', () => {
+    const pages = linkPrevNext(listPages(entries))
+    expect(pages.map((p) => p.link)).toEqual(['/ch02/', '/ch02/2-1', '/ch02/ex-1', '/ch02/2-2', '/ch02/ex-2', '/ch03/', '/ch03/3-1'])
+    expect(pages[1].next).toEqual({ text: '多项式 · 第一问', link: '/ch02/ex-1' })
+    expect(pages[3].prev).toEqual({ text: '多项式 · 第一问', link: '/ch02/ex-1' })
+  })
+
+  test('侧栏：挂在节后的问单独一条，章末不再有练习分组', () => {
+    expect(buildSidebar(entries)[0].items).toEqual([
+      { text: '2.1 问题', link: '/ch02/2-1' },
+      { text: '练习：多项式 · 第一问', link: '/ch02/ex-1' },
+      { text: '2.2 结构', link: '/ch02/2-2' },
+      { text: '练习：多项式 · 第二问', link: '/ch02/ex-2' },
+    ])
+  })
+
+  test('两问挂同一节，按问的顺序排', () => {
+    const pages = listPages([{ chapter: ch02, draft: false, problems: placeProblems(set, ch02, ['2.1', '2.1']) }])
+    expect(pages.map((p) => p.link)).toEqual(['/ch02/', '/ch02/2-1', '/ch02/ex-1', '/ch02/ex-2', '/ch02/2-2'])
+  })
+
+  test('after 为空时原样不动（都挂章末）', () => {
+    expect(placeProblems(set, ch02, [])).toBe(set)
+  })
+
+  test('个数不符、节号不存在、后一问比前一问靠前都报错', () => {
+    expect(() => placeProblems(set, ch02, ['2.1'])).toThrow(/有 2 问/)
+    expect(() => placeProblems(set, ch02, ['2.1', '2.9'])).toThrow(/没有这一节/)
+    expect(() => placeProblems(set, ch02, ['2.2', '2.1'])).toThrow(/比前一问还靠前/)
   })
 })

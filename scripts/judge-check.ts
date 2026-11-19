@@ -1,5 +1,5 @@
 /**
- * 用真实评测机检查测试数据：把 tests/fixtures/poly-c 里的标准 C 解答提交给评测机，三问的每个测试点都应通过，
+ * 用真实评测机检查测试数据：把 tests/fixtures/poly-c、bitree-c 里的标准 C 解答提交给评测机，每一问的每个测试点都应通过，
  * 并打印各测试点用时（看时间限制是否宽裕）。需要环境变量 JUDGE_URL、JUDGE_SECRET，不进 CI。
  *   npx tsx scripts/judge-check.ts
  */
@@ -8,7 +8,11 @@ import { httpJudge } from '../server/judge'
 import { grade } from '../server/grading'
 import { loadTests } from '../server/problem-tests'
 // @ts-expect-error 纯 JS 的测试夹具
-import { solutions } from '../tests/fixtures/poly-c/build.mjs'
+import { solutions as poly } from '../tests/fixtures/poly-c/build.mjs'
+// @ts-expect-error 纯 JS 的测试夹具
+import { solutions as bitree } from '../tests/fixtures/bitree-c/build.mjs'
+
+const solutions = { ...poly, ...bitree }
 
 const { JUDGE_URL, JUDGE_SECRET } = process.env
 if (!JUDGE_URL || !JUDGE_SECRET) throw new Error('需要 JUDGE_URL 与 JUDGE_SECRET')

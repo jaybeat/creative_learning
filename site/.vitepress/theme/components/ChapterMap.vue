@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { Content, useData, useRouter, withBase } from 'vitepress'
 import book from '../../generated/book.json'
-import { titleOf } from '../book-data'
+import { endProblems, problemsAfter, titleOf } from '../book-data'
 import { RESTORE_KEY, isRead, pagePath, useProgress, validLast } from '../progress'
 
 /**
@@ -94,23 +94,28 @@ function go(p: string): void {
 
       <h2 class="cmap-h">本章目录</h2>
       <ol class="ci-list cmap-path">
-        <li
-          v-for="s in ch.sections"
-          :key="s.link"
-          :class="{ 'is-read': readSet.has(s.link), 'is-current': s.link === current }"
-        >
-          <a :href="withBase(s.link)">
-            <span class="cmap-dot">{{ s.number }}</span>{{ ' ' }}<span class="cmap-name">{{ s.title }}</span>
-          </a>
-          <span v-if="s.video" class="video-mark" title="这一节有课程动画">▶ {{ s.video }}</span>
-          <span v-if="readSet.has(s.link)" class="read-mark" title="已学">✓</span>
-        </li>
+        <template v-for="s in ch.sections" :key="s.link">
+          <li :class="{ 'is-read': readSet.has(s.link), 'is-current': s.link === current }">
+            <a :href="withBase(s.link)">
+              <span class="cmap-dot">{{ s.number }}</span>{{ ' ' }}<span class="cmap-name">{{ s.title }}</span>
+            </a>
+            <span v-if="s.video" class="video-mark" title="这一节有课程动画">▶ {{ s.video }}</span>
+            <span v-if="readSet.has(s.link)" class="read-mark" title="已学">✓</span>
+          </li>
+          <!-- 挂在这一节后面的练习 -->
+          <li v-for="p in problemsAfter(ch, s.link)" :key="p.link" class="is-problem" :class="{ 'is-read': readSet.has(p.link) }">
+            <a :href="withBase(p.link)">
+              <span class="cmap-dot">练</span>{{ ' ' }}<span class="cmap-name">{{ ch.problems!.title }} · {{ p.title }}</span>
+            </a>
+            <span v-if="readSet.has(p.link)" class="read-mark" title="已提交">✓</span>
+          </li>
+        </template>
       </ol>
 
-      <template v-if="ch.problems">
-        <h2 class="cmap-h"><span class="cmap-tag">本章练习</span>{{ ch.problems.title }}</h2>
+      <template v-if="endProblems(ch).length">
+        <h2 class="cmap-h"><span class="cmap-tag">本章练习</span>{{ ch.problems!.title }}</h2>
         <ol class="ci-list cmap-path is-problems">
-          <li v-for="(p, i) in ch.problems.items" :key="p.link" :class="{ 'is-read': readSet.has(p.link) }">
+          <li v-for="(p, i) in endProblems(ch)" :key="p.link" :class="{ 'is-read': readSet.has(p.link) }">
             <a :href="withBase(p.link)">
               <span class="cmap-dot">{{ i + 1 }}</span>{{ ' ' }}<span class="cmap-name">{{ p.title }}</span>
             </a>

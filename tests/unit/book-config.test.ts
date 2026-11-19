@@ -29,7 +29,7 @@ describe('parseBookConfig', () => {
   test('缺省时为空字符串', () => {
     const book = parseBookConfig('title: 数据结构\nchapters:\n  - file: ch01.md\n', dir)
     expect(book.titleEn).toBe('')
-    expect(book.chapters[0]).toEqual({ file: 'ch01.md', draft: false, question: '', problems: '' })
+    expect(book.chapters[0]).toEqual({ file: 'ch01.md', draft: false, question: '', problems: '', problemsAfter: [] })
   })
 
   test('练习题：文件名、章号、存在性', () => {
@@ -38,5 +38,20 @@ describe('parseBookConfig', () => {
     expect(() => parseBookConfig(yml('poly.md'), dir, dir)).toThrow(/chNN-名字/)
     expect(() => parseBookConfig(yml('ch03-poly.md'), dir, dir)).toThrow(/章号不一致/)
     expect(() => parseBookConfig(yml('ch02-none.md'), dir, dir)).toThrow(/不存在/)
+  })
+
+  test('练习题：对象写法给出每问挂在哪节后面', () => {
+    const yml = (after: string) =>
+      ['title: 数据结构', 'chapters:', '  - file: ch02.md', '    problems:', '      file: ch02-poly.md', after].join('\n')
+    const c = parseBookConfig(yml("      after: ['2.1', '2.10']"), dir, dir).chapters[0]
+    expect(c.problems).toBe('ch02-poly.md')
+    expect(c.problemsAfter).toEqual(['2.1', '2.10'])
+    expect(parseBookConfig(yml(''), dir, dir).chapters[0].problemsAfter).toEqual([])
+    // 不加引号，2.10 会被 YAML 读成数 2.1
+    expect(() => parseBookConfig(yml('      after: [2.1, 2.10]'), dir, dir)).toThrow(/要加引号/)
+    expect(() => parseBookConfig(yml("      after: '2.1'"), dir, dir)).toThrow(/节号列表/)
+    expect(() =>
+      parseBookConfig(['title: 数据结构', 'chapters:', '  - file: ch02.md', '    problems:', '      file: poly.md'].join('\n'), dir, dir),
+    ).toThrow(/chNN-名字/)
   })
 })

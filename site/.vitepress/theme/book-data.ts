@@ -13,3 +13,16 @@ export function titleOf(path: string): string | null {
 }
 
 export const firstSectionLink: string | null = book.chapters[0]?.firstSection ?? null
+
+type BookChapter = (typeof book.chapters)[number]
+type ProblemItem = NonNullable<BookChapter['problems']>['items'][number]
+
+/** 挂在某一节后面的问（book.yml 的 problems.after）：目录里插在那一节下面 */
+export function problemsAfter(ch: BookChapter, sectionLink: string): ProblemItem[] {
+  return ch.problems?.items.filter((p) => p.after === sectionLink) ?? []
+}
+
+/** 挂在章末的问：目录最后的「本章练习」 */
+export function endProblems(ch: BookChapter): ProblemItem[] {
+  return ch.problems?.items.filter((p) => !p.after) ?? []
+}
