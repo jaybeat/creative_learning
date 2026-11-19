@@ -94,7 +94,18 @@ export function solveTraversal(input: string): string {
   return (['pre', 'in', 'post'] as const).map((k) => order(t, r, k).map((x) => t.val[x]).join(' ')).join('\n') + '\n'
 }
 
+/** 按后序算：轮到一个结点时，两个孩子的高度都已算好（空树 0），取大的加 1 */
+export function solveHeight(input: string): string {
+  const t = parseTable(input)
+  const r = rootOf(t)
+  const h: number[] = Array(t.n).fill(0)
+  const of = (x: number) => (x === -1 ? 0 : h[x])
+  for (const x of order(t, r, 'post')) h[x] = Math.max(of(t.lc[x]), of(t.rc[x])) + 1
+  return [h[r], ...h].join('\n') + '\n'
+}
+
 export const SOLVERS: Record<string, (input: string) => string> = {
   'ch04-ex-1': solveInfo,
   'ch04-ex-2': solveTraversal,
+  'ch04-ex-3': solveHeight,
 }

@@ -27,5 +27,5 @@ chapters:
     # 也可以写成对象：after 给出第 i 问挂在哪一节后面（节号要加引号），不写 after 就都挂章末
     problems:
       file: ch04-bitree.md
-      after: ['4.7', '4.8']
+      after: ['4.7', '4.8', '4.9']
   # draft: true 的章完全隐藏（不生成页面、不进目录和首页），但仍参与字体字符校验
