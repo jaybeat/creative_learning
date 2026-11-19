@@ -1,8 +1,9 @@
 import { createMd, type MdToken } from './md'
-import { renderFrontmatter, type FrontmatterValue } from './splitter'
+import { renderFrontmatter, type Chapter, type FrontmatterValue } from './splitter'
 
 /**
- * 练习题（book/problems/chNN-xxx.md）：一个文件是一组题，挂在第 NN 章末尾。
+ * 练习题（book/problems/chNN-xxx.md）：一个文件是一组题，属于第 NN 章；默认挂在章末，
+ * book.yml 写了 after 时各问分别挂在指定的节后面（见 placeProblems）。
  *
  *   # 组标题                 ← 一组
  *   引言（三问共用的说明、数据范围）
@@ -35,6 +36,8 @@ export interface Problem {
   samples: Sample[]
   /** 在题目文件里的 0 基起始行 */
   startLine: number
+  /** 挂在哪一节后面（节号「4.7」）；没有就挂在章末 */
+  after?: string
 }
 
 export interface ProblemSet {
@@ -132,6 +135,27 @@ export function parseProblemSet(src: string, file: string): ProblemSet {
     intro: trimBlock(lines.slice(h1s[0].end, h2s[0].line)),
     problems,
   }
+}
+
+/**
+ * 按 book.yml 的 `after` 把各问挂到节后面：第 i 问挂在节号 after[i] 后面。
+ * after 为空时不改（都挂章末）。个数不符、节号不在本章、后一问挂得比前一问靠前，都报错。
+ */
+export function placeProblems(set: ProblemSet, chapter: Pick<Chapter, 'number' | 'sections'>, after: string[]): ProblemSet {
+  if (!after.length) return set
+  if (after.length !== set.problems.length) {
+    throw new Error(`${set.file}: 有 ${set.problems.length} 问，book.yml 的 after 却给了 ${after.length} 个节号`)
+  }
+  const order = chapter.sections.map((s) => s.number)
+  let last = -1
+  const problems = set.problems.map((p, i) => {
+    const k = order.indexOf(after[i])
+    if (k < 0) throw new Error(`${set.file}: ${p.short}挂在 ${after[i]} 后面，可第${chapter.number}章没有这一节`)
+    if (k < last) throw new Error(`${set.file}: ${p.short}挂在 ${after[i]} 后面，比前一问还靠前`)
+    last = k
+    return { ...p, after: after[i] }
+  })
+  return { ...set, problems }
 }
 
 /**

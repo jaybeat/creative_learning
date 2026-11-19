@@ -5,7 +5,7 @@ import { SECTION_RE } from './slug'
 export interface ChapterEntry {
   chapter: Chapter
   draft: boolean
-  /** 本章末尾的练习题 */
+  /** 本章的练习题（各问挂在章末，或按 after 挂在某节后面） */
   problems?: ProblemSet
 }
 
@@ -57,7 +57,7 @@ export function problemsGroupText(set: ProblemSet): string {
   return `练习：${set.title}`
 }
 
-/** 全书阅读顺序：章首页 → 各节 → 本章练习，跨章连续。draft 章不参与。 */
+/** 全书阅读顺序：章首页 → 各节（挂在节后的问紧跟其后）→ 章末练习，跨章连续。draft 章不参与。 */
 export function listPages(entries: ChapterEntry[]): PageInfo[] {
   const pages: PageInfo[] = []
   for (const { chapter, draft, problems } of entries) {
@@ -69,6 +69,15 @@ export function listPages(entries: ChapterEntry[]): PageInfo[] {
       file: `${chapter.slug}/index.md`,
       chapter,
     })
+    const problemPage = (p: Problem): PageInfo => ({
+      kind: 'problem',
+      link: `/${chapter.slug}/${p.slug}`,
+      text: problemText(problems!, p),
+      file: `${chapter.slug}/${p.slug}.md`,
+      chapter,
+      problemSet: problems,
+      problem: p,
+    })
     for (const s of chapter.sections) {
       pages.push({
         kind: 'section',
@@ -78,18 +87,10 @@ export function listPages(entries: ChapterEntry[]): PageInfo[] {
         chapter,
         section: s,
       })
+      // 挂在这一节后面的问
+      for (const p of problems?.problems ?? []) if (p.after === s.number) pages.push(problemPage(p))
     }
-    for (const p of problems?.problems ?? []) {
-      pages.push({
-        kind: 'problem',
-        link: `/${chapter.slug}/${p.slug}`,
-        text: problemText(problems!, p),
-        file: `${chapter.slug}/${p.slug}.md`,
-        chapter,
-        problemSet: problems,
-        problem: p,
-      })
-    }
+    for (const p of problems?.problems ?? []) if (!p.after) pages.push(problemPage(p))
   }
   return pages
 }
@@ -110,14 +111,19 @@ export function buildSidebar(entries: ChapterEntry[]): SidebarItem[] {
   return entries
     .filter((e) => !e.draft)
     .map(({ chapter, problems }) => {
-      const items: SidebarItem[] = chapter.sections.map((s) => ({
-        text: sectionText(s),
-        link: `/${chapter.slug}/${s.slug}`,
-      }))
-      if (problems?.problems.length) {
+      const items: SidebarItem[] = []
+      for (const s of chapter.sections) {
+        items.push({ text: sectionText(s), link: `/${chapter.slug}/${s.slug}` })
+        // 挂在节后面的问：单独一条，紧跟在那一节下面
+        for (const p of problems?.problems ?? []) {
+          if (p.after === s.number) items.push({ text: `练习：${problemText(problems!, p)}`, link: `/${chapter.slug}/${p.slug}` })
+        }
+      }
+      const atEnd = problems?.problems.filter((p) => !p.after) ?? []
+      if (atEnd.length) {
         items.push({
-          text: problemsGroupText(problems),
-          items: problems.problems.map((p) => ({ text: p.title, link: `/${chapter.slug}/${p.slug}` })),
+          text: problemsGroupText(problems!),
+          items: atEnd.map((p) => ({ text: p.title, link: `/${chapter.slug}/${p.slug}` })),
         })
       }
       return { text: chapterText(chapter), link: `/${chapter.slug}/`, collapsed: true, items }

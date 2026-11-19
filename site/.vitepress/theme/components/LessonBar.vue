@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useData, useRoute, withBase } from 'vitepress'
 import { useLocalNav } from 'vitepress/theme-without-fonts'
 import book from '../../generated/book.json'
-import { titleOf } from '../book-data'
+import { endProblems, problemsAfter, titleOf } from '../book-data'
 import { courseMode, readMode, setMode, type CourseMode } from '../course-mode'
 import { pinned, readPins, setPin, type Panel } from '../focus'
 import { isRead, pagePath, useProgress } from '../progress'
@@ -171,18 +171,23 @@ const outlineLabel = computed(() => {
             <span class="lb-ch-kick">第{{ c.number }}章</span> {{ c.title }}
           </a>
           <ol class="cmap-path lb-path">
-            <li
-              v-for="s in c.sections"
-              :key="s.link"
-              :class="{ 'is-read': readSet.has(s.link), 'is-current': s.link === path }"
-            >
-              <a :href="withBase(s.link)" :aria-current="s.link === path ? 'page' : undefined">
-                <span class="cmap-dot">{{ s.number }}</span>{{ ' ' }}<span class="cmap-name">{{ s.title }}</span>
-              </a>
-              <span v-if="s.video" class="video-mark" title="这一节有课程动画">▶</span>
-              <span v-if="readSet.has(s.link)" class="read-mark" title="已学">✓</span>
-            </li>
-            <li v-for="(p, i) in c.problems?.items ?? []" :key="p.link" class="is-problem" :class="{ 'is-read': readSet.has(p.link) }">
+            <template v-for="s in c.sections" :key="s.link">
+              <li :class="{ 'is-read': readSet.has(s.link), 'is-current': s.link === path }">
+                <a :href="withBase(s.link)" :aria-current="s.link === path ? 'page' : undefined">
+                  <span class="cmap-dot">{{ s.number }}</span>{{ ' ' }}<span class="cmap-name">{{ s.title }}</span>
+                </a>
+                <span v-if="s.video" class="video-mark" title="这一节有课程动画">▶</span>
+                <span v-if="readSet.has(s.link)" class="read-mark" title="已学">✓</span>
+              </li>
+              <!-- 挂在这一节后面的练习 -->
+              <li v-for="p in problemsAfter(c, s.link)" :key="p.link" class="is-problem" :class="{ 'is-read': readSet.has(p.link) }">
+                <a :href="withBase(p.link)">
+                  <span class="cmap-dot">练</span>{{ ' ' }}<span class="cmap-name">{{ p.title }}</span>
+                </a>
+                <span v-if="readSet.has(p.link)" class="read-mark" title="已提交">✓</span>
+              </li>
+            </template>
+            <li v-for="(p, i) in endProblems(c)" :key="p.link" class="is-problem" :class="{ 'is-read': readSet.has(p.link) }">
               <a :href="withBase(p.link)">
                 <span class="cmap-dot">练{{ i + 1 }}</span>{{ ' ' }}<span class="cmap-name">{{ p.title }}</span>
               </a>

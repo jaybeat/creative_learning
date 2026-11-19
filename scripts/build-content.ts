@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { CHAPTERS_DIR, GENERATED_DIR, HOME_MD, PROBLEMS_DIR, SITE_DIR } from './lib/paths'
-import { parseProblemSet, renderProblemPage } from './lib/problems'
+import { parseProblemSet, placeProblems, renderProblemPage } from './lib/problems'
 import { parseHome, renderHome } from './lib/home'
 import { loadBookConfig } from './lib/book-config'
 import { parseChapter, renderChapterIndex, renderSectionPage, type FrontmatterValue } from './lib/splitter'
@@ -38,13 +38,20 @@ export function runBuildContent(): void {
   const book = loadBookConfig()
 
   const sources = book.chapters.map((c) => ({ config: c, src: fs.readFileSync(path.join(CHAPTERS_DIR, c.file), 'utf8') }))
-  const entries: ChapterEntry[] = sources.map(({ config, src }) => ({
-    chapter: parseChapter(src, config.file),
-    draft: config.draft,
-    problems: config.problems
-      ? parseProblemSet(fs.readFileSync(path.join(PROBLEMS_DIR, config.problems), 'utf8'), config.problems)
-      : undefined,
-  }))
+  const entries: ChapterEntry[] = sources.map(({ config, src }) => {
+    const chapter = parseChapter(src, config.file)
+    return {
+      chapter,
+      draft: config.draft,
+      problems: config.problems
+        ? placeProblems(
+            parseProblemSet(fs.readFileSync(path.join(PROBLEMS_DIR, config.problems), 'utf8'), config.problems),
+            chapter,
+            config.problemsAfter,
+          )
+        : undefined,
+    }
+  })
 
   // 各章的「版本号」（编辑器1.1 之类），交叉引用插件在该章里不把它们当节号
   const versionsByChapter: Record<string, string[]> = {}
@@ -159,7 +166,14 @@ export function runBuildContent(): void {
         problems: problems
           ? {
               title: problems.title,
-              items: problems.problems.map((p) => ({ id: p.id, title: p.title, short: p.short, link: `/${chapter.slug}/${p.slug}` })),
+              // after：挂在哪一节后面（那一节的 link）；null 表示挂在章末
+              items: problems.problems.map((p) => ({
+                id: p.id,
+                title: p.title,
+                short: p.short,
+                link: `/${chapter.slug}/${p.slug}`,
+                after: p.after ? `/${chapter.slug}/${chapter.sections.find((s) => s.number === p.after)!.slug}` : null,
+              })),
             }
           : null,
       })),

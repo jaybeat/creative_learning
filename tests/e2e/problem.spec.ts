@@ -33,6 +33,18 @@ test('第二问可以载入第一问的代码', async ({ page }) => {
   await expect(page.locator('.cm-content')).toContainText('from-ex-1')
 })
 
+test('按节挂的练习：4.7 → 第一问 → 4.8，第二问可以载入第一问的代码', async ({ page }) => {
+  await page.goto('ch04/4-7')
+  await expect(page.locator('a.pager-link.next')).toHaveAttribute('href', /\/ch04\/ex-1$/)
+  await page.goto('ch04/ex-1')
+  await expect(page.locator('.problem-doc h1')).toContainText('第一问')
+  await expect(page.locator('.sample-case')).toHaveCount(3)
+  await page.evaluate(() => localStorage.setItem('ds-book:code:ch04-ex-1', '/* from-ch04-ex-1 */\n'))
+  await page.goto('ch04/ex-2')
+  await page.locator('.pw-btn', { hasText: '载入第一问的代码' }).click()
+  await expect(page.locator('.cm-content')).toContainText('from-ch04-ex-1')
+})
+
 /** 在编辑器末尾追加一行（e2e 的假评测机按代码里的标记决定输出） */
 async function append(page: import('@playwright/test').Page, text: string) {
   await page.locator('.cm-content').click()
