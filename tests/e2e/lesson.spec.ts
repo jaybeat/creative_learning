@@ -406,3 +406,19 @@ test('5.2：十页，邻接矩阵和邻接表各配一道例题；矩阵里 1 �
   await expect(page.locator(pages).nth(8).locator('.quiz-badge')).toHaveText('填空')
   await expect(page.locator(pages).nth(9).locator('.quiz-badge')).toHaveText('单选')
 })
+
+test('5.3：六页，深度优先、广度优先各一步一图；两种序列的访问序号对得上正文', async ({ page }) => {
+  await page.goto('ch05/5-3')
+  await expect(page.locator(pages)).toHaveCount(6)
+  const titles = ['走遍一张图', '深度优先遍历', '广度优先遍历', '例题：输出深度优先和广度优先序列', '练习1', '练习2']
+  for (const [i, text] of titles.entries()) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toContainText(text)
+  // 深度优先 0 1 3 2 5 4：最后一张图里，顶点 0～5 依次是第 1 2 4 3 6 5 个，走过 5 条边
+  const dfs = page.locator(pages).nth(1).locator('.graph-figure').last()
+  await expect(dfs.locator('.tag')).toHaveText(['1', '2', '4', '3', '6', '5'])
+  await expect(dfs.locator('.edge.on')).toHaveCount(5)
+  // 广度优先 0 1 2 3 5 4：顶点 0～5 依次是第 1 2 3 4 6 5 个
+  const bfs = page.locator(pages).nth(2).locator('.graph-figure').last()
+  await expect(bfs.locator('.tag')).toHaveText(['1', '2', '3', '4', '6', '5'])
+  await expect(page.locator(pages).nth(4).locator('.quiz-badge')).toHaveText('填空')
+  await expect(page.locator(pages).nth(5).locator('.quiz-badge')).toHaveText('单选')
+})
