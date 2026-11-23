@@ -370,3 +370,39 @@ test('4.11：十一页，从定长编码推到哈夫曼树；编码树边上标 
   await expect(page.locator(pages).nth(9).locator('.quiz-badge')).toHaveText('单选')
   await expect(page.locator(pages).nth(10).locator('.quiz-badge')).toHaveText('填空')
 })
+
+test('5.1：十页，好友网（无向）和关注网（有向）对照；度、路径画在同一张好友网上', async ({ page }) => {
+  await page.goto('ch05/5-1')
+  await expect(page.locator(pages)).toHaveCount(10)
+  const titles = ['什么是图', '无向图和有向图', '邻接点和度', '入度和出度', '权', '路径和环', '连通', '例题：同桌和借钱', '练习1', '练习2']
+  for (const [i, text] of titles.entries()) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toContainText(text)
+  // 关注网 5 条弧，各带一个箭头；小王和小李互相关注
+  const follow = page.locator(pages).nth(1).locator('.graph-figure').nth(1)
+  await expect(follow.locator('.edge polygon')).toHaveCount(5)
+  await expect(follow.locator('.edge.on')).toHaveCount(2)
+  // 度：小李连着 3 条边，五个人都标了度
+  const deg = page.locator(pages).nth(2).locator('.graph-figure').first()
+  await expect(deg.locator('.edge.on')).toHaveCount(3)
+  await expect(deg.locator('.tag')).toHaveText(['2', '2', '3', '2', '1'])
+  // 路径：小王 → 小李 → 小赵 → 小陈
+  await expect(page.locator(pages).nth(5).locator('.graph-figure').first().locator('.node.on .name')).toHaveText(['小王', '小李', '小赵', '小陈'])
+  await expect(page.locator(pages).nth(8).locator('.quiz-badge')).toHaveText('多选')
+  await expect(page.locator(pages).nth(9).locator('.quiz-badge')).toHaveText('填空')
+})
+
+test('5.2：十页，邻接矩阵和邻接表各配一道例题；矩阵里 1 的个数、邻接表边结点个数对得上正文', async ({ page }) => {
+  await page.goto('ch05/5-2')
+  await expect(page.locator(pages)).toHaveCount(10)
+  const titles = ['要记下什么', '邻接矩阵', '例题：统计每个顶点的度', '大多是0的时候', '邻接表', '例题：有向图的出度和入度', '其他存法', '两种存法比一比', '练习1', '练习2']
+  for (const [i, text] of titles.entries()) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toContainText(text)
+  // 6 条边的无向图：矩阵 12 个 1，每行的度 2 3 3 2 2
+  const mats = page.locator(pages).nth(1).locator('.matrix-figure')
+  await expect(mats.first().locator('text.one')).toHaveCount(12)
+  await expect(mats.nth(2).locator('.sum')).toHaveText(['2', '3', '3', '2', '2'])
+  // 邻接表 12 个边结点；有向图里指向 2 的边结点有 2 个
+  const lists = page.locator(pages).nth(4).locator('.adjlist-figure')
+  await expect(lists.first().locator('.enode')).toHaveCount(12)
+  await expect(lists.last().locator('.enode.on')).toHaveCount(2)
+  await expect(page.locator(pages).nth(8).locator('.quiz-badge')).toHaveText('填空')
+  await expect(page.locator(pages).nth(9).locator('.quiz-badge')).toHaveText('单选')
+})

@@ -14,6 +14,9 @@ import LinkQueueFigure from './components/LinkQueueFigure.vue'
 import TreeFigure from './components/TreeFigure.vue'
 import CsTreeFigure from './components/CsTreeFigure.vue'
 import ArrayFigure from './components/ArrayFigure.vue'
+import GraphFigure from './components/GraphFigure.vue'
+import MatrixFigure from './components/MatrixFigure.vue'
+import AdjListFigure from './components/AdjListFigure.vue'
 import AdminComments from './comments/AdminComments.vue'
 import ProblemLayout from './problem/ProblemLayout.vue'
 import SampleCase from './problem/SampleCase.vue'
@@ -53,6 +56,9 @@ export default {
     app.component('TreeFigure', TreeFigure)
     app.component('CsTreeFigure', CsTreeFigure)
     app.component('ArrayFigure', ArrayFigure)
+    app.component('GraphFigure', GraphFigure)
+    app.component('MatrixFigure', MatrixFigure)
+    app.component('AdjListFigure', AdjListFigure)
     // 题目页：frontmatter.layout: problem 时由默认主题的 VPContent 渲染这个组件
     app.component('problem', ProblemLayout)
     app.component('SampleCase', SampleCase)

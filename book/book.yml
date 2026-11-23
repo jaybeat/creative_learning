@@ -28,4 +28,7 @@ chapters:
     problems:
       file: ch04-bitree.md
       after: ['4.7', '4.8', '4.9']
+  - file: ch05.md
+    draft: false
+    question: 多对多的关系怎么表示、怎么存
   # draft: true 的章完全隐藏（不生成页面、不进目录和首页），但仍参与字体字符校验
