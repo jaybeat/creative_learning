@@ -422,3 +422,19 @@ test('5.3：七页，深度优先、广度优先各一步一图、各跟一道�
   await expect(page.locator(pages).nth(5).locator('.quiz-badge')).toHaveText('填空')
   await expect(page.locator(pages).nth(6).locator('.quiz-badge')).toHaveText('单选')
 })
+
+test('5.4：九页，列出 8 棵生成树；先修最便宜的修出 3 条边，Kruskal、Prim 最后都选出 5 条边', async ({ page }) => {
+  await page.goto('ch05/5-4')
+  await expect(page.locator(pages)).toHaveCount(9)
+  const titles = ['修路', '生成树', '最小生成树', '先修最便宜的', 'Kruskal算法', 'Prim算法', '两种算法比一比', '练习1', '练习2']
+  for (const [i, text] of titles.entries()) await expect(page.locator(pages).nth(i).locator('h3.para-title')).toContainText(text)
+  // 四个顶点的图一共 8 棵生成树，排在一个 figure-pair 里
+  await expect(page.locator(pages).nth(2).locator('.figure-pair .graph-figure')).toHaveCount(8)
+  // 先修最便宜的：第 5 拍修满 3 条边
+  await expect(page.locator(pages).nth(3).locator('.side').first().locator('.graph-figure').last().locator('.edge.on')).toHaveCount(3)
+  for (const i of [4, 5]) await expect(page.locator(pages).nth(i).locator('.graph-figure').last().locator('.edge.on')).toHaveCount(5)
+  // Prim 不在顶点旁标距离
+  await expect(page.locator(pages).nth(5).locator('.graph-figure .tag')).toHaveCount(0)
+  await expect(page.locator(pages).nth(7).locator('.quiz-badge')).toHaveText('填空')
+  await expect(page.locator(pages).nth(8).locator('.quiz-badge')).toHaveText('单选')
+})
